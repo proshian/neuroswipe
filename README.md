@@ -84,3 +84,7 @@ $$
 * finding datasets
 * creating dataset
 
+
+## Baseline
+
+python ./src/keyboard_start/lib/main.py --train-path data/data/result_noctx_10k/train.jsonl --test-path data/data/result_noctx_10k/test.jsonl --voc-path data/data/result_noctx_10k/voc.txt --num-workers 8 --output-path result/result.csv
