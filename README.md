@@ -56,10 +56,14 @@ Super important
 2. Сдвигаем с помощью двумерного гаусовского распределения
 3. Берем готовую реализацию minimal-jerk trajectory
 
+Реализации minimal-jerk:
+* https://github.com/Amos-Chen98/optimal_trajectory_generator
+
 Вопросы:
 1. Есть ли у minimal-jerk параметры?
 2. Должны ли minimal-jerk trajectory алгоритм знать сколько времени прошло между via-points?
-2. Как от кривой-результата алгоритма получить последовательность точек с временным интервалом t?
+3. Как от кривой-результата алгоритма получить последовательность точек с временным интервалом t?
+4. Вычитать как получаются Гауссианы в статье (Modeling Gesture-Typing Movements)[https://www.tandfonline.com/doi/permissions/10.1080/07370024.2016.1215922]
 
 Ошибку попадания в клавишу можно моделировать гаусовким распределением ([Predicting Finger-Touch Accuracy Based on the Dual Gaussian Distribution Model](https://dl.acm.org/doi/pdf/10.1145/2984511.2984546))
 
@@ -79,3 +83,4 @@ $$
 * reading papers
 * finding datasets
 * creating dataset
+
