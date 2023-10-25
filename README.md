@@ -1,5 +1,7 @@
 # Yandex Cup 2023 ML. NeuroSwipe task
 
+https://yandex.com/cup/profile
+
 Распознавание слов по&nbsp;нарисованным кривым на&nbsp;экране смартфона (Яндекс Клавиатура)
 
 ## Task annotation
@@ -42,12 +44,17 @@ Transformer encoder for curve encoding. The input for Transformer Encoder is a s
 * Если входную последовательность использовать как [x_coord, y_coord, dx/dt, dy/dt, one_hot_letter_of_nearest_keyboard_key], не нужно ли заменить one_hot на embedding?
 
 ## TODO
-Urgent
+High Urgency
+* Should dataset be an iterable-style ot map-style?
 * Энкодер, принимающий на вход координаты
-Super important
+Medium urgency
 * Synthetic data generation
+    * analyse the percenta
     * WordGesture-GAN
     * Modeling Gesture-Typing Movements (minimal jerk)
+Low urgency:
+* Read and understand visualization tool
+* Read and understand baseline
 
 
 ## Synthetic data generation:
@@ -87,4 +94,6 @@ $$
 
 ## Baseline
 
-python ./src/keyboard_start/lib/main.py --train-path data/data/result_noctx_10k/train.jsonl --test-path data/data/result_noctx_10k/test.jsonl --voc-path data/data/result_noctx_10k/voc.txt --num-workers 8 --output-path result/result.csv
+python ./src/keyboard_start/lib/main.py --train-path data/data/result_noctx_10k/train.jsonl --test-path data/data/result_noctx_10k/test.jsonl --voc-path data/data/result_noctx_10k/voc.txt --num-workers 4 --output-path result/result.csv
+
+python ./src/keyboard_start/tools/viz.py --path data/data/result_noctx_10k/train.jsonl --limit 10 --ideal

@@ -21,7 +21,7 @@ def drop_punctuation(s):
 
 
 def read_swipe_events(path, limit = -1):
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         for i, line in enumerate(f):
             if i == limit:
                 return
