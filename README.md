@@ -94,6 +94,6 @@ $$
 
 ## Baseline
 
-python ./src/keyboard_start/lib/main.py --train-path data/data/result_noctx_10k/train.jsonl --test-path data/data/result_noctx_10k/test.jsonl --voc-path data/data/result_noctx_10k/voc.txt --num-workers 4 --output-path result/result.csv
+python ./src/keyboard_start/lib/main.py --train-path data/data/result_noctx_10k/train.jsonl --test-path data/data/result_noctx_10k/test.jsonl --voc-path data/data/result_noctx_10k/voc.txt --num-workers 4 --output-path ./result.csv
 
 python ./src/keyboard_start/tools/viz.py --path data/data/result_noctx_10k/train.jsonl --limit 10 --ideal
