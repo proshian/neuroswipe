@@ -1,0 +1,5 @@
+outs:
+- md5: 45690e2624d02800da255abee90dbd41
+  size: 9891016
+  hash: md5
+  path: voc.txt

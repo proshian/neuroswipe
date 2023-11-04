@@ -94,6 +94,30 @@ $$
 
 ## Baseline
 
+```shell
 python ./src/keyboard_start/lib/main.py --train-path data/data/result_noctx_10k/train.jsonl --test-path data/data/result_noctx_10k/test.jsonl --voc-path data/data/result_noctx_10k/voc.txt --num-workers 4 --output-path ./result.csv
 
 python ./src/keyboard_start/tools/viz.py --path data/data/result_noctx_10k/train.jsonl --limit 10 --ideal
+```
+
+## DVC commands
+
+```shell
+dvc init
+dvc remote add -d myremote gdrive://1OvqjaZKpSib_m6gCs1QvkfLILXKPiEs3
+dvc remote modify myremote gdrive_acknowledge_abuse true
+
+dvc add data\data_separated_grid\gridname_to_grid.json 
+dvc add data\data_separated_grid\valid__in_train_format__default_only.jsonl 
+dvc add data\data_separated_grid\valid__in_train_format__extra_only.jsonl 
+dvc add data\data_separated_grid\test.jsonl 
+dvc add data\data_separated_grid\train__default_only_no_errors__2023_10_31__03_26_16.jsonl
+dvc add data\data_separated_grid\train__extra_only_no_errors__2023_11_01__19_49_14.jsonl
+dvc add data\data_separated_grid\voc.txt
+
+cd data\data_separated_grid
+git add gridname_to_grid.json.dvc valid__in_train_format__default_only.jsonl.dvc valid__in_train_format__extra_only.jsonl.dvc test.jsonl.dvc train__default_only_no_errors__2023_10_31__03_26_16.jsonl.dvc train__extra_only_no_errors__2023_11_01__19_49_14.jsonl.dvc voc.txt.dvc
+cd ..\..
+
+
+```
