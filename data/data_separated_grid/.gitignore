@@ -23,3 +23,5 @@
 /word_tokenizer.pkl
 /deleteme/train__default_only_no_errors_except_segments_check__2023_10_30__17_19_52.jsonl
 /deleteme/train__default_only__not_monotonical_time_or_exceeding_max_distance__ids.txt
+/val_pred_2023_11_07__02_25_25.pkl
+/test_pred_2023_11_07__02_25_25.pkl
