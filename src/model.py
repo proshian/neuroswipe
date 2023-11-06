@@ -1,205 +1,226 @@
-import json
-from typing import Optional, List, Tuple, Dict
-import array
+from typing import Callable
+import math
 
 import torch
-from torch.utils.data import Dataset
-from tqdm import tqdm
+import torch.nn as nn
+import torch.nn.functional as F
 
-
-class NeuroSwipeDatasetv1(Dataset):
+class SwipeCurveTransformerEncoderv1(nn.Module):
     """
-    Dataset class for NeuroSwipe dataset.
-    The dataset file weights over 3 GB and contains over 6 million swipe gestures.
+    Transformer-based Curve encoder takes in a sequence of vectors and creates a representation
+    of a swipe gesture on a samrtphone keyboard.
+    Each vector contains information about finger trajectory at a time step.
+    It contains:
+    * x coordinate
+    * y coordinate
+    * Optionally: t
+    * Optionally: dx/dt
+    * Optionally: dy/dt
+    * Optionally: keyboard key that has x and y coordinates within its boundaries
     """
 
     def __init__(self,
-                 data_path: str,
-                 grid: dict,
-                 kb_tokenizer,
-                 max_traj_len: int,
-                 word_tokenizer,  # should contain max word len
-                 include_time: bool = True,
-                 include_velocities: bool = True,
-                 include_accelerations: bool = True,
-                 total: Optional[int] = None):
+                 input_size: int,
+                 d_model: int,
+                 dim_feedforward: int,
+                 num_layers: int,
+                 num_heads_first: int,
+                 num_heads_other: int,
+                 dropout: float = 0.1,
+                 device = None):
         """
-        Args:
-            data_path (string): Path to the NeuroSwipe dataset in JSON format.
-                A custom version of the dataset is used:
-                "grid" property is replaced with "grid_name" property.
-        """
-        if include_accelerations and not include_velocities:
-
-            raise ValueError("Accelerations are supposed \
-                             to be an addition to velocities. Add velocities.")
-
-        self.max_traj_len = max_traj_len
-        self.include_velocities = include_velocities
-        self.include_accelerations = include_accelerations
-        self.include_time = include_time
-
-        self.word_tokenizer = word_tokenizer
-
-        kb_keys = grid['keys']
-
-        self.kb_width = grid['width']
-        self.kb_height = grid['height']
-
-        self.data_list = []
-        self._set_data(data_path, kb_keys, kb_tokenizer, self.data_list, total = total)
-    
-
-    def _get_key_center(self, hitbox: Dict[str, int]) -> Tuple[int, int]:
-        x = hitbox['x'] + hitbox['w'] / 2
-        y = hitbox['y'] + hitbox['h'] / 2
-        return x, y
-
-    def _coord_to_kb_label(self, x: int, y:int, keys: List[dict]) -> str:
-        nearest_kb_label = None
-        min_dist = float("inf")
-        for key in keys:
-            key_x, key_y = self._get_key_center(key['hitbox'])
-            dist = (x - key_x)**2 + (y - key_y)**2
-            if dist < min_dist:
-                min_dist = dist
-                if 'label' in key:
-                    nearest_kb_label = key['label']
-                elif 'action' in key:
-                    nearest_kb_label = key['action']  # tokenizer will covert it to <unk>
-                else:
-                    raise ValueError("Key has no label or action")
-
-        return nearest_kb_label
-            
-
-    def _set_data(self,
-                  data_path: str,
-                  kb_keys: str,
-                  kb_tokenizer,
-                  data_list: list,
-                  total: Optional[int] = None):
-        with open(data_path, "r", encoding="utf-8") as json_file:
-            for line in tqdm(json_file, total = total):
-                data_list.append(self._get_data_from_json_line(line, kb_keys, kb_tokenizer))
-
-
-    def _get_dx_dt(self,
-                   X: torch.tensor,
-                   T: torch.tensor,
-                   len: int) -> List[float]:
-        """
-        Calculates dx/dt for a list of x coordinates and a list of t coordinates.
-
         Arguments:
         ----------
-        X : torch.tensor
-            x (position) coordinates.
-        T : torch.tensor
-            T[i] = time from the beginning of the swipe corresponding to X[i].
-        len : int
-            Length of the swipe trajectory. Indexes greater than len are ignored.
+        input_size: int
+            Size of input vectors.
+        d_model: int
+            Size of the embeddings (output vectors).
+            Should be equal to char embedding size of the decoder.
+        dim_feedforward: int
+        num_layers: int
+            Number of encoder layers including the first layer.
 
         """
-        dx_dt = torch.zeros_like(X)
-        # dx_dt[1:-1] = (X[2:] - X[:-2]) / (T[2:] - T[:-2])
-        dx_dt[1:len-1] = (X[2:len] - X[:len-2]) / (T[2:len] - T[:len-2])
+        super().__init__()
 
-        # Example:
-        # x0 x1 x2 x3
-        # t0 t1 t2 t3
-        # dx_dt[0] = 0
-        # dx_dt[1] = (x2 - x0) / (t2 - t0)
-        # dx_dt[2] = (x3 - x1) / (t3 - t1)
-        # dx_dt[3] = 0
+        device = device or torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-
-        # if True in torch.isnan(dx_dt):
-        #     print(dx_dt)
-        #     raise ValueError("dx_dt contains NaNs")
-
-        return dx_dt
-
-    def _get_data_from_json_line(self, line, kb_keys, kb_tokenizer) -> Tuple[list, list, list, str]:
-        """
-        Parses a JSON line and returns a dictionary with data.
-        """
-        data = json.loads(line)
-        word: str = data['word']
-
-        X = array.array('h', data['curve']['x'])
-        Y = array.array('h', data['curve']['y'])
-        T = array.array('h', data['curve']['t'])        
-
-        kb_labels = [self._coord_to_kb_label(x, y, kb_keys) for x,y in zip(X, Y)]
-        kb_tokens = [kb_tokenizer.get_token(label) for label in kb_labels]
-        kb_tokens += [kb_tokenizer.get_token('<pad>')] * (self.max_traj_len - len(kb_labels))
-        kb_tokens = array.array('h', kb_tokens)
-
-        return X, Y, T, word, kb_tokens
-
-    def __len__(self):
-        return len(self.data_list)
+        self.first_encoder_layer = nn.TransformerEncoderLayer(
+            input_size, num_heads_first, dim_feedforward, dropout, device=device)
+        self.liner = nn.Linear(input_size, d_model, device=device)  # to convert embedding to d_model size
+        num_layer_after_first = num_layers - 1
+        if num_layer_after_first > 0:
+            encoder_layer = nn.TransformerEncoderLayer(
+                d_model, num_heads_other, dim_feedforward, dropout, device=device)
+            self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layer_after_first)
+        else:
+            self.transformer_encoder = None
     
-    def __getitem__(self, idx):
-        X_list, Y_list, T_list, word, kb_tokens = self.data_list[idx]
 
-        X = torch.zeros(self.max_traj_len, dtype=torch.float32)
-        Y = torch.zeros(self.max_traj_len, dtype=torch.float32)
-        T = torch.zeros(self.max_traj_len, dtype=torch.float32)
+    def forward(self, x, pad_mask: torch.tensor):
+        x = self.first_encoder_layer(x, src_key_padding_mask=pad_mask)
+        x = self.liner(x)
+        if self.transformer_encoder:
+            x = self.transformer_encoder(x, src_key_padding_mask=pad_mask)
+        return x
+
+
+
+class SwipeCurveTransformerDecoderv1(nn.Module):
+    """
+    Decodes a swipe gesture representation into a sequence of characters.
+
+    Uses decoder transformer with masked attention to prevent the model from cheating.
+    """
+
+    def __init__(self,
+                 char_emb_size,
+                 n_classes,
+                 nhead,
+                 num_decoder_layers,
+                 dim_feedforward,
+                 dropout,
+                 activation = F.relu,
+                 device = None):
+        super().__init__()
+
+        device = device or torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+        self.decoder_layer = nn.TransformerDecoderLayer(
+            char_emb_size, nhead, dim_feedforward, dropout, activation, device = device)
+        self.transformer_decoder = nn.TransformerDecoder(self.decoder_layer, num_decoder_layers)
+        self.out = nn.Linear(char_emb_size, n_classes, device = device)
+    
+    def forward(self, x, memory, tgt_mask, memory_key_padding_mask, tgt_key_padding_mask):
+        x = self.transformer_decoder(x,
+                                     memory,
+                                     tgt_mask=tgt_mask,
+                                     memory_key_padding_mask=memory_key_padding_mask,
+                                     tgt_key_padding_mask=tgt_key_padding_mask)
+        x = self.out(x)
+        return x
+
+
+class PositionalEncoding(nn.Module):
+    def __init__(self, d_model: int, max_len: int, device, dropout: float = 0.0):
+        super().__init__()
+        self.dropout = nn.Dropout(p=dropout)
+
+        position = torch.arange(max_len).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2) * (-math.log(10000.0) / d_model))
+        pe = torch.zeros(max_len, 1, d_model)
+        pe[:, 0, 0::2] = torch.sin(position * div_term)
+        pe[:, 0, 1::2] = torch.cos(position * div_term)
+        pe = pe.to(device=device)
+        self.register_buffer('pe', pe)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Arguments:
+        ----------
+        x: Tensor, shape ``[seq_len, batch_size, embedding_dim]``
+        """
+        x = x + self.pe[:x.size(0)]
+        return self.dropout(x)
+
+
+class SwipeCurveTransformer(nn.Module):
+    """
+    Seq2seq model. Encodes a sequence of points of a
+    swipe-keyboard-typing gesture into a sequence of characters.
+
+    n_output_classes = char_vocab_size - 2 because <pad> and <sos>
+    tokens are never predicted.
+    """
+
+    def _get_mask(self, max_seq_len: int):
+        """
+        Returns a mask for the decoder transformer.
+        """
+        mask = torch.triu(torch.ones(max_seq_len, max_seq_len), diagonal=1)
+        mask = mask.masked_fill(mask == 1, float('-inf'))
+        return mask
+
+    def __init__(self,
+                 n_coord_feats: int,
+                 char_emb_size: int,
+                 char_vocab_size: int,
+                 key_emb_size: int,
+                 num_encoder_layers: int,
+                 num_decoder_layers: int,
+                 dim_feedforward: int,
+                 num_heads_encoder_1: int,
+                 num_heads_encoder_2: int,
+                 num_heads_decoder: int,
+                 dropout:float,
+                 char_embedding_dropout: float,
+                 key_embedding_dropout: float,
+                 max_out_seq_len: int,
+                 max_curves_seq_len: int,
+                 activation: Callable = F.relu,
+                 device: str = None):
+        super().__init__()
+
+        device = device or torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.device = device
+
+        input_feats_size = n_coord_feats + key_emb_size
+
+        d_model = char_emb_size
+
+        self.char_embedding_dropout = nn.Dropout(char_embedding_dropout)
+        self.key_embedding_dropout = nn.Dropout(key_embedding_dropout)
         
-        X[:len(X_list)] = torch.tensor(X_list, dtype=torch.float32) / self.kb_width
-        Y[:len(Y_list)] = torch.tensor(Y_list, dtype=torch.float32) / self.kb_height
-        T[:len(T_list)] = torch.tensor(T_list, dtype=torch.float32)
+        self.char_embedding = nn.Embedding(char_vocab_size, char_emb_size, device=device)
+        self.key_embedding = nn.Embedding(char_vocab_size, key_emb_size, device=device)
 
-        xyt = torch.cat(
-            [
-                X.reshape(-1, 1),
-                Y.reshape(-1, 1),
-            ],
-            axis = 1
-        )
+        self.encoder = SwipeCurveTransformerEncoderv1(
+            input_feats_size, d_model, dim_feedforward,
+            num_encoder_layers, num_heads_encoder_1,
+            num_heads_encoder_2, dropout, device=device)
+        
+        self.char_pos_encoder = PositionalEncoding(
+            char_emb_size, max_out_seq_len, device=device)
+        
+        self.key_pos_encoder = PositionalEncoding(
+            key_emb_size, max_curves_seq_len, device=device)
+        
+        n_classes = char_vocab_size - 2  # <sos> and <pad> are not predicted
+        self.decoder = SwipeCurveTransformerDecoderv1(
+            char_emb_size, n_classes, num_heads_decoder,
+            num_decoder_layers, dim_feedforward, dropout, activation, device=device)
 
-        if self.include_time:
-            xyt = torch.cat(
-                [
-                    xyt,
-                    T.reshape(-1, 1)
-                ],
-                axis = 1
-            )
+        self.mask = self._get_mask(max_out_seq_len).to(device=device)
 
-        traj_len = len(X_list)
-
-        if self.include_velocities:
-            dx_dt = self._get_dx_dt(X, T, traj_len)
-            dy_dt = self._get_dx_dt(Y, T, traj_len)
-            xyt = torch.cat(
-                [
-                    xyt,
-                    dx_dt.reshape(-1, 1),
-                    dy_dt.reshape(-1, 1)
-                ],
-                axis = 1
-            )
-
-        if self.include_accelerations:
-            d2x_dt2 = self._get_dx_dt(dx_dt, T, traj_len)
-            d2y_dt2 = self._get_dx_dt(dy_dt, T, traj_len)
-            xyt = torch.cat(
-                [
-                    xyt,
-                    d2x_dt2.reshape(-1, 1),
-                    d2y_dt2.reshape(-1, 1)
-                ],
-                axis = 1
-            )
-
-        traj_pad_mask = torch.ones(self.max_traj_len, dtype=torch.bool)
-        traj_pad_mask[:len(X_list)] = False
-
-        char_seq, word_mask = self.word_tokenizer.tokenize(word)
-
-        kb_tokens = torch.tensor(kb_tokens, dtype=torch.int64)
+    def forward_old(self, x, kb_tokens, y, x_pad_mask, y_pad_mask):
+        # Differs from forward(): uses self.mask instead of generating it.
+        kb_k_emb = self.key_embedding(kb_tokens)  # keyboard key
+        kb_k_emb = self.key_embedding_dropout(kb_k_emb)
+        kb_k_emb = self.key_pos_encoder(kb_k_emb)
+        x = torch.cat((x, kb_k_emb), axis = -1)
+        x = self.encoder(x, x_pad_mask)
+        y = self.char_embedding(y)
+        y = self.char_embedding_dropout(y)
+        y = self.char_pos_encoder(y)
+        y = self.decoder(y, x, self.mask, x_pad_mask, y_pad_mask)
+        return y
     
-        return xyt, kb_tokens, traj_pad_mask, char_seq, word_mask
+    def encode(self, x, kb_tokens, x_pad_mask):
+        kb_k_emb = self.key_embedding(kb_tokens)  # keyboard key
+        kb_k_emb = self.key_embedding_dropout(kb_k_emb)
+        kb_k_emb = self.key_pos_encoder(kb_k_emb)
+        x = torch.cat((x, kb_k_emb), axis = -1)
+        x = self.encoder(x, x_pad_mask)
+        return x
+    
+    def decode(self, x_encoded, y, x_pad_mask, y_pad_mask):
+        y = self.char_embedding(y)
+        y = self.char_embedding_dropout(y)
+        y = self.char_pos_encoder(y)
+        mask = self._get_mask(len(y)).to(device=self.device)
+        y = self.decoder(y, x_encoded, mask, x_pad_mask, y_pad_mask)
+        return y
+
+    def forward(self, x, kb_tokens, y, x_pad_mask, y_pad_mask):
+        x_encoded = self.encode(x, kb_tokens, x_pad_mask)
+        return self.decode(x_encoded, y, x_pad_mask, y_pad_mask)
