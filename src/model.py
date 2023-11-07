@@ -224,3 +224,37 @@ class SwipeCurveTransformer(nn.Module):
     def forward(self, x, kb_tokens, y, x_pad_mask, y_pad_mask):
         x_encoded = self.encode(x, kb_tokens, x_pad_mask)
         return self.decode(x_encoded, y, x_pad_mask, y_pad_mask)
+
+
+
+
+def get_m1_model(weights_path, device):
+    CHAR_VOCAB_SIZE = 37  # = len(word_char_tokenizer.char_to_idx)
+    MAX_CURVES_SEQ_LEN = 299
+    MAX_OUT_SEQ_LEN = 35  # word_char_tokenizer.max_word_len - 1
+
+    model = SwipeCurveTransformer(
+    n_coord_feats=6,
+    char_emb_size=128,
+    char_vocab_size=CHAR_VOCAB_SIZE,
+    key_emb_size=54,
+    num_encoder_layers=4,
+    num_decoder_layers=3,
+    dim_feedforward=128,
+    num_heads_encoder_1=4,
+    num_heads_encoder_2=4,
+    num_heads_decoder=4,
+    dropout=0.1,
+    char_embedding_dropout=0.1,
+    key_embedding_dropout=0.1,
+    max_out_seq_len=MAX_OUT_SEQ_LEN,
+    max_curves_seq_len=MAX_CURVES_SEQ_LEN,
+    device = device)
+
+    model.load_state_dict(
+        torch.load(weights_path,
+                map_location = device))
+    
+    model = model.eval()
+
+    return model
