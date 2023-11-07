@@ -1,6 +1,6 @@
 import torch
 
-from utils import prepare_batch
+from utils import prepare_batch, turncate_traj_batch
 
 
 class GreedyGenerator:
