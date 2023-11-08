@@ -1,0 +1,5 @@
+outs:
+- md5: fe4126fc3a1df8b72697f483f093801d
+  size: 1586512
+  hash: md5
+  path: med_getter.pkl
