@@ -31,7 +31,7 @@ class NeuroSwipeDatasetv2(Dataset):
                  keyboard_selection_set = None,
                  total: Optional[int] = None):
         """
-        Argsuments:
+        Arguments:
         -----------
         data_path (string): Path to the NeuroSwipe dataset in JSON format.
             A custom version of the dataset is used:

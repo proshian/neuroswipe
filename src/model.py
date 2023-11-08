@@ -228,7 +228,7 @@ class SwipeCurveTransformer(nn.Module):
 
 
 
-def get_m1_model(weights_path, device):
+def get_m1_model(device, weights_path = None):
     CHAR_VOCAB_SIZE = 37  # = len(word_char_tokenizer.char_to_idx)
     MAX_CURVES_SEQ_LEN = 299
     MAX_OUT_SEQ_LEN = 35  # word_char_tokenizer.max_word_len - 1
@@ -251,10 +251,13 @@ def get_m1_model(weights_path, device):
     max_curves_seq_len=MAX_CURVES_SEQ_LEN,
     device = device)
 
-    model.load_state_dict(
-        torch.load(weights_path,
-                map_location = device))
+    if weights_path:
+        model.load_state_dict(
+            torch.load(weights_path,
+                    map_location = device))
     
+    model = model.to(device)
+        
     model = model.eval()
 
     return model
