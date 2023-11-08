@@ -1,5 +1,12 @@
 import torch
 
+def truncate_padding(seq, mask):
+    max_curve_len = int(torch.max(torch.sum(~mask, dim = 1)))
+    seq = seq[:, :max_curve_len]
+    mask = mask[:, :max_curve_len]
+    return seq, mask
+
+
 def turncate_traj_batch(xyt, kb_tokens, traj_pad_mask):
     max_curve_len = int(torch.max(torch.sum(~traj_pad_mask, dim = 1)))
     xyt = xyt[:, :max_curve_len]
@@ -12,7 +19,9 @@ def turncate_traj_batch(xyt, kb_tokens, traj_pad_mask):
 def prepare_batch_with_pad_truncation(x, y, device):
     (xyt, kb_tokens, dec_in_char_seq, traj_pad_mask, word_pad_mask), dec_out_char_seq = x, y
 
-    xyt, kb_tokens, traj_pad_mask = turncate_traj_batch(xyt, kb_tokens, traj_pad_mask)
+    xyt, traj_pad_mask = truncate_padding(xyt, traj_pad_mask)
+    kb_tokens, traj_pad_mask = truncate_padding(kb_tokens, traj_pad_mask)
+    dec_in_char_seq, word_pad_mask = truncate_padding(kb_tokens, traj_pad_mask)
 
     # print(max_curve_len)
 
