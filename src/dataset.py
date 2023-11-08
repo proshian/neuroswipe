@@ -28,6 +28,7 @@ class NeuroSwipeDatasetv2(Dataset):
                  include_grid_name: bool = False,
                  has_target = True,
                  has_one_grid_only = True,
+                 keyboard_selection_set = None,
                  total: Optional[int] = None):
         """
         Argsuments:
@@ -50,6 +51,7 @@ class NeuroSwipeDatasetv2(Dataset):
         self.include_time = include_time
         self.has_target = has_target
         self.include_grid_name = include_grid_name
+        self.keyboard_selection_set = keyboard_selection_set
 
         self.word_tokenizer = word_tokenizer
 
@@ -84,6 +86,13 @@ class NeuroSwipeDatasetv2(Dataset):
         y = hitbox['y'] + hitbox['h'] / 2
         return x, y
     
+    def _get_kb_label(self, key: dict) -> str:
+        if 'label' in key:
+            return key['label']
+        if 'action' in key:
+            return key['action']
+        raise ValueError("Key has no label or action")
+
 
     def _get_kb_label_without_map(self, x, y, grid: dict) -> str:
         """
@@ -93,17 +102,18 @@ class NeuroSwipeDatasetv2(Dataset):
         """
         nearest_kb_label = None
         min_dist = float("inf")
+
         for key in grid['keys']:
+            label = self._get_kb_label(key)
+            
+            if self.keyboard_selection_set and label not in self.keyboard_selection_set:
+                continue
+
             key_x, key_y = self._get_key_center(key['hitbox'])
             dist = (x - key_x)**2 + (y - key_y)**2
             if dist < min_dist:
                 min_dist = dist
-                if 'label' in key:
-                    nearest_kb_label = key['label']
-                elif 'action' in key:
-                    nearest_kb_label = key['action']  # tokenizer will covert it to <unk>
-                else:
-                    raise ValueError("Key has no label or action")
+                nearest_kb_label = label 
         return nearest_kb_label
 
 
@@ -117,25 +127,23 @@ class NeuroSwipeDatasetv2(Dataset):
         return nearest_kb_label_dict
     
 
-    def _get_coord_to_kb_label(self, grid: dict) -> np.chararray:
-        coord_to_kb_label = np.chararray(
-            (grid['width'], grid['height']), unicode=True) # 1080 x 640 in our case
+    def _get_coord_to_kb_label(self, grid: dict) -> np.array: # dtype = object
+        coord_to_kb_label = np.zeros(
+            (grid['width'], grid['height']), dtype=object)  # 1080 x 640 in our case
         coord_to_kb_label.fill('')
 
         for key in grid['keys']:
+            label = self._get_kb_label(key)
+
+            if self.keyboard_selection_set and label not in self.keyboard_selection_set:
+                continue
+
             x_left = key['hitbox']['x']
             x_right = x_left + key['hitbox']['w']
             y_top = key['hitbox']['y']
             y_bottom = y_top + key['hitbox']['h']
 
-            # tokenizer will covert actions to <unk>
-            label = key['label'] if 'label' in key else key['action']
-
-            if len(label) > 1:
-                print(f"Warning: label '{label}' is substituted with {label[0]}")
-
             coord_to_kb_label[x_left:x_right, y_top:y_bottom] = label
-
 
         for x in range(grid['width']):
             for y in range(grid['height']):
