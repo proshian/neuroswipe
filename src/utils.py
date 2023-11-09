@@ -22,6 +22,7 @@ def prepare_batch_with_pad_truncation(x, y, device):
     xyt, traj_pad_mask = truncate_padding(xyt, traj_pad_mask)
     kb_tokens, traj_pad_mask = truncate_padding(kb_tokens, traj_pad_mask)
     dec_in_char_seq, word_pad_mask = truncate_padding(kb_tokens, traj_pad_mask)
+    dec_out_char_seq, word_pad_mask = truncate_padding(kb_tokens, traj_pad_mask)
 
     # print(max_curve_len)
 
