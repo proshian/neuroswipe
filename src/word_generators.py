@@ -1,6 +1,9 @@
 import torch
+import torch.nn.functional as F
 
 from utils import prepare_batch, turncate_traj_batch
+import heapq
+
 
 
 class GreedyGenerator:
@@ -92,3 +95,94 @@ class GreedyGeneratorBatched:
         predictions = [self.tokenizer.decode(dec_in_char_seq[i].tolist()) for i in range(batch_size)]
         
         return predictions
+    
+
+
+
+
+
+
+
+
+class BeamGenerator:
+    def __init__(self, model, tokenizer, device):
+        self.model = model
+        self.tokenizer = tokenizer
+        self.device = torch.device(device)
+        self.model.to(self.device)
+        self.eos_token_id = tokenizer.char_to_idx['<eos>']
+
+    def __call__(self,
+                 xyt, kb_tokens, traj_pad_mask,
+                 max_steps_n=40,  # max tokens in a seq
+                 return_hypotheses_n=4,  # n best hypothesis to return
+                 beamsize=6,  # n best solutions we store in intermidiate comuptations
+                 normalization_factor=0.5,
+                 verbose=True
+                 ):
+        with torch.no_grad():
+            
+            tokens = [self.tokenizer.char_to_idx['<sos>']]
+            initial_length = len(tokens)
+
+            # Partial hypothesis is a heap (stored as a list) of tuples.
+            # Each tuple consists of a partial (unfinishedaka intermidiate)
+            # hypothesis and it's weight.
+            # Weight is a measure of likelihood of the hypothesis.
+            # [(w1, hypothesis1), (w2, hypothesis2), ...] 
+            partial_hypotheses = [(0, tokens)]
+            final_hypotheses = []
+
+
+            xyt, kb_tokens, traj_pad_mask = (el.unsqueeze(0) for el in (xyt, kb_tokens, traj_pad_mask))
+            # xyt, kb_tokens, traj_pad_mask = turncate_traj_batch(xyt, kb_tokens, traj_pad_mask)
+            xyt, kb_tokens, traj_pad_mask = (el.to(self.device) for el in (xyt, kb_tokens, traj_pad_mask))
+            xyt, kb_tokens = (el.transpose(0, 1) for el in (xyt, kb_tokens))
+
+
+            encoded = self.model.encode(xyt, kb_tokens, traj_pad_mask)
+
+            while len(partial_hypotheses) > 0:
+                cur_partial_score, cur_partial_hypothesis = heapq.heappop(partial_hypotheses)
+
+
+                dec_in_char_seq = torch.tensor(cur_partial_hypothesis).unsqueeze(0).to(self.device)
+                word_pad_mask = torch.zeros_like(dec_in_char_seq, dtype=torch.bool, device=self.device)
+                dec_in_char_seq.transpose_(0,1)
+
+                
+                next_tokens_logits = self.model.decode(encoded, dec_in_char_seq, traj_pad_mask, word_pad_mask).transpose_(0, 1)[0, -1]
+                next_tokens_logproba = F.log_softmax(next_tokens_logits)
+                topk_continuations = next_tokens_logproba.topk(beamsize)
+
+                for token_score, token_idx in zip(topk_continuations.values, topk_continuations.indices):
+                    # Convert tesors to loat and int to avoid memory leakage.
+                    token_score = float(token_score)
+                    token_idx = int(token_idx)
+
+                    # score - нормализованная разность log_softmax всех токенов.
+                    # Разность, а не сумма, потому что heapq - мин-куча. 
+                    old_denorm_score = cur_partial_score * len(cur_partial_hypothesis)**normalization_factor
+                    new_score = (old_denorm_score - token_score) / (len(cur_partial_hypothesis) + 1)**normalization_factor
+
+                    new_hypothesis = cur_partial_hypothesis + [token_idx]
+                    new_item = (new_score, new_hypothesis)
+
+                    if token_idx == self.eos_token_id or len(new_hypothesis) - initial_length >= max_steps_n:
+                        final_hypotheses.append(new_item)
+                    else:
+                        heapq.heappush(partial_hypotheses, new_item)
+
+                if len(partial_hypotheses) > beamsize:
+                    partial_hypotheses = heapq.nsmallest(beamsize, partial_hypotheses)
+                    heapq.heapify(partial_hypotheses)
+
+            final_scores, final_token_lists = zip(*final_hypotheses)
+            final_texts = [self.tokenizer.decode(final_token_list[1:-1]) for final_token_list in final_token_lists]
+            result = list(zip(final_scores, final_texts))
+            result.sort()
+
+            if verbose:
+                print(result)
+
+            return result[:return_hypotheses_n]
