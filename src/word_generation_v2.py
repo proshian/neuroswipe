@@ -3,9 +3,11 @@ from torch import Tensor
 from word_generators import GreedyGenerator
 from concurrent.futures import ProcessPoolExecutor
 from functools import partial
-
+from typing import Optional
 
 from tqdm import tqdm
+
+from dataset import NeuroSwipeDatasetv2
 
 
 def process_example(data: Tuple[int, Tuple[Tensor, Tensor, Tensor], str, Dict[str, GreedyGenerator]],
@@ -16,31 +18,6 @@ def process_example(data: Tuple[int, Tuple[Tensor, Tensor, Tensor], str, Dict[st
     pred = grid_name_to_word_generator[grid_name](*gen_in, **generator_kwargs)
     pred = pred
     return i, pred
-
-
-# def predict_greedy_raw_multiproc(dataset,
-#                                  grid_name_to_greedy_generator,
-#                                  num_workers=3,
-#                                 ) -> List[List[str]]:
-#     """
-#     Creates predictions using greedy generation.
-    
-#     Arguments:
-#     ----------
-#     dataset: NeuroSwipeDatasetv2
-#     grid_name_to_greedy_generator: dict
-#         Dict mapping grid names to GreedyGenerator objects.
-#     """
-#     preds = [None] * len(dataset)
-
-#     data = [(i, (xyt, kb_tokens, traj_pad_mask), grid_name, grid_name_to_greedy_generator)
-#             for i, ((xyt, kb_tokens, _, traj_pad_mask, _), _, grid_name) in enumerate(dataset)]
-
-#     with ProcessPoolExecutor(num_workers) as executor:
-#         for i, pred in tqdm(executor.map(process_example, data), total=len(dataset)):
-#             preds[i] = [pred]
-
-#     return preds
     
 
 def predict_greedy_raw(dataset,
@@ -66,19 +43,27 @@ def predict_greedy_raw(dataset,
     return preds
 
 
-def predict_raw_mp(dataset,
-                   grid_name_to_greedy_generator,
-                   num_workers=3,
-                   generator_kwargs = None,
+def predict_raw_mp(dataset: NeuroSwipeDatasetv2,
+                   grid_name_to_greedy_generator: dict,
+                   num_workers: int=3,
+                   generator_kwargs: Optional[dict] = None,
                    ) -> List[List[str]]:
     """
-    Creates predictions using greedy generation.
+    Creates predictions given a word generator
     
     Arguments:
     ----------
     dataset: NeuroSwipeDatasetv2
+        Output[i] is a list of predictions for dataset[i] curve.
     grid_name_to_greedy_generator: dict
-        Dict mapping grid names to GreedyGenerator objects.
+        Dict mapping each grid name to a corresponing word generator object.
+        A word generator has a model as a property and returns a list of tuples
+        (log probability, char_sequence).
+    num_workers: int
+        Number of processes.
+    generator_kwargs: Optional[dict]
+        Dictionalry of kwargs of word_generator __init__ method.
+        Currently used in BeamGenerator only.
     """
     if generator_kwargs is None:
         generator_kwargs = {}
