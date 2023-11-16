@@ -2,6 +2,20 @@
 
 Распознавание слов по&nbsp;нарисованным кривым на&nbsp;экране смартфона (Яндекс Клавиатура)
 
+## Method
+
+The model is encoder-decoder transformer.
+The first tranformer encoder layer can input a sequence with elements of different size relative to other transformer layers.
+
+Encoder input sequence consists of elements demonstrated on image below:
+
+![Here should be an image of encoder_input_sequence_element](./REAME_materials/encoder_input_sequence_element.svg)
+
+Where trajectory_point_features is a vector column of $x$, $y$, $\frac{dx}{dt}$, $\frac{dy}{dt}$, $\frac{d^2x}{dt^2}$, $\frac{d^2y}{dt^2}$. The derivative values are calculated using finite difference method.
+
+Decoder input sequence consists of character-level embeddings of the target word.
+
+
 ## Как воспроизвести последнюю посылку:
 
 1. Основные наборы данных распаковать в `./data`. То есть, например, путь до train.json: `.data/data/result_noctx_10k/train.jsonl`
