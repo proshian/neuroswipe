@@ -13,7 +13,7 @@ Encoder input sequence consists of elements demonstrated on image below:
 
 Where trajectory_point_features is a vector column of $x$, $y$, $\frac{dx}{dt}$, $\frac{dy}{dt}$, $\frac{d^2x}{dt^2}$, $\frac{d^2y}{dt^2}$. The derivative values are calculated using finite difference method.
 
-Decoder input sequence consists of character-level embeddings of the target word.
+Decoder input sequence consists of character-level embeddings (with positional encoding) of the target word.
 
 
 ## Как воспроизвести последнюю посылку:
