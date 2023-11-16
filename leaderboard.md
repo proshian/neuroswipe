@@ -1,3 +1,10 @@
+<style>
+    .heatMap tr:nth-child(7) { background: #57EF82; color: black; font-weight: 900;}
+</style>
+
+<div class="heatMap">
+
+
 | №     | Участник                     | Public Swipe MRR | Private Swipe MRR |
 |-------|------------------------------|------------------|-------------------|
 | 1     | Kirill                       | 0,9022           | 0,9112            |
@@ -6,7 +13,7 @@
 | 4     | Tonymit                      | 0,8901           | 0,9018            |
 | 5     | ap.pustynnikov               | 0,8936           | 0,9012            |
 | 6     | Артур Аганов                 | 0,8847           | 0,8997            |
-| **7** | **harry.proshian**           | **0,8919**       | **0,8963**        |
+| 7     | harry.proshian               | 0,8919           | 0,8963            |
 | 8     | nicholas.babaev              | 0,8875           | 0,8936            |
 | 9     | constcast122                 | 0,8759           | 0,8884            |
 | 10    | i.v.savkin2020               | 0,8716           | 0,8786            |
@@ -50,3 +57,5 @@
 | 48-50 | Эльдар Рыжов                 | -                | -                 |
 | 48-50 | skryabin.p.n                 | -                | -                 |
 | 48-50 | uraimov.shuh                 | -                | -                 |
+
+</div>
