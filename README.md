@@ -9,7 +9,7 @@
 2. Получить предсказания оффициального бейзлайна:
 
 ```shell
-python ./src/keyboard_start/lib/main.py --train-path data/data/result_noctx_10k/train.jsonl --test-path data/data/result_noctx_10k/test.jsonl --voc-path data/data/result_noctx_10k/voc.txt --num-workers 4 --output-path ./data/submissions/baseline.csv
+python ./src/keyboard_start/ks_lib/main.py --train-path data/data/result_noctx_10k/train.jsonl --test-path data/data/result_noctx_10k/test.jsonl --voc-path data/data/result_noctx_10k/voc.txt --num-workers 4 --output-path ./data/submissions/baseline.csv
 ```
 
 3. Получить датасет в другом формате: в каждой строке каждого .jsonl файла 'grid' заменен на 'grid_name', а соответствие 'grid_name_to_grid.json' сохранено в отдельный файл. Такой датасет должен быть сохранен в директории ./data/data_separated_grid. Для этого можно запустить скрипт ниже. В качестве альтернативы можно скачать содержимое ./data/data_separated_grid c [гугл диска](https://drive.google.com/drive/folders/1rRBUKUC0D6eZBJqT9qKs5fKQLl-gboej?usp=sharing).
