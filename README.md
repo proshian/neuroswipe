@@ -9,7 +9,7 @@ The first tranformer encoder layer can input a sequence with elements of differe
 
 Encoder input sequence consists of elements demonstrated on image below:
 
-![Here should be an image of encoder_input_sequence_element](./REAME_materials/encoder_input_sequence_element.svg)
+![Here should be an image of encoder_input_sequence_element](./REAME_materials/encoder_input_sequence_element.png)
 
 Where trajectory_point_features is a vector column of $x$, $y$, $\frac{dx}{dt}$, $\frac{dy}{dt}$, $\frac{d^2x}{dt^2}$, $\frac{d^2y}{dt^2}$. The derivative values are calculated using finite difference method.
 
@@ -56,3 +56,5 @@ python ./src/aggregate_predictions.py
 Обучение производилось в блокноте src/kaggle_notebook.ipynb
 
 <!-- Перед побучением необходимо очистить тренировочный датасет -->
+
+## Future work
