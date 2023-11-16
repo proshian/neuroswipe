@@ -52,7 +52,7 @@ def separate_grid_primitive(data_path: str,
     Manipulates json as a string. It works only because grid is the last
     field in the json and the same grid is always exactly the same string.
     It was checked that theese conditions are met for all the .jsonl files
-    in ./data/data/result_noctx_10k. It was also checked that
+    in ./data/data. It was also checked that
     separate_grid_primitive and separate_grid results are exactly the same.
     However, this is a very fragile solution and thus it should be used
     carefully and only if time is critical.
@@ -90,7 +90,7 @@ def create_all_datasets_with_separated_grid(data_paths: List[str],
 
 if __name__ == '__main__':
     OUT_ROOT = "data/data_separated_grid"
-    ORIG_ROOT = "data/data/result_noctx_10k"
+    ORIG_ROOT = "data/data"
 
     f_names = ['train.jsonl', 'valid.jsonl', 'test.jsonl']
     data_paths = [os.path.join(ORIG_ROOT, f_name) for f_name in f_names]
