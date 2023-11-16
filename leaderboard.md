@@ -1,10 +1,3 @@
-<style>
-    .heatMap tr:nth-child(7) { background: #57EF82; color: black; font-weight: 900;}
-</style>
-
-<div class="heatMap">
-
-
 | №     | Участник                     | Public Swipe MRR | Private Swipe MRR |
 |-------|------------------------------|------------------|-------------------|
 | 1     | Kirill                       | 0,9022           | 0,9112            |
@@ -57,5 +50,3 @@
 | 48-50 | Эльдар Рыжов                 | -                | -                 |
 | 48-50 | skryabin.p.n                 | -                | -                 |
 | 48-50 | uraimov.shuh                 | -                | -                 |
-
-</div>
