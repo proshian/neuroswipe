@@ -1,4 +1,3 @@
-
 from typing import Tuple, List, Set, Dict
 import os
 import pickle
@@ -134,7 +133,7 @@ if __name__ == "__main__":
         bs_pred_list = []
 
         for f_name in grid_name_to_ranged_bs_model_preds_paths[grid_name]:
-            f_path = os.path.join("../data/saved_beamsearch_results/", f_name)
+            f_path = os.path.join("data/saved_beamsearch_results/", f_name)
             with open(f_path, 'rb') as f:
                 bs_pred_list.append(pickle.load(f))
             
