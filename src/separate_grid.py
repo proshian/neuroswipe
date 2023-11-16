@@ -60,7 +60,7 @@ if __name__ == '__main__':
     OUT_ROOT = "data/data_separated_grid"
     ORIG_ROOT = "data/data/result_noctx_10k"
 
-    f_names = ['train.jsonl', 'val.jsonl', 'test.jsonl']
+    f_names = ['train.jsonl', 'valid.jsonl', 'test.jsonl']
     data_paths = [os.path.join(ORIG_ROOT, f_name) for f_name in f_names]
     out_paths = [os.path.join(OUT_ROOT, f_name) for f_name in f_names]
     totals = [6_000_000, 10_000, 10_000]
