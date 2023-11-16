@@ -21,7 +21,8 @@ def separate_grid(data_path: str,
                   out_path: str,
                   total: Optional[int]  = None) -> None:                                             
     if os.path.exists(out_path):
-        raise ValueError(f"File {out_path} already exists!")
+        print(f"Warning {out_path} already exists. Skipping.")
+        return
     
     with open(data_path, 'r', encoding="utf-8") as f, open(out_path, 'w', encoding="utf-8") as out_f:
         for line in tqdm(f, total = total):
@@ -71,7 +72,7 @@ if __name__ == '__main__':
 
     grid_name_to_grid = get_grid_name_to_grid(data_paths[-1], totals[-1])
 
-    grid_name_to_grid__path = os.path.join(OUT_ROOT, "grid_name_to_grid.json")
+    grid_name_to_grid__path = os.path.join(OUT_ROOT, "gridname_to_grid.json")
 
     with open(grid_name_to_grid__path, 'w', encoding='utf-8') as f:
         json.dump(grid_name_to_grid, f, ensure_ascii=False, separators=(',', ':'), indent=2)

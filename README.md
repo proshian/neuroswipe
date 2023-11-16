@@ -16,6 +16,7 @@ python ./src/keyboard_start/ks_lib/main.py --train-path data/data/result_noctx_1
 
 ```shell
 python ./src/separate_grid.py
+cp ./data/data/result_noctx_10k/voc.txt ./data/data_separated_grid/voc.txt
 ```
 
 4. Загрузить чекпойнты весов моделей, используемых в последней посылке из [гугл диска](https://drive.google.com/drive/folders/1-iFPYCcRYy-tEu14Ry6xU6SMMf3eCjn6?usp=sharing) в папку [./data/trained_models_for_final_submit/](./data/trained_models_for_final_submit/).
