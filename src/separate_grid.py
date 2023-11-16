@@ -57,7 +57,7 @@ def create_all_datasets_with_separated_grid(data_paths: List[str],
     
 
 if __name__ == '__main__':
-    OUT_ROOT = "data/data_separated_grid_2"
+    OUT_ROOT = "data/data_separated_grid"
     ORIG_ROOT = "data/data/result_noctx_10k"
 
     f_names = ['train.jsonl', 'val.jsonl', 'test.jsonl']
@@ -66,7 +66,7 @@ if __name__ == '__main__':
     totals = [6_000_000, 10_000, 10_000]
 
 
-    # create_all_datasets_with_separated_grid(data_paths, out_paths, totals)
+    create_all_datasets_with_separated_grid(data_paths, out_paths, totals)
 
 
     grid_name_to_grid = get_grid_name_to_grid(data_paths[-1], totals[-1])
