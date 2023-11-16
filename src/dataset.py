@@ -7,7 +7,7 @@ import torch
 from torch.utils.data import Dataset
 from tqdm import tqdm
 
-from tokenizers import CharLevelTokenizerv1, CharLevelTokenizerv2, KeyboardTokenizerv1
+from tokenizers import CharLevelTokenizerv2, KeyboardTokenizerv1
 
 
 class NeuroSwipeDatasetv2(Dataset):

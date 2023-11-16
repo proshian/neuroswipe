@@ -5,7 +5,6 @@ from utils import prepare_batch, turncate_traj_batch
 import heapq
 
 
-
 class GreedyGenerator:
     def __init__(self, model, tokenizer, device):
         self.model = model
@@ -96,11 +95,6 @@ class GreedyGeneratorBatched:
         
         return predictions
     
-
-
-
-
-
 
 
 

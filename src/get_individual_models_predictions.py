@@ -3,7 +3,6 @@ import os
 import json
 import pickle
 
-
 import torch
 from torch.utils.data import Dataset
 from tqdm import tqdm
@@ -45,11 +44,11 @@ def weights_to_raw_predictions(grid_name: str,
 
 if __name__ == '__main__':
 
-    DATA_ROOT = "../data/data_separated_grid"
-    MODELS_ROOT = "../data/trained_models"
+    DATA_ROOT = "./data/data_separated_grid"
+    MODELS_ROOT = "./data/trained_models_for_final_submit"
     DATASET_PATH = os.path.join(DATA_ROOT, 'test.jsonl')
 
-    PREDS_ROOT = "../data/saved_beamsearch_results"
+    PREDS_ROOT = "./data/saved_beamsearch_results"
 
     MAX_WORD_LEN = 34  # len('информационно-телекоммуникационной')
     MAX_TRAJ_LEN = 299
@@ -118,11 +117,11 @@ if __name__ == '__main__':
 
     for grid_name, model_getter, weights_f_name in model_params:
 
-        bs_preds_path = os.path.join(PREDS_ROOT,
-                                     f"{weights_f_name.replace('/', '__')}.pkl")
+        bs_out_path = os.path.join(PREDS_ROOT,
+                                   f"{weights_f_name.replace('/', '__')}.pkl")
         
-        if os.path.exists(bs_preds_path):
-            print(f"Path {bs_preds_path} exists. Skipping.")
+        if os.path.exists(bs_out_path):
+            print(f"Path {bs_out_path} exists. Skipping.")
             continue
 
         bs_predictions = weights_to_raw_predictions(
@@ -136,5 +135,5 @@ if __name__ == '__main__':
             generator_kwargs=generator_kwargs
         )
 
-        with open(bs_preds_path, 'wb') as f:
+        with open(bs_out_path, 'wb') as f:
             pickle.dump(bs_predictions, f, protocol=pickle.HIGHEST_PROTOCOL)
