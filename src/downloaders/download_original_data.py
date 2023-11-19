@@ -9,7 +9,7 @@ UNZIP_PATH = './data/data'
 CHUNK_SIZE = 4096
 
 
-def download_file(url, block_size=1024):
+def download_and_extract_file(url: str, block_size: int = 1024) -> None:
     response = requests.get(url, stream=True)
     response.raise_for_status()  # Raise an HTTPError for bad responses
     total_size = int(response.headers.get('content-length', 0))
@@ -18,9 +18,11 @@ def download_file(url, block_size=1024):
         for data in response.iter_content(block_size):
             progress_bar.update(len(data))
             buffer.write(data)
-    
-    return buffer
 
+        with ZipFile(buffer) as z:
+            z.extractall(UNZIP_PATH)
+
+        
 
 def main():
     base_url = 'https://cloud-api.yandex.net/v1/disk/public/resources/download?'
@@ -31,9 +33,8 @@ def main():
         response = requests.get(final_url)
         response.raise_for_status()
         download_url = response.json()['href']
-        download_data = download_file(download_url, CHUNK_SIZE)
-        with ZipFile(download_data) as z:
-            z.extractall(UNZIP_PATH)
+        download_and_extract_file(download_url, CHUNK_SIZE)
+        
     except requests.RequestException as e:
         print(f"Error downloading or extracting the file: {e}")
 
