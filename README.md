@@ -18,7 +18,7 @@ Decoder input sequence consists of character-level embeddings (with positional e
 
 ## Как воспроизвести последнюю посылку:
 
-1. Основные наборы данных распаковать в `./data`. То есть, например, путь до train.json: `.data/data/train.jsonl`. Это можно сделать с помощью скрипта ниже:
+1. Основные наборы данных распаковать в `./data`. То есть, например, путь до train.json: `.data/data/train.jsonl`. Скачать и распаковать основной датасет можно скрипта ниже (арихив сохранен не будет):
 
 ```shell
 python ./src/downloaders/download_original_data.py
@@ -55,7 +55,7 @@ python ./src/downloaders/download_weights.py
 python ./src/get_individual_models_predictions.py
 ```
 
-В результате директория ./data/saved_beamsearch_results наполниться pickle файлами с предсказаниями
+В результате директория ./data/saved_beamsearch_results наполнится pickle файлами с предсказаниями
 
 6. Агрегировать предсказания:
 
