@@ -18,7 +18,11 @@ Decoder input sequence consists of character-level embeddings (with positional e
 
 ## Как воспроизвести последнюю посылку:
 
-1. Основные наборы данных распаковать в `./data`. То есть, например, путь до train.json: `.data/data/train.jsonl`
+1. Основные наборы данных распаковать в `./data`. То есть, например, путь до train.json: `.data/data/train.jsonl`. Это можно сделать с помощью скрипта ниже:
+
+```shell
+python ./src/downloaders/download_original_data.py
+```
 
 2. Получить предсказания оффициального бейзлайна:
 
@@ -36,13 +40,13 @@ cp ./data/data/voc.txt ./data/data_separated_grid/voc.txt
 В качестве альтернативы можно скачать результаты работы скрипта `./src/separate_grid.py` c [гугл диска](https://drive.google.com/drive/folders/1rRBUKUC0D6eZBJqT9qKs5fKQLl-gboej?usp=sharing). в `./data/data_separated_grid `. Это можно сделать, запустив скрипт ниже:
 
 ```shell
-python ./src/download_separated_grid.py
+python ./src/downloaders/download_dataset_separated_grid.py
 ```
 
 4. Загрузить чекпойнты весов моделей, используемых в последней посылке из [гугл диска](https://drive.google.com/drive/folders/1-iFPYCcRYy-tEu14Ry6xU6SMMf3eCjn6?usp=sharing) в папку [./data/trained_models_for_final_submit/](./data/trained_models_for_final_submit/). Это можно сделать, запустив скрипт ниже:
 
 ```shell
-python ./src/download_weights.py
+python ./src/downloaders/download_weights.py
 ```
 
 5. Получить предсказания для каждой отдельной модели. Для этого запускаем из корня директория скрипт:
