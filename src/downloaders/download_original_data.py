@@ -9,19 +9,22 @@ UNZIP_PATH = './data/data'
 CHUNK_SIZE = 4096
 
 
+#! It would be better to make separate download and extrat functions.
+# This can be done by writing downloaded content into a temporary file.
 def download_and_extract_file(url: str, block_size: int = 1024) -> None:
     response = requests.get(url, stream=True)
     response.raise_for_status()  # Raise an HTTPError for bad responses
     total_size = int(response.headers.get('content-length', 0))
     
-    with tqdm(total=total_size, unit='iB', unit_scale=True) as progress_bar, BytesIO() as buffer:
+    with tqdm(total=total_size, unit='iB', unit_scale=True, desc='Downloading') as progress_bar, BytesIO() as buffer:
         for data in response.iter_content(block_size):
             progress_bar.update(len(data))
             buffer.write(data)
 
-        with ZipFile(buffer) as z:
-            z.extractall(UNZIP_PATH)
-
+        with ZipFile(buffer) as zf:
+            for member in tqdm(zf.infolist(), desc='Extracting'):
+                zf.extract(member, UNZIP_PATH)
+            
         
 
 def main():
