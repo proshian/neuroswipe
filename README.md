@@ -18,19 +18,25 @@ Decoder input sequence consists of character-level embeddings (with positional e
 
 ## Как воспроизвести последнюю посылку:
 
-1. Основные наборы данных распаковать в `./data`. То есть, например, путь до train.json: `.data/data/train.jsonl`. Скачать и распаковать основной датасет можно скрипта ниже (арихив сохранен не будет):
+1. Установить зависимости:
+
+```shell
+python -m pip install -r requirements.txt
+```
+
+2. Основные наборы данных распаковать в `./data`. То есть, например, путь до train.json: `.data/data/train.jsonl`. Скачать и распаковать основной датасет можно скрипта ниже (арихив сохранен не будет):
 
 ```shell
 python ./src/downloaders/download_original_data.py
 ```
 
-2. Получить предсказания оффициального бейзлайна:
+3. Получить предсказания оффициального бейзлайна:
 
 ```shell
 python ./src/keyboard_start/ks_lib/main.py --train-path data/data/train.jsonl --test-path data/data/test.jsonl --voc-path data/data/voc.txt --num-workers 4 --output-path ./data/submissions/baseline.csv
 ```
 
-3. Получить датасет в другом формате: в каждой строке каждого .jsonl файла 'grid' заменен на 'grid_name', а соответствие 'grid_name_to_grid.json' сохранено в отдельный файл. Такой датасет должен быть сохранен в директории ./data/data_separated_grid. Для этого можно запустить скрипт ниже. 
+4. Получить датасет в другом формате: в каждой строке каждого .jsonl файла 'grid' заменен на 'grid_name', а соответствие 'grid_name_to_grid.json' сохранено в отдельный файл. Такой датасет должен быть сохранен в директории ./data/data_separated_grid. Для этого можно запустить скрипт ниже. 
 
 ```shell
 python ./src/separate_grid.py
@@ -43,13 +49,13 @@ cp ./data/data/voc.txt ./data/data_separated_grid/voc.txt
 python ./src/downloaders/download_dataset_separated_grid.py
 ```
 
-4. Загрузить чекпойнты весов моделей, используемых в последней посылке из [гугл диска](https://drive.google.com/drive/folders/1-iFPYCcRYy-tEu14Ry6xU6SMMf3eCjn6?usp=sharing) в папку [./data/trained_models_for_final_submit/](./data/trained_models_for_final_submit/). Это можно сделать, запустив скрипт ниже:
+5. Загрузить чекпойнты весов моделей, используемых в последней посылке из [гугл диска](https://drive.google.com/drive/folders/1-iFPYCcRYy-tEu14Ry6xU6SMMf3eCjn6?usp=sharing) в папку [./data/trained_models_for_final_submit/](./data/trained_models_for_final_submit/). Это можно сделать, запустив скрипт ниже:
 
 ```shell
 python ./src/downloaders/download_weights.py
 ```
 
-5. Получить предсказания для каждой отдельной модели. Для этого запускаем из корня директория скрипт:
+6. Получить предсказания для каждой отдельной модели. Для этого запускаем из корня директория скрипт:
 
 ```shell
 python ./src/get_individual_models_predictions.py
@@ -57,7 +63,7 @@ python ./src/get_individual_models_predictions.py
 
 В результате директория ./data/saved_beamsearch_results наполнится pickle файлами с предсказаниями
 
-6. Агрегировать предсказания:
+7. Агрегировать предсказания:
 
 ```shell
 python ./src/aggregate_predictions.py
