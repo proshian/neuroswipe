@@ -2,6 +2,7 @@ from typing import Callable
 import os
 import json
 import pickle
+import argparse
 
 import torch
 from torch.utils.data import Dataset
@@ -42,6 +43,12 @@ def weights_to_raw_predictions(grid_name: str,
      return raw_predictions
 
 
+def parse_args() -> argparse.Namespace:
+    p = argparse.ArgumentParser()
+    p.add_argument('--num-workers', type=int, default=1)
+    args = p.parse_args()
+    return args 
+
 if __name__ == '__main__':
 
     DATA_ROOT = "./data/data_separated_grid"
@@ -53,6 +60,7 @@ if __name__ == '__main__':
     MAX_WORD_LEN = 34  # len('информационно-телекоммуникационной')
     MAX_TRAJ_LEN = 299
 
+    args = parse_args()
     
     grid_name_to_grid__path = os.path.join(DATA_ROOT, "gridname_to_grid.json")
     grid_name_to_grid = {
@@ -131,7 +139,7 @@ if __name__ == '__main__':
             word_char_tokenizer=word_char_tokenizer,
             dataset=grid_name_to_dataset[grid_name],
             generator_ctor=BeamGenerator,
-            n_workers=4,
+            n_workers=args.num_workers,
             generator_kwargs=generator_kwargs
         )
 
