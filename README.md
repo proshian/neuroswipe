@@ -58,7 +58,7 @@ python ./src/downloaders/download_weights.py
 6. Получить предсказания для каждой отдельной модели. Для этого запускаем из корня директория скрипт:
 
 ```shell
-python ./src/get_individual_models_predictions.py --num-workers = 4
+python ./src/get_individual_models_predictions.py --num-workers 4
 ```
 
 В результате директория ./data/saved_beamsearch_results наполнится pickle файлами с предсказаниями
