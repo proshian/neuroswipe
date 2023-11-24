@@ -1,7 +1,8 @@
-import requests
+from zipfile import ZipFile
 from urllib.parse import urlencode
 from io import BytesIO
-from zipfile import ZipFile
+
+import requests
 from tqdm import tqdm
 
 

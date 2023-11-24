@@ -1,8 +1,8 @@
 import json
 from typing import Optional, List, Tuple, Dict
 import array
-import numpy as np
 
+import numpy as np
 import torch
 from torch.utils.data import Dataset
 from tqdm import tqdm
