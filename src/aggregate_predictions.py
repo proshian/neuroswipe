@@ -6,9 +6,13 @@ import copy
 import json
 
 
-def remove_probs(preds: List[List[Tuple[float, str]]]) -> List[List[str]]:
+def remove_probs(dataset_preds: List[List[Tuple[float, str]]]
+                 ) -> List[List[str]]:
+    """
+    Removes probabilities from a model predictions for a whole dataset.
+    """
     new_preds = []
-    for pred_line in preds:
+    for pred_line in dataset_preds:
         new_preds_line = []
         for _, word in pred_line:
             new_preds_line.append(word)
@@ -16,12 +20,12 @@ def remove_probs(preds: List[List[Tuple[float, str]]]) -> List[List[str]]:
     return new_preds
 
 
-def separate_out_vocab_hypotheses(hypotheses_list: List[str],
+def separate_out_vocab_single_crv(hypotheses_list: List[str],
                                   vocab_set: Set[str],
                                   ) -> Tuple[List[str], List[str]]:
     """
-    Separates list of a single word hypotheses into a
-    list of in vocab words and a list of out vocab words.
+    Separates list of word hypotheses for a single curve into a
+    list of in_vocab words and a list of out_vocab words.
     """
     in_vocab_words = []
     out_vocab_words = []
@@ -36,15 +40,20 @@ def separate_out_vocab_hypotheses(hypotheses_list: List[str],
     return in_vocab_words, out_vocab_words
 
 
-def separate_invalid_preds(dataset_preds: List[List[str]],
-                           vocab_set: Set[str]
-                           ) -> Tuple[List[List[str]], Dict[int, List[str]]]:
-    
+def separate_out_vocab_all_crvs(dataset_preds: List[List[str]],
+                                vocab_set: Set[str]
+                                ) -> Tuple[List[List[str]], Dict[int, List[str]]]:
+    """
+    Separates model predictions for a whole dataset into two lists:
+    1) list of lists of in_vocab words for each curve
+    2) dict of lists of out_vocab words for each curve. If all hypotheses for
+        a curve are in_vocab, then the curve_idx is not present in the dict.
+    """
     all_in_vocab_preds = []
     all_errorous_word_preds = {}
 
     for i, hypotheses_lst in enumerate(dataset_preds):
-        in_vocab_words, out_vocab_words = separate_out_vocab_hypotheses(
+        in_vocab_words, out_vocab_words = separate_out_vocab_single_crv(
             hypotheses_lst, vocab_set)
 
         all_in_vocab_preds.append(in_vocab_words)
@@ -53,23 +62,35 @@ def separate_invalid_preds(dataset_preds: List[List[str]],
     return all_in_vocab_preds, all_errorous_word_preds
 
 
-def augment_predictions(preds:List[List[str]],
-                        augment_list: List[List[str]],
-                        limit: int):
-    augmented_preds = copy.deepcopy(preds)
-    for pred_line, aug_l_line in zip(augmented_preds, augment_list):
-        for aug_el in aug_l_line:
-            if len(pred_line) >= limit:
+def append_preds(original_preds: List[List[str]],
+                 additional_preds: List[List[str]],
+                 limit: int):
+    """
+    Creates a new list of predictions by appending words
+    from additional_preds to original_preds, skipping the words
+    that are already present in original_preds.
+    """
+    merged_preds = copy.deepcopy(original_preds)
+
+    for original_line, additional_line in zip(merged_preds, additional_preds):
+        for additional_el in additional_line:
+            if len(original_line) >= limit:
                 break
-            if not aug_el in pred_line:
-                pred_line.append(aug_el)
-    return augmented_preds
+            if additional_el not in original_line:
+                original_line.append(additional_el)
+
+    return merged_preds
 
 
-def merge_preds(default_preds,
-                extra_preds,
-                default_idxs,
-                extra_idxs):
+def merge_default_and_extra_preds(
+        default_preds: List[List[str]],
+        extra_preds: List[List[str]],
+        default_idxs: List[int],
+        extra_idxs: List[int]) -> List[List[str]]:
+    """
+    Merges predictions for default and extra grid subsets of the dataset
+    into list of predictions for the whole dataset.
+    """
     preds = [None] * (len(default_preds) + len(extra_preds))
 
     for i, val in zip(default_idxs, default_preds):
@@ -85,11 +106,24 @@ def get_vocab_set(vocab_path: str):
         return set(f.read().splitlines())
 
 
-def get_default_and_extra_idxs(test_dataset_path
-                               ) -> Tuple[List[int], List[int]]:
+def get_default_and_extra_idxs(dataset_path) -> Tuple[List[int], List[int]]:
+    """
+    Gets indices of the dataset examples of default and extra grids.
+
+    Arguments:
+    ----------
+    dataset_path: str
+
+    Returns:
+    --------
+    default_idxs: List[int]
+        List of indices of the dataset examples of default grid.
+    extra_idxs: List[int]
+        List of indices of the dataset examples of extra grid.
+    """
     default_idxs = []
     extra_idx = []
-    with open(test_dataset_path, 'r', encoding='utf-8') as f:
+    with open(dataset_path, 'r', encoding='utf-8') as f:
         for i, line in enumerate(f):
             line_data = json.loads(line)
             grid_name = line_data['curve']['grid_name']
@@ -103,7 +137,17 @@ def get_default_and_extra_idxs(test_dataset_path
     return default_idxs, extra_idx
 
 
-def create_submission(preds_list, out_path) -> None:
+def create_submission(preds_list: List[List[str]],
+                      out_path: str):
+    """
+    Arguments:
+    ----------
+    preds_list: List[List[str]]
+        List of predictions for the whole dataset. Each row is a list of
+        0 to `max_n_hypothesis` words.
+    out_path: str
+        Path to the output file.
+    """
     if os.path.exists(out_path):
         raise ValueError(f"File {out_path} already exists")
     
@@ -111,7 +155,52 @@ def create_submission(preds_list, out_path) -> None:
         for preds in preds_list:
             pred_str = ",".join(preds)
             f.write(pred_str + "\n")
-            
+        
+
+def get_list_of_individual_model_predictions(paths: List[str]
+                                             ) -> List[List[List[Tuple[float, str]]]]:
+    preds_to_aggregate = []
+    for f_path in paths:
+        with open(f_path, 'rb') as f:
+            preds_to_aggregate.append(pickle.load(f))
+    return preds_to_aggregate
+
+
+def aggregate_preds_processed_appendage(preds_to_aggregate: List[List[List[str]]],
+                                        limit: int) -> List[List[str]]:
+    """
+    Aggregates all predictions by appending words from each model
+    in a given order to the resulting whole_dataset_predictions,
+    avoiding duplicates for same curve.
+
+    Arguments:
+    ----------
+    preds_to_aggregate: List[List[List[str]]]
+        List of whole_dataset_predictions for each model. Should
+        be processed (no probs, no out_vocab words).
+    limit: int
+        Maximum number of hypothesis per curve to output.
+    """
+    dataset_len = len(preds_to_aggregate[0])
+    aggregated_preds = [[] for _ in range(dataset_len)]
+
+    while preds_to_aggregate:
+        aggregated_preds = append_preds(aggregated_preds,
+                                        preds_to_aggregate.pop(0),
+                                        limit = limit)    
+    return aggregated_preds
+
+
+def aggregate_preds_raw_appendage(raw_preds_list: List[List[List[str]]],
+                                  vocab_set: Set[str],
+                                  limit: int) -> List[List[str]]:
+    """
+    Prepares raw_preds_list for aggregation and calls aggregate_preds_processed_appendage.
+    """
+    preds_to_aggregate = [remove_probs(preds) for preds in raw_preds_list]
+    preds_to_aggregate = [separate_out_vocab_all_crvs(preds, vocab_set)[0]
+                            for preds in preds_to_aggregate]
+    return aggregate_preds_processed_appendage(preds_to_aggregate, limit = limit)
 
 
 
@@ -147,16 +236,16 @@ class PredictionsAgregator(ABC):
         pass
 
 
-
 class AppendAgregator(PredictionsAgregator):
     def __call__(raw_preds_list: List[List[List[Tuple[float, str]]]],
                  max_n_hypothesis: int = 4,
                  ) -> List[List[Tuple[float, str]]]:
         """
-        Aggregates predictions by poping leftmost element in raw_preds_list
-        and appending all it's content to output except the elements that
-        are alredy present in the output. It's supposed that raw_preds_list
-        is sorted by corrsponding models MMR score on validation
+        Aggregates all predictions by appending words from each model
+        in a given order to the resulting whole_dataset_predictions,
+        avoiding duplicates for same curve.
+        It's supposed that raw_preds_list is sorted by
+        models MMR score on validation.
         """
         pass
 
@@ -171,34 +260,6 @@ class WeightedAgregator(PredictionsAgregator):
         all rows.
         """
         pass
-        
-
-
-def get_list_of_individual_model_predictions(paths: List[str]
-                                             ) -> List[List[List[Tuple[float, str]]]]:
-    preds_to_aggregate = []
-    for f_path in paths:
-        with open(f_path, 'rb') as f:
-            preds_to_aggregate.append(pickle.load(f))
-    return preds_to_aggregate
-
-
-
-# def aggregate_preds_raw_appendage(raw_preds_list):
-#     pass
-
-def aggregate_preds_processed_appendage(preds_to_aggregate: List[List[List[str]]],
-                                        limit: int
-                                        ) -> List[List[str]]:
-    dataset_len = len(preds_to_aggregate[0])
-    aggregated_preds = [[] for _ in range(dataset_len)]
-
-    while preds_to_aggregate:
-        aggregated_preds = augment_predictions(aggregated_preds,
-                                              preds_to_aggregate.pop(0),
-                                              limit = limit)    
-    return aggregated_preds
-
 
 
 
@@ -234,18 +295,16 @@ if __name__ == "__main__":
                    for f_name in f_names]
         
         preds_to_aggregate = get_list_of_individual_model_predictions(f_paths)
-        preds_to_aggregate = [remove_probs(bs_preds) for bs_preds in preds_to_aggregate]
-        preds_to_aggregate = [separate_invalid_preds(bs_preds, vocab_set)[0]
-                              for bs_preds in preds_to_aggregate]
-
-
-        aggregated_preds = aggregate_preds_processed_appendage(preds_to_aggregate,
-                                                               limit = 4)
+        
+        aggregated_preds = aggregate_preds_raw_appendage(
+            preds_to_aggregate,
+            vocab_set,
+            limit = 4)
 
         grid_name_to_augmented_preds[grid_name] = aggregated_preds
         
 
-    full_preds = merge_preds(
+    full_preds = merge_default_and_extra_preds(
         grid_name_to_augmented_preds['default'],
         grid_name_to_augmented_preds['extra'],
         default_idxs,
@@ -257,7 +316,8 @@ if __name__ == "__main__":
         baseline_preds = f.read().splitlines()
     baseline_preds = [line.split(",") for line in baseline_preds]
 
-    full_preds = augment_predictions(full_preds, baseline_preds, limit = 4)
+    full_preds = append_preds(full_preds, baseline_preds, limit = 4)
 
     create_submission(full_preds,
         f"data/submissions/id3_with_baseline_without_old_preds.csv")
+    
