@@ -104,7 +104,24 @@ def merge_default_and_extra_preds(
 def get_vocab_set(vocab_path: str):
     with open(vocab_path, 'r', encoding = "utf-8") as f:
         return set(f.read().splitlines())
+    
+    
+def load_preds_to_aggregate(paths: List[str]
+                            ) -> List[List[List[Tuple[float, str]]]]:
+    preds_to_aggregate = []
+    for f_path in paths:
+        with open(f_path, 'rb') as f:
+            preds_to_aggregate.append(pickle.load(f))
+    return preds_to_aggregate
 
+
+def load_baseline_preds(path: str) -> List[List[str]]:
+    baseline_preds = None
+    with open(path, 'r', encoding = 'utf-8') as f:
+        baseline_preds = f.read().splitlines()
+    baseline_preds = [line.split(",") for line in baseline_preds]
+    return baseline_preds
+    
 
 def get_default_and_extra_idxs(dataset_path) -> Tuple[List[int], List[int]]:
     """
@@ -155,15 +172,6 @@ def create_submission(preds_list: List[List[str]],
         for preds in preds_list:
             pred_str = ",".join(preds)
             f.write(pred_str + "\n")
-        
-
-def get_list_of_individual_model_predictions(paths: List[str]
-                                             ) -> List[List[List[Tuple[float, str]]]]:
-    preds_to_aggregate = []
-    for f_path in paths:
-        with open(f_path, 'rb') as f:
-            preds_to_aggregate.append(pickle.load(f))
-    return preds_to_aggregate
 
 
 def aggregate_preds_processed_appendage(preds_to_aggregate: List[List[List[str]]],
@@ -266,7 +274,7 @@ class WeightedAgregator(PredictionsAgregator):
 if __name__ == "__main__":
     DATA_ROOT = "data/data_separated_grid/"
 
-    grid_name_to_ranged_bs_model_preds_paths = {
+    grid_name_to_ranged_preds_names = {
         'default': [
             "m1_bigger__m1_bigger_v2__2023_11_12__14_51_49__0.13115__greed_acc_0.86034__default_l2_0_ls0_switch_2.pt.pkl",
             "m1_bigger__m1_bigger_v2__2023_11_12__12_30_29__0.13121__greed_acc_0.86098__default_l2_0_ls0_switch_2.pt.pkl",
@@ -287,35 +295,31 @@ if __name__ == "__main__":
     default_idxs, extra_idxs = get_default_and_extra_idxs(
         os.path.join(DATA_ROOT, "test.jsonl"))
 
-    grid_name_to_augmented_preds = {}
+    grid_name_to_aggregated_preds = {}
 
     for grid_name in ('default', 'extra'):
-        f_names = grid_name_to_ranged_bs_model_preds_paths[grid_name]
+        f_names = grid_name_to_ranged_preds_names[grid_name]
         f_paths = [os.path.join("data/saved_beamsearch_results/", f_name)
                    for f_name in f_names]
         
-        preds_to_aggregate = get_list_of_individual_model_predictions(f_paths)
+        preds_to_aggregate = load_preds_to_aggregate(f_paths)
         
         aggregated_preds = aggregate_preds_raw_appendage(
             preds_to_aggregate,
             vocab_set,
             limit = 4)
 
-        grid_name_to_augmented_preds[grid_name] = aggregated_preds
+        grid_name_to_aggregated_preds[grid_name] = aggregated_preds
         
 
     full_preds = merge_default_and_extra_preds(
-        grid_name_to_augmented_preds['default'],
-        grid_name_to_augmented_preds['extra'],
+        grid_name_to_aggregated_preds['default'],
+        grid_name_to_aggregated_preds['extra'],
         default_idxs,
         extra_idxs)
     
 
-    baseline_preds = None
-    with open(r"data\submissions\baseline.csv", 'r', encoding = 'utf-8') as f:
-        baseline_preds = f.read().splitlines()
-    baseline_preds = [line.split(",") for line in baseline_preds]
-
+    baseline_preds = load_baseline_preds(r"data\submissions\baseline.csv")
     full_preds = append_preds(full_preds, baseline_preds, limit = 4)
 
     create_submission(full_preds,
