@@ -49,6 +49,7 @@ def parse_args() -> argparse.Namespace:
     args = p.parse_args()
     return args 
 
+
 if __name__ == '__main__':
 
     DATA_ROOT = "./data/data_separated_grid"
