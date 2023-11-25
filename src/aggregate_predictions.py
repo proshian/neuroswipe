@@ -191,13 +191,12 @@ def aggregate_preds_processed_appendage(preds_to_aggregate: List[List[List[str]]
                                         limit: int
                                         ) -> List[List[str]]:
     dataset_len = len(preds_to_aggregate[0])
-    aggregated_preds = [] * dataset_len
+    aggregated_preds = [[] for _ in range(dataset_len)]
 
     while preds_to_aggregate:
         aggregated_preds = augment_predictions(aggregated_preds,
                                               preds_to_aggregate.pop(0),
-                                              limit = limit)
-    
+                                              limit = limit)    
     return aggregated_preds
 
 
@@ -244,7 +243,7 @@ if __name__ == "__main__":
                                                                limit = 4)
 
         grid_name_to_augmented_preds[grid_name] = aggregated_preds
-
+        
 
     full_preds = merge_preds(
         grid_name_to_augmented_preds['default'],
@@ -258,7 +257,7 @@ if __name__ == "__main__":
         baseline_preds = f.read().splitlines()
     baseline_preds = [line.split(",") for line in baseline_preds]
 
-    full_preds = augment_predictions(full_preds, baseline_preds)
+    full_preds = augment_predictions(full_preds, baseline_preds, limit = 4)
 
     create_submission(full_preds,
         f"data/submissions/id3_with_baseline_without_old_preds.csv")
