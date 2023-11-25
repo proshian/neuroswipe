@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from typing import Tuple, List, Set, Dict
 import os
 import pickle
@@ -5,7 +6,7 @@ import copy
 import json
 
 
-def remove_beamsearch_probs(preds: List[List[Tuple[float, str]]]) -> List[List[str]]:
+def remove_probs(preds: List[List[Tuple[float, str]]]) -> List[List[str]]:
     new_preds = []
     for pred_line in preds:
         new_preds_line = []
@@ -13,10 +14,6 @@ def remove_beamsearch_probs(preds: List[List[Tuple[float, str]]]) -> List[List[s
             new_preds_line.append(word)
         new_preds.append(new_preds_line)
     return new_preds
-
-
-def patch_wrong_prediction_shape(prediciton):
-    return [pred_el[0] for pred_el in prediciton]
 
 
 def separate_invalid_preds(preds: List[List[str]],
@@ -103,6 +100,67 @@ def create_submission(preds_list, out_path) -> None:
             
 
 
+
+# Aggregators are basicly functions. They are impplemented
+# as callable classes to define an interface
+class PredictionsAgregator(ABC):
+    # there may be a separate method that aggregates
+    # predictions into same format (tuples(score, word))
+
+    @abstractmethod
+    def __call__(raw_preds_list: List[List[List[Tuple[float, str]]]],
+                 max_n_hypothesis: int = 4,
+                 ) -> List[List[str]]:
+        """
+        Aggregates a list of predictions into one prediciton.
+
+        Arguments:
+        ----------
+        raw_preds_list: List[List[List[str]]]
+            List of model_predictions_list several models predictions. 
+            Each models prediction has `dataset_len` rows. Each row
+            is a list with tuple elements: (score: float, word: str)
+            where score = log(prob(word)). A row may be an empty list.
+        max_n_hypothesis: int
+            Maximum number of hypothesis per curve to output.
+        
+        Returns:
+        agregated_predictions: List[List[Tuple[float, str]]]
+            agregated_predictions[i][j] is j-th word hypothesis
+            for i-th curve in the dataset. Each row consists of 0 to 
+            `max_n_hypothesis` words.
+        """
+        pass
+
+
+
+class AppendAgregator(PredictionsAgregator):
+    def __call__(raw_preds_list: List[List[List[Tuple[float, str]]]],
+                 max_n_hypothesis: int = 4,
+                 ) -> List[List[Tuple[float, str]]]:
+        """
+        Aggregates predictions by poping leftmost element in raw_preds_list
+        and appending all it's content to output except the elements that
+        are alredy present in the output. It's supposed that raw_preds_list
+        is sorted by corrsponding models MMR score on validation
+        """
+        pass
+
+
+class WeightedAgregator(PredictionsAgregator):
+    def __call__(raw_preds_list: List[List[List[Tuple[float, str]]]],
+                 max_n_hypothesis: int = 4,
+                 ) -> List[List[Tuple[float, str]]]:
+        """
+        Aggregates predictions by multiplying each probability in a models
+        predictions by a corrsponding weight and than merging and sorting
+        all rows.
+        """
+        pass
+        
+
+
+
 if __name__ == "__main__":
     DATA_ROOT = "data/data_separated_grid/"
 
@@ -137,9 +195,11 @@ if __name__ == "__main__":
             with open(f_path, 'rb') as f:
                 bs_pred_list.append(pickle.load(f))
             
-        bs_pred_list = [patch_wrong_prediction_shape(bs_preds) for bs_preds in bs_pred_list] 
-        bs_pred_list = [remove_beamsearch_probs(bs_preds) for bs_preds in bs_pred_list]
-        bs_pred_list = [separate_invalid_preds(bs_preds, vocab_set)[0] for bs_preds in bs_pred_list]
+        bs_pred_list = [remove_probs(bs_preds) for bs_preds in bs_pred_list]
+        bs_pred_list = [in_vocab_preds
+                        for bs_preds in bs_pred_list
+                        for in_vocab_preds, _ 
+                            in separate_invalid_preds(bs_preds, vocab_set)]
 
 
         augmented_preds = bs_pred_list.pop(0)
