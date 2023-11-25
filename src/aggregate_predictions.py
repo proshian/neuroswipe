@@ -196,10 +196,8 @@ if __name__ == "__main__":
                 bs_pred_list.append(pickle.load(f))
             
         bs_pred_list = [remove_probs(bs_preds) for bs_preds in bs_pred_list]
-        bs_pred_list = [in_vocab_preds
-                        for bs_preds in bs_pred_list
-                        for in_vocab_preds, _ 
-                            in separate_invalid_preds(bs_preds, vocab_set)]
+        bs_pred_list = [separate_invalid_preds(bs_preds, vocab_set)[0]
+                        for bs_preds in bs_pred_list]
 
 
         augmented_preds = bs_pred_list.pop(0)
