@@ -16,36 +16,50 @@ def remove_probs(preds: List[List[Tuple[float, str]]]) -> List[List[str]]:
     return new_preds
 
 
-def separate_invalid_preds(preds: List[List[str]],
+def separate_out_vocab_hypotheses(hypotheses_list: List[str],
+                                  vocab_set: Set[str],
+                                  ) -> Tuple[List[str], List[str]]:
+    """
+    Separates list of a single word hypotheses into a
+    list of in vocab words and a list of out vocab words.
+    """
+    in_vocab_words = []
+    out_vocab_words = []
+
+    for word in hypotheses_list:
+        if word in vocab_set:
+            in_vocab_words.append(word)
+        else:
+            out_vocab_words.append(word)
+    # if limit != None:
+    #     in_vocab_words = in_vocab_words[:limit]
+    return in_vocab_words, out_vocab_words
+
+
+def separate_invalid_preds(dataset_preds: List[List[str]],
                            vocab_set: Set[str]
                            ) -> Tuple[List[List[str]], Dict[int, List[str]]]:
-
-    all_real_word_preds = []
+    
+    all_in_vocab_preds = []
     all_errorous_word_preds = {}
 
-    for i, pred in enumerate(preds):
-        real_word_preds = []
-        errorous_word_preds = []
-        for word in pred:
-            if word in vocab_set:
-                real_word_preds.append(word)
-                if len(real_word_preds) == 4:
-                    break
-            else:
-                errorous_word_preds.append(word)
-        
-        all_real_word_preds.append(real_word_preds)
-        if len(real_word_preds) < 4:
-            all_errorous_word_preds[i] = errorous_word_preds
+    for i, hypotheses_lst in enumerate(dataset_preds):
+        in_vocab_words, out_vocab_words = separate_out_vocab_hypotheses(
+            hypotheses_lst, vocab_set)
 
-    return all_real_word_preds, all_errorous_word_preds
+        all_in_vocab_preds.append(in_vocab_words)
+        all_errorous_word_preds[i] = out_vocab_words
+
+    return all_in_vocab_preds, all_errorous_word_preds
 
 
-def augment_predictions(preds:List[List[str]], augment_list: List[List[str]]):
+def augment_predictions(preds:List[List[str]],
+                        augment_list: List[List[str]],
+                        limit: int):
     augmented_preds = copy.deepcopy(preds)
     for pred_line, aug_l_line in zip(augmented_preds, augment_list):
         for aug_el in aug_l_line:
-            if len(pred_line) >= 4:
+            if len(pred_line) >= limit:
                 break
             if not aug_el in pred_line:
                 pred_line.append(aug_el)
@@ -160,6 +174,34 @@ class WeightedAgregator(PredictionsAgregator):
         
 
 
+def get_list_of_individual_model_predictions(paths: List[str]
+                                             ) -> List[List[List[Tuple[float, str]]]]:
+    preds_to_aggregate = []
+    for f_path in paths:
+        with open(f_path, 'rb') as f:
+            preds_to_aggregate.append(pickle.load(f))
+    return preds_to_aggregate
+
+
+
+# def aggregate_preds_raw_appendage(raw_preds_list):
+#     pass
+
+def aggregate_preds_processed_appendage(preds_to_aggregate: List[List[List[str]]],
+                                        limit: int
+                                        ) -> List[List[str]]:
+    dataset_len = len(preds_to_aggregate[0])
+    aggregated_preds = [] * dataset_len
+
+    while preds_to_aggregate:
+        aggregated_preds = augment_predictions(aggregated_preds,
+                                              preds_to_aggregate.pop(0),
+                                              limit = limit)
+    
+    return aggregated_preds
+
+
+
 
 if __name__ == "__main__":
     DATA_ROOT = "data/data_separated_grid/"
@@ -188,24 +230,20 @@ if __name__ == "__main__":
     grid_name_to_augmented_preds = {}
 
     for grid_name in ('default', 'extra'):
-        bs_pred_list = []
-
-        for f_name in grid_name_to_ranged_bs_model_preds_paths[grid_name]:
-            f_path = os.path.join("data/saved_beamsearch_results/", f_name)
-            with open(f_path, 'rb') as f:
-                bs_pred_list.append(pickle.load(f))
-            
-        bs_pred_list = [remove_probs(bs_preds) for bs_preds in bs_pred_list]
-        bs_pred_list = [separate_invalid_preds(bs_preds, vocab_set)[0]
-                        for bs_preds in bs_pred_list]
+        f_names = grid_name_to_ranged_bs_model_preds_paths[grid_name]
+        f_paths = [os.path.join("data/saved_beamsearch_results/", f_name)
+                   for f_name in f_names]
+        
+        preds_to_aggregate = get_list_of_individual_model_predictions(f_paths)
+        preds_to_aggregate = [remove_probs(bs_preds) for bs_preds in preds_to_aggregate]
+        preds_to_aggregate = [separate_invalid_preds(bs_preds, vocab_set)[0]
+                              for bs_preds in preds_to_aggregate]
 
 
-        augmented_preds = bs_pred_list.pop(0)
+        aggregated_preds = aggregate_preds_processed_appendage(preds_to_aggregate,
+                                                               limit = 4)
 
-        while bs_pred_list:
-            augmented_preds = augment_predictions(augmented_preds, bs_pred_list.pop(0))
-
-        grid_name_to_augmented_preds[grid_name] = augmented_preds
+        grid_name_to_augmented_preds[grid_name] = aggregated_preds
 
 
     full_preds = merge_preds(
