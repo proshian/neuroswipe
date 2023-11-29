@@ -1,4 +1,4 @@
-from typing import Callable, List
+from typing import Callable, List, Dict
 import os
 import json
 import pickle
@@ -69,36 +69,20 @@ def get_config(config_path: str) -> dict:
         full_config = json.load(f)
     return full_config['prediction_params']
 
-
-def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser()
-    p.add_argument('--num-workers', type=int, default=1)
-    p.add_argument('--config', type=str)
-    args = p.parse_args()
-    return args 
-
-
-if __name__ == '__main__':
-    MAX_TRAJ_LEN = 299  # ! Лучше, чтобы вычислялся по датасету
-
-    args = parse_args()
-    config = get_config(args.config)
+def get_grid_name_to_dataset(config,
+                             kb_tokenizer,
+                             word_char_tokenizer,
+                             max_traj_len) -> Dict[str, Dataset]:
     
     grid_name_to_grid = get_grid_name_to_grid(
         config['grid_name_to_grid__path'])
-
-
-    kb_tokenizer = KeyboardTokenizerv1()
-    word_char_tokenizer = CharLevelTokenizerv2(
-        config['voc_path'])
-    keyboard_selection_set = set(kb_tokenizer.i2t)
-
+    
     print("Loading dataset...")
     dataset = NeuroSwipeDatasetv2(
         data_path = config['data_path'],
         gridname_to_grid = grid_name_to_grid,
         kb_tokenizer = kb_tokenizer,
-        max_traj_len = MAX_TRAJ_LEN,
+        max_traj_len = max_traj_len,
         word_tokenizer = word_char_tokenizer,
         include_time = False,
         include_velocities = True,
@@ -115,6 +99,31 @@ if __name__ == '__main__':
         'extra': NeuroSwipeGridSubset(dataset, grid_name='extra'),
     }
 
+    return grid_name_to_dataset
+
+
+def parse_args() -> argparse.Namespace:
+    p = argparse.ArgumentParser()
+    p.add_argument('--num-workers', type=int, default=1)
+    p.add_argument('--config', type=str)
+    args = p.parse_args()
+    return args 
+
+
+if __name__ == '__main__':
+    MAX_TRAJ_LEN = 299  # ! Лучше, чтобы вычислялся по датасету
+
+    args = parse_args()
+    config = get_config(args.config)
+
+    kb_tokenizer = KeyboardTokenizerv1()
+    word_char_tokenizer = CharLevelTokenizerv2(
+        config['voc_path'])
+    keyboard_selection_set = set(kb_tokenizer.i2t)
+
+    grid_name_to_dataset = get_grid_name_to_dataset(
+        config, kb_tokenizer, word_char_tokenizer, MAX_TRAJ_LEN)
+    
     for _, _, w_fname in config['model_params']:
         if not os.path.exists(os.path.join(config['models_root'], w_fname)):
             raise ValueError(f"Path {w_fname} does not exist.")
