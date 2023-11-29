@@ -20,29 +20,6 @@ def process_example(data: Tuple[int, Tuple[Tensor, Tensor, Tensor], str, Dict[st
     return i, pred
     
 
-# def predict_greedy_raw(dataset,
-#                        grid_name_to_greedy_generator,
-#                       ) -> List[List[str]]:
-#     """
-#     Creates predictions using greedy generation.
-    
-#     Arguments:
-#     ----------
-#     dataset: NeuroSwipeDatasetv2
-#     grid_name_to_greedy_generator: dict
-#         Dict mapping grid names to GreedyGenerator objects.
-#     """
-#     preds = [None] * len(dataset)
-
-#     for data in tqdm(enumerate(dataset), total=len(dataset)):
-#         i, ((xyt, kb_tokens, _, traj_pad_mask, _), _, grid_name) = data
-#         pred = grid_name_to_greedy_generator[grid_name](xyt, kb_tokens, traj_pad_mask)
-#         pred = pred.removeprefix("<sos>")
-#         preds[i] = [pred]
-
-#     return preds
-
-
 def predict_raw_mp(dataset: NeuroSwipeDatasetv2,
                    grid_name_to_greedy_generator: dict,
                    num_workers: int=3,
