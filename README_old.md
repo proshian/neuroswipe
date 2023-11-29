@@ -10,17 +10,11 @@
 
 
 ## Размышления:
-* Кажется, из многих оюучающих примеров для default клавиатуры можно "деформировав пространство" сделать обучающие примеры для extra клавиатуры.
+* Кажется, из многих обучающих примеров для default клавиатуры можно "деформировав пространство" сделать обучающие примеры для extra клавиатуры.
     * Интересно, нужно ли будет также деформировать время
 
 Есть предположение, что опытный пользователь вводит слова очень быстро и может быть не глядя. Возможно, траектории опытного и  начинающего пользователя свайп клавиатры будут отличаться
 
-Transformer encoder for curve encoding. The input for Transformer Encoder is a sequence of vectors containing:
-* x_coord
-* y_coord
-* dx/dt
-* dy/dt
-* one_hot_letter_of_nearest_keyboard_key
 
 Производные берутся так:
 1. cur_x_derivative = (next_x - cur_x) - (cur_x - prev_x); cur_y_derivative = (next_y - cur_y) - (cur_y - prev_y)
@@ -45,15 +39,11 @@ Transformer encoder for curve encoding. The input for Transformer Encoder is a s
 * Если входную последовательность использовать как [x_coord, y_coord, dx/dt, dy/dt, one_hot_letter_of_nearest_keyboard_key], не нужно ли заменить one_hot на embedding?
 
 ## TODO
-High Urgency
-* Should dataset be an iterable-style ot map-style?
-* Энкодер, принимающий на вход координаты
-Medium urgency
+Low urgency:
 * Synthetic data generation
     * analyse the percenta
     * WordGesture-GAN
     * Modeling Gesture-Typing Movements (minimal jerk)
-Low urgency:
 * Read and understand visualization tool
 * Read and understand baseline
 
@@ -122,3 +112,15 @@ cd ..\..
 
 
 ```
+
+# Configs:
+* Для get_individual_models_predictions.py config должен содержать список моделей, от которых требуется получить предсказания и путь до датасета
+* Для aggregate_predictions.py config должен хранить:
+    * тип аггрегирования
+    * список импользуемых файлов с предсказаниями (будет конвертирован в словарь [имя_файла -> предсказания для датасета])
+        * если тип аггрегирования = список должен быть в правильном порядке
+    * если тип аггрегирования = weighted, должен храниться путь до файла, хранязего соответствие [имя_файла -> вес]
+
+Может быть для любого типа аггрегирования сделать словарь init_kwargs. Для weighted = {'weights_path'}, для appendage = empty_dict
+
+При заполнении config'а для get_individual_models_predictions нужно помнить, что max_steps_n = max_word_len + 1

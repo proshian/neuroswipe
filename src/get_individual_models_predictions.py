@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, List
 import os
 import json
 import pickle
@@ -13,7 +13,19 @@ from tokenizers import CharLevelTokenizerv2
 from dataset import NeuroSwipeDatasetv2, NeuroSwipeGridSubset
 from tokenizers import KeyboardTokenizerv1
 from word_generation_v2 import predict_raw_mp
-from word_generators import BeamGenerator
+from word_generators import BeamGenerator, GreedyGenerator
+
+
+MODEL_GETTERS_DICT = {
+    "m1": get_m1_model,
+    "m1_bigger": get_m1_bigger_model,
+    "m1_smaller": get_m1_smaller_model
+}
+
+GENERATOR_CTORS_DICT = {
+    "greedy": GreedyGenerator,
+    "beam": BeamGenerator
+}
 
 
 def get_grid(grid_name: str, grids_path: str) -> dict:
@@ -30,54 +42,60 @@ def weights_to_raw_predictions(grid_name: str,
                                n_workers: int = 4,
                                generator_kwargs = None
                                ):
-     DEVICE = torch.device('cpu')  # Avoid multiprocessing with GPU
-     if generator_kwargs is None:
-          generator_kwargs = {}
+    DEVICE = torch.device('cpu')  # Avoid multiprocessing with GPU
+    if generator_kwargs is None:
+        generator_kwargs = {}
 
-     model = model_getter(DEVICE, weights_path)
-     grid_name_to_greedy_generator = {grid_name: generator_ctor(model, word_char_tokenizer, DEVICE)}
-     raw_predictions = predict_raw_mp(dataset,
-                                      grid_name_to_greedy_generator,
-                                      num_workers=n_workers,
-                                      generator_kwargs=generator_kwargs)
-     return raw_predictions
+    model = model_getter(DEVICE, weights_path)
+    grid_name_to_greedy_generator = {grid_name: generator_ctor(model, word_char_tokenizer, DEVICE)}
+    raw_predictions = predict_raw_mp(dataset,
+                                    grid_name_to_greedy_generator,
+                                    num_workers=n_workers,
+                                    generator_kwargs=generator_kwargs)
+    return raw_predictions
+
+
+def get_grid_name_to_grid(grid_name_to_grid__path: str) -> dict:
+    # In case there will be more grids in "grid_name_to_grid.json"
+    grid_name_to_grid = {
+        grid_name: get_grid(grid_name, grid_name_to_grid__path)
+        for grid_name in ("default", "extra")
+    }
+    return grid_name_to_grid
+
+
+def get_config(config_path: str) -> dict:
+    with open(config_path, 'r') as f:
+        full_config = json.load(f)
+    return full_config['prediction_params']
 
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser()
     p.add_argument('--num-workers', type=int, default=1)
+    p.add_argument('--config', type=str)
     args = p.parse_args()
     return args 
 
 
 if __name__ == '__main__':
-
-    DATA_ROOT = "./data/data_separated_grid"
-    MODELS_ROOT = "./data/trained_models_for_final_submit"
-    DATASET_PATH = os.path.join(DATA_ROOT, 'test.jsonl')
-
-    PREDS_ROOT = "./data/saved_beamsearch_results"
-
-    MAX_WORD_LEN = 34  # len('информационно-телекоммуникационной')
-    MAX_TRAJ_LEN = 299
+    MAX_TRAJ_LEN = 299  # ! Лучше, чтобы вычислялся по датасету
 
     args = parse_args()
+    config = get_config(args.config)
     
-    grid_name_to_grid__path = os.path.join(DATA_ROOT, "gridname_to_grid.json")
-    grid_name_to_grid = {
-        grid_name: get_grid(grid_name, grid_name_to_grid__path)
-        for grid_name in ("default", "extra")
-    }
+    grid_name_to_grid = get_grid_name_to_grid(
+        config['grid_name_to_grid__path'])
 
 
     kb_tokenizer = KeyboardTokenizerv1()
     word_char_tokenizer = CharLevelTokenizerv2(
-        os.path.join(DATA_ROOT, "voc.txt"))
+        config['voc_path'])
     keyboard_selection_set = set(kb_tokenizer.i2t)
 
     print("Loading dataset...")
     dataset = NeuroSwipeDatasetv2(
-        data_path = DATASET_PATH,
+        data_path = config['data_path'],
         gridname_to_grid = grid_name_to_grid,
         kb_tokenizer = kb_tokenizer,
         max_traj_len = MAX_TRAJ_LEN,
@@ -97,52 +115,30 @@ if __name__ == '__main__':
         'extra': NeuroSwipeGridSubset(dataset, grid_name='extra'),
     }
 
-    generator_kwargs = {
-        'max_steps_n': MAX_WORD_LEN + 1,  # including '<eos>'
-        'return_hypotheses_n': 7,
-        'beamsize': 6,
-        'normalization_factor': 0.5,
-        'verbose': False
-    }
+    for _, _, w_fname in config['model_params']:
+        if not os.path.exists(os.path.join(config['models_root'], w_fname)):
+            raise ValueError(f"Path {w_fname} does not exist.")
 
 
-    model_params = [
-        ("default", get_m1_bigger_model, "m1_bigger/m1_bigger_v2__2023_11_12__14_51_49__0.13115__greed_acc_0.86034__default_l2_0_ls0_switch_2.pt"),
-        ("default", get_m1_bigger_model, "m1_bigger/m1_bigger_v2__2023_11_12__12_30_29__0.13121__greed_acc_0.86098__default_l2_0_ls0_switch_2.pt"),
-        ("default", get_m1_bigger_model, "m1_bigger/m1_bigger_v2__2023_11_11__22_18_35__0.13542_default_l2_0_ls0_switch_1.pt"),
-        ("default", get_m1_model, "m1_v2/m1_v2__2023_11_09__10_36_02__0.14229_default_switch_0.pt"),
-        ("default", get_m1_bigger_model, "m1_bigger/m1_bigger_v2__2023_11_12__00_39_33__0.13297_default_l2_0_ls0_switch_1.pt"),
-        ("default", get_m1_bigger_model, "m1_bigger/m1_bigger_v2__2023_11_11__14_29_37__0.13679_default_l2_0_ls0_switch_0.pt"),
+    for grid_name, model_getter_name, weights_f_name in config['model_params']:
 
-        ("extra", get_m1_model, "m1_v2/m1_v2__2023_11_09__17_47_40__0.14301_extra_l2_1e-05_switch_0.pt"),
-        ("extra", get_m1_bigger_model, "m1_bigger/m1_bigger_v2__2023_11_12__02_27_14__0.13413_extra_l2_0_ls0_switch_1.pt"),
-    ]
-
-
-    for grid_name, model_getter, weights_f_name in model_params:
-        assert os.path.exists(os.path.join(MODELS_ROOT, weights_f_name)), \
-            f"Path {weights_f_name} does not exist."
-
-
-    for grid_name, model_getter, weights_f_name in model_params:
-
-        bs_out_path = os.path.join(PREDS_ROOT,
-                                   f"{weights_f_name.replace('/', '__')}.pkl")
+        out_path = os.path.join(config['out_path'],
+                                f"{weights_f_name.replace('/', '__')}.pkl")
         
-        if os.path.exists(bs_out_path):
-            print(f"Path {bs_out_path} exists. Skipping.")
+        if os.path.exists(out_path):
+            print(f"Path {out_path} exists. Skipping.")
             continue
 
-        bs_predictions = weights_to_raw_predictions(
+        predictions = weights_to_raw_predictions(
             grid_name = grid_name,
-            model_getter=model_getter,
-            weights_path = os.path.join(MODELS_ROOT, weights_f_name),
+            model_getter=MODEL_GETTERS_DICT[model_getter_name],
+            weights_path = os.path.join(config['models_root'], weights_f_name),
             word_char_tokenizer=word_char_tokenizer,
             dataset=grid_name_to_dataset[grid_name],
-            generator_ctor=BeamGenerator,
+            generator_ctor=GENERATOR_CTORS_DICT[config['generator']],
             n_workers=args.num_workers,
-            generator_kwargs=generator_kwargs
+            generator_kwargs=config['generator_kwargs']
         )
 
-        with open(bs_out_path, 'wb') as f:
-            pickle.dump(bs_predictions, f, protocol=pickle.HIGHEST_PROTOCOL)
+        with open(out_path, 'wb') as f:
+            pickle.dump(predictions, f, protocol=pickle.HIGHEST_PROTOCOL)
