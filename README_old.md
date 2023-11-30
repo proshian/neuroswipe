@@ -124,3 +124,40 @@ cd ..\..
 Может быть для любого типа аггрегирования сделать словарь init_kwargs. Для weighted = {'weights_path'}, для appendage = empty_dict
 
 При заполнении config'а для get_individual_models_predictions нужно помнить, что max_steps_n = max_word_len + 1
+
+Набросок для aggregation_params:
+```json
+"aggregation_params": 
+    {
+        "aggregation_type": "appendage",
+        "preds":
+        {
+            "default": 
+            [
+                "m1_bigger__m1_bigger_v2__2023_11_12__14_51_49__0.13115__greed_acc_0.86034__default_l2_0_ls0_switch_2.pt.pkl",
+                "m1_bigger__m1_bigger_v2__2023_11_12__12_30_29__0.13121__greed_acc_0.86098__default_l2_0_ls0_switch_2.pt.pkl",
+                "m1_bigger__m1_bigger_v2__2023_11_11__22_18_35__0.13542_default_l2_0_ls0_switch_1.pt.pkl",
+                "m1_v2__m1_v2__2023_11_09__10_36_02__0.14229_default_switch_0.pt.pkl",
+                "m1_bigger__m1_bigger_v2__2023_11_12__00_39_33__0.13297_default_l2_0_ls0_switch_1.pt.pkl",
+                "m1_bigger__m1_bigger_v2__2023_11_11__14_29_37__0.13679_default_l2_0_ls0_switch_0.pt.pkl"
+            ],
+            "extra": 
+            [
+                "m1_v2__m1_v2__2023_11_09__17_47_40__0.14301_extra_l2_1e-05_switch_0.pt.pkl",
+                "m1_bigger__m1_bigger_v2__2023_11_12__02_27_14__0.13413_extra_l2_0_ls0_switch_1.pt.pkl"
+            ]
+        },
+        "grid_name_to_aggregator_init_kwargs":
+        {
+            "default":
+            {
+
+            },
+            "extra":
+            {
+
+            }
+        },
+        "output_path": "./data/submissions/id3_with_baseline_without_old_preds.csv"
+    },
+```

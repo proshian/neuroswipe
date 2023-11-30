@@ -67,7 +67,7 @@ def get_grid_name_to_grid(grid_name_to_grid__path: str) -> dict:
 def get_config(config_path: str) -> dict:
     with open(config_path, 'r') as f:
         full_config = json.load(f)
-    return full_config['prediction_params']
+    return full_config['prediction_config']
 
 def get_grid_name_to_dataset(config,
                              kb_tokenizer,
