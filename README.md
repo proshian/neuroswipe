@@ -5,7 +5,7 @@
 ## Method
 
 The model is encoder-decoder transformer.
-The first tranformer encoder layer can input a sequence with elements of different size relative to other transformer layers.
+The first tranformer encoder layer can input a sequence with elements of different size relative to other encoder layers.
 
 Encoder input sequence consists of elements demonstrated on image below:
 
@@ -14,6 +14,10 @@ Encoder input sequence consists of elements demonstrated on image below:
 Where trajectory_point_features is a vector column of $x$, $y$, $\frac{dx}{dt}$, $\frac{dy}{dt}$, $\frac{d^2x}{dt^2}$, $\frac{d^2y}{dt^2}$. The derivative values are calculated using finite difference method.
 
 Decoder input sequence consists of character-level embeddings (with positional encoding) of the target word.
+
+Keyboard key embeddings used in encoder and charracter embeddings used in decoder are different entities.
+
+More info in [solution_description.md](solution_description.md) file (in Russian).
 
 
 ## Как воспроизвести последнюю посылку:
