@@ -14,6 +14,9 @@ class NeuroSwipeDatasetv3(Dataset):
     """
     Dataset class for NeuroSwipe dataset.
 
+    The dataset uses all data from a given json in the same order as the json.
+    There are separate json files for every grid.
+
     Given a NeuroSwipeDatasetv3 object nsd, nsd[i] is a tuple:
     ((trajectory_features, k_key_tokens, decoder_in_char_seq), decoder_out_char_seq)
     
@@ -76,6 +79,7 @@ class NeuroSwipeDatasetv3(Dataset):
                         - y (int): y coordinate of the top left corner of the key.
                         - w (int): width of the key.
                         - h (int): height of the key.
+            
         
         keyboard_selection_set: Optional[Set[str]]
             Set of keyboard key labels allowed. When looking

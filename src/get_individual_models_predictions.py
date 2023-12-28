@@ -35,6 +35,7 @@
 # * название архтиектуры
 # * путь к весам
 # * название раскладки
+# * список индексов
 #
 #
 # Вариант, когда каждая модель выдает все 10_000 строк кажется
@@ -129,11 +130,10 @@ def get_gridname_to_dataset(config,
         config['grid_name_to_grid__path'])
     
     print("Loading dataset...")
-    dataset = NeuroSwipeDatasetv2(
+    dataset = NeuroSwipeDatasetv3(
         data_path = config['data_path'],
         gridname_to_grid = grid_name_to_grid,
         kb_tokenizer = kb_tokenizer,
-        max_traj_len = max_traj_len,
         word_tokenizer = word_char_tokenizer,
         include_time = False,
         include_velocities = True,
