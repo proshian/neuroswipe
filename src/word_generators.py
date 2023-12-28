@@ -5,7 +5,7 @@ import heapq
 import torch
 import torch.nn.functional as F
 
-from utils import prepare_batch, turncate_traj_batch
+from utils import prepare_batch
 
 
 class WordGenerator(ABC):
@@ -59,8 +59,7 @@ class GreedyGenerator(WordGenerator):
     def __call__(self, xyt, kb_tokens, max_steps_n=35) -> List[Tuple[float, str]]:
         return self._generate(xyt, kb_tokens, max_steps_n)
     
-    def generate_word_only(self, xyt, kb_tokens,
-                 traj_pad_mask, max_steps_n=35) -> str:
+    def generate_word_only(self, xyt, kb_tokens, max_steps_n=35) -> str:
         return self._generate(xyt, kb_tokens, max_steps_n)[0][1]
 
 
@@ -164,7 +163,6 @@ class GreedyGeneratorBatched:
     def __call__(self,
                  xyt,  # (batch_size, curves_seq_len, n_coord_feats)
                  kb_tokens,  # (batch_size, curves_seq_len)
-                 traj_pad_mask,  # (batch_size, curves_seq_len)
                  max_steps_n=35):
         batch_size, curves_seq_len, n_coord_feats = xyt.shape
 
@@ -178,7 +176,7 @@ class GreedyGeneratorBatched:
                 word_pad_mask = None
                 # dummy_y is any tensor with n_dims = 2 (chars_seq_len - 1, batch_size).
                 dummy_y = torch.tensor([[1]])
-                x = (xyt, kb_tokens, dec_in_char_seq, traj_pad_mask, word_pad_mask)
+                x = (xyt, kb_tokens, dec_in_char_seq, None, word_pad_mask)
                 model_input, dummy_y = prepare_batch(x, dummy_y, self.device)
                 one_hot_token_logits = self.model.apply(*model_input).transpose_(0, 1)  # (batch_size, chars_seq_len, vocab_size)
                 best_next_tokens = one_hot_token_logits[:, -1].argmax(dim=1)  # (batch_size)
