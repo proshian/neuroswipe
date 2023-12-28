@@ -40,6 +40,7 @@ class CharLevelTokenizerv2:
     def encode(self, word: str) -> List[int]:
         """
         Tokenizes a word into a list of integers.
+        The <sos> and <eos> tokens are added.
         """
         tokenized_word = []
         tokenized_word.append(self.char_to_idx["<sos>"])
