@@ -7,7 +7,7 @@ from typing import Optional
 
 from tqdm import tqdm
 
-from dataset import NeuroSwipeDatasetv2
+from dataset import NeuroSwipeDatasetv3
 
 
 def process_example(data: Tuple[int, Tuple[Tensor, Tensor, Tensor], str, Dict[str, GreedyGenerator]],
@@ -20,7 +20,7 @@ def process_example(data: Tuple[int, Tuple[Tensor, Tensor, Tensor], str, Dict[st
     return i, pred
     
 
-def predict_raw_mp(dataset: NeuroSwipeDatasetv2,
+def predict_raw_mp(dataset: NeuroSwipeDatasetv3,
                    grid_name_to_greedy_generator: dict,
                    num_workers: int=3,
                    generator_kwargs: Optional[dict] = None,

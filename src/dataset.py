@@ -322,8 +322,8 @@ class NeuroSwipeDatasetv3(Dataset):
         traj_len = len(X_list)
 
         if self.include_velocities:
-            dx_dt = self._get_dx_dt(X, T, traj_len)
-            dy_dt = self._get_dx_dt(Y, T, traj_len)
+            dx_dt = self._get_dx_dt(X, T)
+            dy_dt = self._get_dx_dt(Y, T)
             xyt = torch.cat(
                 [
                     xyt,
@@ -334,8 +334,8 @@ class NeuroSwipeDatasetv3(Dataset):
             )
 
         if self.include_accelerations:
-            d2x_dt2 = self._get_dx_dt(dx_dt, T, traj_len)
-            d2y_dt2 = self._get_dx_dt(dy_dt, T, traj_len)
+            d2x_dt2 = self._get_dx_dt(dx_dt, T)
+            d2y_dt2 = self._get_dx_dt(dy_dt, T)
             xyt = torch.cat(
                 [
                     xyt,
@@ -406,7 +406,7 @@ class NeuroSwipeGridSubset(Dataset):
             
     def _get_grid_name_idxs(self):
         grid_name_idxs: list[int] = []
-        for i, ((_, _, _, _, _), _, grid_name) in enumerate(self.dataset):
+        for i, (x, y, grid_name) in enumerate(self.dataset):
             if grid_name == self.grid_name:
                 grid_name_idxs.append(i)
         return grid_name_idxs

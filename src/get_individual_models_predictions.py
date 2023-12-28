@@ -61,7 +61,7 @@ from tqdm import tqdm
 
 from model import get_m1_model, get_m1_bigger_model, get_m1_smaller_model
 from tokenizers import CharLevelTokenizerv2
-from dataset import NeuroSwipeDatasetv2, NeuroSwipeGridSubset
+from dataset import NeuroSwipeDatasetv3, NeuroSwipeGridSubset
 from tokenizers import KeyboardTokenizerv1
 from word_generation_v2 import predict_raw_mp
 from word_generators import BeamGenerator, GreedyGenerator
