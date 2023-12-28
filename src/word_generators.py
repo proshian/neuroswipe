@@ -85,7 +85,7 @@ class BeamGenerator(WordGenerator):
                  beamsize=6,  # n best solutions we store in intermidiate comuptations
                  normalization_factor=0.5,
                  verbose=True
-                 ):
+                 ) -> List[Tuple[float, str]]:
         with torch.no_grad():
             
             tokens = [self.tokenizer.char_to_idx['<sos>']]
