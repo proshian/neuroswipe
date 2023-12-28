@@ -19,6 +19,12 @@ class NeuroSwipeDatasetv3(Dataset):
     
     ! Warning: refactoring planned so that the output is a dictionary.
 
+    WARNING:
+    the class is in the process of refactoring. The padding will be done
+    in DataLoaders collate_fn instead of __getitem__ method.
+
+    ! It seems reasonable for the dataset to always return grid_name as a
+    dict property. We just won't use it in collate function.
     """
 
     def __init__(self,
@@ -36,7 +42,7 @@ class NeuroSwipeDatasetv3(Dataset):
                  total: Optional[int] = None):
         """
         Arguments:
-        -----------
+        ----------
         data_path: str
             Path to the NeuroSwipe dataset in JSON format.
             A custom version of the dataset is used: "grid" property

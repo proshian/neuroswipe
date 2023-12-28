@@ -1,3 +1,38 @@
+# Сейчас предсказания отдельных моделей сохраняются как список списков
+# кортежей (-log(prob), pred_word).  Пусть модель заточена под раскладку
+# клавиатуры grid_name.  Пусть dataset[grid_name] – это датасет,
+# сохраняющий порядок исходного датасета, но исключающий все экземпляры
+# с другой раскладкой.  Пусть предсказание хранится в переменной preds.
+# Тогда preds[i] - это список предсказаний для кривой dataset[grid_name][i].
+# Данный список представлен кортежами (-log(prob), pred_word).
+
+
+
+# Итак, у на входе у нас есть:
+# * модели, от которых мы хотим получить предсказания. Модели имеют:
+#   * название раскладки
+#   * название архитктуры
+#   * путь к весам
+#
+# Гипотетически могут быть модели, умеющие работать сразу с множеством раскладок.
+#
+# Мы хотим получить предсказания пригодные для дальнейшей аггрегации
+#
+# Сейчас кажется разумным такой вид: 
+# * метаинформация (название архтиектуры, путь к весам, нвазвание раскладки)
+# * список предсказаний длиной с исходный датасет. Для строк с расскаладками,
+#       с которыми модель не умеет работать она предсказывает пустой список.
+# * или список предсказаний длиной с число элементов данной раскладки.
+#
+# 
+# Вариант, когда каждая модель выдает все 10_000 строк кажется
+# не совсем удобным: Когда мы подбираем наилучшие гиперпараметры
+# для аггрегации, удобно оценивать гиперпараметры по результатам
+# метрик именно на данной раскладке.
+# 
+
+
+
 from typing import Callable, List, Dict
 import os
 import json
@@ -69,7 +104,7 @@ def get_config(config_path: str) -> dict:
         full_config = json.load(f)
     return full_config['prediction_config']
 
-def get_grid_name_to_dataset(config,
+def get_gridname_to_dataset(config,
                              kb_tokenizer,
                              word_char_tokenizer,
                              max_traj_len) -> Dict[str, Dataset]:
@@ -94,12 +129,12 @@ def get_grid_name_to_dataset(config,
         total = 10_000
     )
 
-    grid_name_to_dataset = {
+    gridname_to_dataset = {
         'default': NeuroSwipeGridSubset(dataset, grid_name='default'),
         'extra': NeuroSwipeGridSubset(dataset, grid_name='extra'),
     }
 
-    return grid_name_to_dataset
+    return gridname_to_dataset
 
 
 def parse_args() -> argparse.Namespace:
@@ -121,7 +156,7 @@ if __name__ == '__main__':
         config['voc_path'])
     keyboard_selection_set = set(kb_tokenizer.i2t)
 
-    grid_name_to_dataset = get_grid_name_to_dataset(
+    gridname_to_dataset = get_gridname_to_dataset(
         config, kb_tokenizer, word_char_tokenizer, MAX_TRAJ_LEN)
     
     for _, _, w_fname in config['model_params']:
@@ -143,7 +178,7 @@ if __name__ == '__main__':
             model_getter=MODEL_GETTERS_DICT[model_getter_name],
             weights_path = os.path.join(config['models_root'], weights_f_name),
             word_char_tokenizer=word_char_tokenizer,
-            dataset=grid_name_to_dataset[grid_name],
+            dataset=gridname_to_dataset[grid_name],
             generator_ctor=GENERATOR_CTORS_DICT[config['generator']],
             n_workers=args.num_workers,
             generator_kwargs=config['generator_kwargs']
