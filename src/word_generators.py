@@ -11,17 +11,15 @@ from utils import prepare_batch, turncate_traj_batch
 class WordGenerator(ABC):
 
     @abstractmethod
-    def __call__(self, xyt, kb_tokens,
-                 traj_pad_mask, max_steps_n, 
+    def __call__(self, xyt, kb_tokens, max_steps_n, 
                  *args, **kwargs) -> List[Tuple[float, str]]:
         pass
 
-    def _prepare_encoder_input(self, xyt, kb_tokens, traj_pad_mask):
-        xyt, kb_tokens, traj_pad_mask = (el.unsqueeze(0) for el in (xyt, kb_tokens, traj_pad_mask))
-        # xyt, kb_tokens, traj_pad_mask = turncate_traj_batch(xyt, kb_tokens, traj_pad_mask)
-        xyt, kb_tokens, traj_pad_mask = (el.to(self.device) for el in (xyt, kb_tokens, traj_pad_mask))
+    def _prepare_encoder_input(self, xyt, kb_tokens):
+        xyt, kb_tokens = (el.unsqueeze(0) for el in (xyt, kb_tokens))
+        xyt, kb_tokens = (el.to(self.device) for el in (xyt, kb_tokens))
         xyt, kb_tokens = (el.transpose(0, 1) for el in (xyt, kb_tokens))
-        return xyt, kb_tokens, traj_pad_mask
+        return xyt, kb_tokens
 
 
 class GreedyGenerator(WordGenerator):
@@ -32,17 +30,15 @@ class GreedyGenerator(WordGenerator):
         self.model.to(self.device)
         self.eos_token_id = tokenizer.char_to_idx['<eos>']
 
-    def _generate(self, xyt, kb_tokens,
-                 traj_pad_mask, max_steps_n=35) -> List[Tuple[float, str]]:
+    def _generate(self, xyt, kb_tokens, max_steps_n=35) -> List[Tuple[float, str]]:
         with torch.no_grad():
 
             tokens = [self.tokenizer.char_to_idx['<sos>']]
             log_prob = 0
             
-            xyt, kb_tokens, traj_pad_mask = self._prepare_encoder_input(
-                xyt, kb_tokens, traj_pad_mask)
+            xyt, kb_tokens = self._prepare_encoder_input(xyt, kb_tokens)
 
-            encoded = self.model.encode(xyt, kb_tokens, traj_pad_mask)
+            encoded = self.model.encode(xyt, kb_tokens, None)
 
             for _ in range(max_steps_n):
                 
@@ -50,7 +46,7 @@ class GreedyGenerator(WordGenerator):
                 # word_pad_mask = torch.zeros_like(dec_in_char_seq, dtype=torch.bool, device=self.device).transpose_(0,1)
                 word_pad_mask = None
 
-                next_tokens_logits = self.model.decode(encoded, dec_in_char_seq, traj_pad_mask, word_pad_mask).transpose_(0, 1)[0, -1]
+                next_tokens_logits = self.model.decode(encoded, dec_in_char_seq, None, word_pad_mask).transpose_(0, 1)[0, -1]
                 best_next_token = int(next_tokens_logits.argmax())  # batch_i = 0, decoder_out_onehot_vector_seq_i = -1 
                 log_prob += float(F.log_softmax(next_tokens_logits, dim=0)[best_next_token])
                 if best_next_token == self.eos_token_id:
@@ -60,13 +56,12 @@ class GreedyGenerator(WordGenerator):
         
             return [(log_prob, self.tokenizer.decode(tokens[1:]))]
 
-    def __call__(self, xyt, kb_tokens,
-                 traj_pad_mask, max_steps_n=35) -> List[Tuple[float, str]]:
-        return self._generate(xyt, kb_tokens, traj_pad_mask, max_steps_n)
+    def __call__(self, xyt, kb_tokens, max_steps_n=35) -> List[Tuple[float, str]]:
+        return self._generate(xyt, kb_tokens, max_steps_n)
     
     def generate_word_only(self, xyt, kb_tokens,
                  traj_pad_mask, max_steps_n=35) -> str:
-        return self._generate(xyt, kb_tokens, traj_pad_mask, max_steps_n)[0][1]
+        return self._generate(xyt, kb_tokens, max_steps_n)[0][1]
 
 
 
@@ -79,7 +74,7 @@ class BeamGenerator(WordGenerator):
         self.eos_token_id = tokenizer.char_to_idx['<eos>']
 
     def __call__(self,
-                 xyt, kb_tokens, traj_pad_mask,
+                 xyt, kb_tokens,
                  max_steps_n=40,  # max tokens in a seq
                  return_hypotheses_n=4,  # n best hypothesis to return
                  beamsize=6,  # n best solutions we store in intermidiate comuptations
@@ -100,10 +95,9 @@ class BeamGenerator(WordGenerator):
             final_hypotheses = []
 
 
-            xyt, kb_tokens, traj_pad_mask = self._prepare_encoder_input(
-                xyt, kb_tokens, traj_pad_mask)
+            xyt, kb_tokens = self._prepare_encoder_input(xyt, kb_tokens)
 
-            encoded = self.model.encode(xyt, kb_tokens, traj_pad_mask)
+            encoded = self.model.encode(xyt, kb_tokens, None)
 
             while len(partial_hypotheses) > 0:
                 cur_partial_score, cur_partial_hypothesis = heapq.heappop(partial_hypotheses)
@@ -114,7 +108,7 @@ class BeamGenerator(WordGenerator):
                 word_pad_mask = None
 
                 
-                next_tokens_logits = self.model.decode(encoded, dec_in_char_seq, traj_pad_mask, word_pad_mask).transpose_(0, 1)[0, -1]
+                next_tokens_logits = self.model.decode(encoded, dec_in_char_seq, None, word_pad_mask).transpose_(0, 1)[0, -1]
                 next_tokens_logproba = F.log_softmax(next_tokens_logits)
                 topk_continuations = next_tokens_logproba.topk(beamsize)
 

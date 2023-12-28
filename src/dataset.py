@@ -244,7 +244,7 @@ class NeuroSwipeDatasetv3(Dataset):
         """
         dx_dt = torch.zeros_like(X)
         # dx_dt[1:-1] = (X[2:] - X[:-2]) / (T[2:] - T[:-2])
-        dx_dt[1:len(X)-1] = (X[2:len(X)] - X[:len(X)-2]) / (T[2:len] - T[:len-2])
+        dx_dt[1:len(X)-1] = (X[2:len(X)] - X[:len(X)-2]) / (T[2:len(X)] - T[:len(X)-2])
 
         # Example:
         # x0 x1 x2 x3
