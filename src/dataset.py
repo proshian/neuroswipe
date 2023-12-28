@@ -1,5 +1,5 @@
 import json
-from typing import Optional, List, Tuple, Dict
+from typing import Optional, List, Tuple, Dict, Set
 import array
 
 import numpy as np
@@ -30,9 +30,9 @@ class NeuroSwipeDatasetv3(Dataset):
                  include_velocities: bool = True,
                  include_accelerations: bool = True,
                  include_grid_name: bool = False,
-                 has_target = True,
-                 has_one_grid_only = True,
-                 keyboard_selection_set = None,
+                 has_target: bool = True,
+                 has_one_grid_only: bool = True,
+                 keyboard_selection_set: Optional[Set[str]] = None,
                  total: Optional[int] = None):
         """
         Arguments:
@@ -68,7 +68,17 @@ class NeuroSwipeDatasetv3(Dataset):
                         - w (int): width of the key.
                         - h (int): height of the key.
         
-        keyboard_selection_set: Optional[set]
+        keyboard_selection_set: Optional[Set[str]]
+            Set of keyboard key labels allowed. When looking
+            for a key with the nearest to to trajectory point
+            center coordinates we only consider keys with labels
+            from this set.
+            If None, all keys are allowed.
+            Isn't used explicitly: only in is_allowed_label method.
+
+        
+        total: Optional[int]
+            Number of dataset elements. Is used only for progress bar.
 
         """
         if include_accelerations and not include_velocities:
@@ -84,16 +94,24 @@ class NeuroSwipeDatasetv3(Dataset):
         self.include_time = include_time
         self.has_target = has_target
         self.include_grid_name = include_grid_name
-        self.keyboard_selection_set = keyboard_selection_set
+        self._keyboard_selection_set = keyboard_selection_set
 
         self.word_tokenizer = word_tokenizer
 
         self._grid_name_to_grid = gridname_to_grid
 
-        self._nearest_kb_label_dict = self._get_nearest_kb_label_dict(gridname_to_grid)
+        self._nearest_kb_label_dict = (
+            self._create_nearest_kb_label_dict(gridname_to_grid))
 
         self.data_list = []
-        self._set_data(data_path, gridname_to_grid, kb_tokenizer, self.data_list, total = total)
+        self._set_data(data_path, gridname_to_grid,
+                       kb_tokenizer, self.data_list, total = total)
+
+
+    def is_allowed_label(self, label: str) -> bool:
+        if self._keyboard_selection_set is None:
+            return True
+        return label in self._keyboard_selection_set
 
 
     def get_nearest_kb_label(self, x, y, grid_name, gridname_to_grid):
@@ -139,7 +157,7 @@ class NeuroSwipeDatasetv3(Dataset):
         for key in grid['keys']:
             label = self._get_kb_label(key)
             
-            if self.keyboard_selection_set and label not in self.keyboard_selection_set:
+            if not self.is_allowed_label(label):
                 continue
 
             key_x, key_y = self._get_key_center(key['hitbox'])
@@ -150,7 +168,8 @@ class NeuroSwipeDatasetv3(Dataset):
         return nearest_kb_label
 
 
-    def _get_nearest_kb_label_dict(self, gridname_to_grid: dict) -> Dict[str, np.array]:
+    def _create_nearest_kb_label_dict(self, gridname_to_grid: dict
+                                   ) -> Dict[str, np.array]:
         """
         Creates a dict that maps grid_name to a map (np.array)
         from coordinates [x, y] to nearest key label.
@@ -169,7 +188,7 @@ class NeuroSwipeDatasetv3(Dataset):
         for key in grid['keys']:
             label = self._get_kb_label(key)
 
-            if self.keyboard_selection_set and label not in self.keyboard_selection_set:
+            if not self.is_allowed_label(label):
                 continue
 
             x_left = key['hitbox']['x']
