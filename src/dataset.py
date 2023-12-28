@@ -10,17 +10,21 @@ from tqdm import tqdm
 from tokenizers import CharLevelTokenizerv2, KeyboardTokenizerv1
 
 
-class NeuroSwipeDatasetv2(Dataset):
+class NeuroSwipeDatasetv3(Dataset):
     """
     Dataset class for NeuroSwipe dataset.
-    The dataset file weights over 3 GB and contains over 6 million swipe gestures.
+
+    Given a NeuroSwipeDatasetv3 object nsd, nsd[i] is a tuple:
+    (xyt, kb_tokens, decoder_in_char_seq, traj_pad_mask, word_mask), decoder_out_char_seq
+    
+    ! Warning: refactoring planned so that the output is a dictionary.
+
     """
 
     def __init__(self,
                  data_path: str,
                  gridname_to_grid: dict,
                  kb_tokenizer: KeyboardTokenizerv1,
-                 max_traj_len: int,
                  word_tokenizer: CharLevelTokenizerv2,  # should contain max word len
                  include_time: bool = False,
                  include_velocities: bool = True,
@@ -33,9 +37,39 @@ class NeuroSwipeDatasetv2(Dataset):
         """
         Arguments:
         -----------
-        data_path (string): Path to the NeuroSwipe dataset in JSON format.
-            A custom version of the dataset is used:
-            "grid" property is replaced with "grid_name" property.
+        data_path: str
+            Path to the NeuroSwipe dataset in JSON format.
+            A custom version of the dataset is used: "grid" property
+            is replaced with "grid_name". The grid itself is stored in
+            a separate gridname_to_grid dictionary.
+            Dataset is a list of JSON lines. Each line is a dictionary
+            with the following properties:
+            - word (str): word that was typed. May be absent if has_target is False.
+            - curve (dict): dictionary that contains the following properties:
+                - x (List[int]): x coordinates of the swipe trajectory.
+                - y (List[int]): y coordinates of the swipe trajectory.
+                - t (List[int]): time in milliseconds from the beginning of the swipe.
+                - grid_name (str): name of the keyboard grid.
+
+        gridname_to_grid: dict
+            Dictionary that maps grid_name to grid.
+            Grid is a dictionary that contains the following properties:
+                - width (int): width of the keyboard in pixels.
+                - height (int): height of the keyboard in pixels.
+                - keys (List[dict]): list of keys. Each key is a dictionary
+                    that contains the following properties:
+                    - label (str): label of the key. May be absent if the key
+                        is a special key (e.g. backspace).
+                    - action (str): action of the key. May be absent if the key
+                        is a character key (e.g. 'a', 'б', 'в').
+                    - hitbox (dict): dictionary that contains the following properties:
+                        - x (int): x coordinate of the top left corner of the key.
+                        - y (int): y coordinate of the top left corner of the key.
+                        - w (int): width of the key.
+                        - h (int): height of the key.
+        
+        keyboard_selection_set: Optional[set]
+
         """
         if include_accelerations and not include_velocities:
             raise ValueError("Accelerations are supposed \
@@ -45,7 +79,6 @@ class NeuroSwipeDatasetv2(Dataset):
             raise ValueError(f"has_one_grid_only is True \
                              but len(gridname_to_grid) != 1")
 
-        self.max_traj_len = max_traj_len
         self.include_velocities = include_velocities
         self.include_accelerations = include_accelerations
         self.include_time = include_time
@@ -65,13 +98,13 @@ class NeuroSwipeDatasetv2(Dataset):
 
     def get_nearest_kb_label(self, x, y, grid_name, gridname_to_grid):
         """
-        Given coords on a keyboard (x, y) and its grid_name returns the nearest keyboard keys
+        Given coords on a keyboard (x, y) and its grid_name returns the nearest keyboard key
 
         By default it uses an array assosiated with grid_name
         that stores the nearest key label for every possible coord pair.
 
-        However sometimes the coords are outside of the keyboard boarders.
-        In this case we find the nearest key in a loop.
+        If coords are outside of the keyboard boarders finds
+        the nearest key by iterating over all keys.
         """        
         grid = gridname_to_grid[grid_name]
         if x < 0 or x >= grid['width'] or y < 0 or y >= grid['height']:
@@ -79,7 +112,6 @@ class NeuroSwipeDatasetv2(Dataset):
         else:
             return self._nearest_kb_label_dict[grid_name][x, y]
     
-
 
     def _get_key_center(self, hitbox: Dict[str, int]) -> Tuple[int, int]:
         x = hitbox['x'] + hitbox['w'] / 2
@@ -91,14 +123,15 @@ class NeuroSwipeDatasetv2(Dataset):
             return key['label']
         if 'action' in key:
             return key['action']
-        raise ValueError("Key has no label or action")
+        raise ValueError("Key has no label or action property")
 
 
     def _get_kb_label_without_map(self, x, y, grid: dict) -> str:
         """
         Returns label of the nearest key on the keyboard without using a map.
          
-        Iterates over all keys and calculates the distance to (x, y) to find the nearest one.
+        Iterates over all keys and calculates the
+        distance to (x, y) to find the nearest one.
         """
         nearest_kb_label = None
         min_dist = float("inf")
@@ -117,9 +150,10 @@ class NeuroSwipeDatasetv2(Dataset):
         return nearest_kb_label
 
 
-    def _get_nearest_kb_label_dict(self, gridname_to_grid: dict) -> Dict[str, np.chararray]:
+    def _get_nearest_kb_label_dict(self, gridname_to_grid: dict) -> Dict[str, np.array]:
         """
-        Creates a dict that maps grid_name to a map (np.chararray) from coordinate to nearest key label.
+        Creates a dict that maps grid_name to a map (np.array)
+        from coordinates [x, y] to nearest key label.
         """
         nearest_kb_label_dict = {}
         for grid_name, grid in gridname_to_grid.items():
@@ -167,8 +201,7 @@ class NeuroSwipeDatasetv2(Dataset):
 
     def _get_dx_dt(self,
                    X: torch.tensor,
-                   T: torch.tensor,
-                   len: int) -> List[float]:
+                   T: torch.tensor) -> List[float]:
         """
         Calculates dx/dt for a list of x coordinates and a list of t coordinates.
 
@@ -183,7 +216,7 @@ class NeuroSwipeDatasetv2(Dataset):
         """
         dx_dt = torch.zeros_like(X)
         # dx_dt[1:-1] = (X[2:] - X[:-2]) / (T[2:] - T[:-2])
-        dx_dt[1:len-1] = (X[2:len] - X[:len-2]) / (T[2:len] - T[:len-2])
+        dx_dt[1:len(X)-1] = (X[2:len(X)] - X[:len(X)-2]) / (T[2:len] - T[:len-2])
 
         # Example:
         # x0 x1 x2 x3
@@ -218,7 +251,6 @@ class NeuroSwipeDatasetv2(Dataset):
 
         kb_labels = [self.get_nearest_kb_label(x, y, grid_name, gridname_to_grid) for x, y in zip(X, Y)]
         kb_tokens = [kb_tokenizer.get_token(label) for label in kb_labels]
-        kb_tokens += [kb_tokenizer.get_token('<pad>')] * (self.max_traj_len - len(kb_labels))
         kb_tokens = array.array('h', kb_tokens)
 
         if not self.has_target:
@@ -238,13 +270,9 @@ class NeuroSwipeDatasetv2(Dataset):
         else:
             X_list, Y_list, T_list, kb_tokens, grid_name = self.data_list[idx]
 
-        X = torch.zeros(self.max_traj_len, dtype=torch.float32)
-        Y = torch.zeros(self.max_traj_len, dtype=torch.float32)
-        T = torch.zeros(self.max_traj_len, dtype=torch.float32)
-
-        X[:len(X_list)] = torch.tensor(X_list, dtype=torch.float32)
-        Y[:len(Y_list)] = torch.tensor(Y_list, dtype=torch.float32)
-        T[:len(T_list)] = torch.tensor(T_list, dtype=torch.float32)
+        X = torch.tensor(X_list, dtype=torch.float32)
+        Y = torch.tensor(Y_list, dtype=torch.float32)
+        T = torch.tensor(T_list, dtype=torch.float32)
 
         xyt = torch.cat(
             (
@@ -288,10 +316,6 @@ class NeuroSwipeDatasetv2(Dataset):
                 ],
                 axis = 1
             )
-
-        traj_pad_mask = torch.ones(self.max_traj_len, dtype=torch.bool)
-        traj_pad_mask[:len(X_list)] = False
-
 
         kb_tokens = torch.tensor(kb_tokens, dtype=torch.int64)
 
