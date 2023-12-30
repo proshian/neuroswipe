@@ -78,7 +78,7 @@ class BeamGenerator(WordGenerator):
                  return_hypotheses_n=4,  # n best hypothesis to return
                  beamsize=6,  # n best solutions we store in intermidiate comuptations
                  normalization_factor=0.5,
-                 verbose=True
+                 verbose=False
                  ) -> List[Tuple[float, str]]:
         with torch.no_grad():
             
