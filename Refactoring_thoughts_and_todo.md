@@ -29,6 +29,17 @@
 * validation_metric
 
 
+Кажется хорошей идеей сделтаь клаас Predictor, который будет иметь методы
+* predict(dataset)
+* save_predictions()
+* __init__(word_generator)
+
+
+Возникает вопрос, не должен ли это быть тот же класс, что и WordGenerator?
+WordGenerator единственная разница - word_generator предсказывает для
+одной кривой, а Predictor предсказывает для всего датасета.
+
+
 # Aggregation
 Скрипт агрегации получает на вход
 * состояние агрегатора
