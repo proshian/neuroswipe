@@ -9,44 +9,40 @@
 
 
 
-# Итак, у на входе у нас есть:
+# На входе скрипта предсказания:
 # * модели, от которых мы хотим получить предсказания. Модели имеют:
 #   * название раскладки
 #   * название архитктуры
 #   * путь к весам
-# * датасет в виде JSON, для которого хотим получить предсказания
+# * Алгоритм декодирования слова и его аргументы
+# * датасет в виде JSON, для которого хотим получить предсказания (точнее,
+#       пердсказания хотим получить для поднабора этого датасета,
+#       с клавитурами конкретной раскладки)
 #
 #
-# Гипотетически могут быть модели, умеющие работать сразу с множеством раскладок.
-#
-# Мы хотим получить предсказания пригодные для дальнейшей аггрегации,
-# а также для подсчета метрик в случае наличия refs.
-#
-#
-# Сейчас я вижу три варианта представдения предсказаний: 
-# 1. список предсказаний длиной с исходный датасет. Для строк с расскаладками,
-#       с которыми модель не умеет работать она предсказывает пустой список.
-# 2. список предсказаний длиной с число элементов данной раскладки.
-# 3. словарь длиной с число элементов данной раскладки 
-#       `индекс в исходном датасете` -> список предсказаний для данной кривой.
-#       Сюда же отнесу вариант, где предсказания представлены списком, каждый
-#       элемент которого - кортеж (номер_строки_в_исходном_датасете, список_предсказаний).
-# Также может быть добавлена метаинформация:
-# * название архтиектуры
-# * путь к весам
+# Гипотетически могут быть модели, умеющие работать сразу с
+# множеством раскладок.  Предсказание для таких моделей делается
+# точно также, отдельно для каждой раскладки.
+
+
+# Результат модуля предсказаний будет подан на вход скрипту аггригации,
+# а также обучения аггрегации.
+# Вход аггрегации в рамках одной раскладки должен быть следующим:
+# * список с элементами (pred_id, pred)
+# * состояние аггрегатора
 # * название раскладки
-# * список индексов
-#
-#
-# Вариант, когда каждая модель выдает все 10_000 строк кажется
-# не совсем удобным: Когда мы подбираем наилучшие гиперпараметры
-# для аггрегации, удобно оценивать гиперпараметры по результатам
-# метрик именно на данной раскладке.
-# 
-#
+# В качестве pred_id может выступать f"{weights_path}__{generator_type}__{generator_kwargs}".
+# Лучше это будет буквально id, сохраненный где-то в отдельном файле / базе данных.
+
+
 # Если предсказания были получены для валидационного датасета, хочется уметь
 # Считать метрики. 
 
+
+# Есть желание получить абстракцию. В частности абстракцию сохранения данных.
+# Создать класс Predictor, который при инициализации создает поле с word_generator, 
+# model_id, ...
+# Имеет метод predict, метод save_predictions
 
 
 
@@ -123,9 +119,11 @@ def get_config(config_path: str) -> dict:
 
 def get_gridname_to_dataset(config,
                              kb_tokenizer,
-                             word_char_tokenizer,
-                             max_traj_len) -> Dict[str, Dataset]:
-    
+                             word_char_tokenizer) -> Dict[str, Dataset]:
+
+    kb_tokenizer = KeyboardTokenizerv1()
+    keyboard_selection_set = set(kb_tokenizer.i2t)
+                                 
     grid_name_to_grid = get_grid_name_to_grid(
         config['grid_name_to_grid__path'])
     
@@ -153,6 +151,12 @@ def get_gridname_to_dataset(config,
     return gridname_to_dataset
 
 
+def check_all_weights_exist(model_params) -> None:
+    for _, _, w_fname in model_params:
+        if not os.path.exists(os.path.join(model_params, w_fname)):
+            raise ValueError(f"Path {w_fname} does not exist.")
+
+
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser()
     p.add_argument('--num-workers', type=int, default=1)
@@ -162,23 +166,16 @@ def parse_args() -> argparse.Namespace:
 
 
 if __name__ == '__main__':
-    MAX_TRAJ_LEN = 299  # ! Лучше, чтобы вычислялся по датасету
-
     args = parse_args()
     config = get_config(args.config)
 
-    kb_tokenizer = KeyboardTokenizerv1()
+    check_all_weights_exist(config['model_params'])
+
     word_char_tokenizer = CharLevelTokenizerv2(
         config['voc_path'])
-    keyboard_selection_set = set(kb_tokenizer.i2t)
 
     gridname_to_dataset = get_gridname_to_dataset(
-        config, kb_tokenizer, word_char_tokenizer, MAX_TRAJ_LEN)
-    
-    for _, _, w_fname in config['model_params']:
-        if not os.path.exists(os.path.join(config['models_root'], w_fname)):
-            raise ValueError(f"Path {w_fname} does not exist.")
-
+        config, word_char_tokenizer)
 
     for grid_name, model_getter_name, weights_f_name in config['model_params']:
 
