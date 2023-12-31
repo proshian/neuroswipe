@@ -88,32 +88,37 @@ class Predictor:
 
     Predictor is similar to WordGenerator, but WordGenerator is
     just an abstract decoding algorithm (that hides the model),
-    while Predictor instance is associated with model AND GRID 
-    so that it can be reffered to by an aggregator as a certain
-    source of predictions.
-    
+    while a Predictor does not hide anything.  Its instance is
+    associated with model AND GRID so that it can be 
+    reffered to by an aggregator as a certain source of predictions.
     """
 
     def __init__(self,
-                 model,
+                 model_architecture_name,
+                 model_weights_path,
                  grid_name,
                  word_generator_type,
                  word_char_tokenizer,
                  out_path,
                  preds_csv_path,
-                 dataset_type,
+                 dataset_split,
                  generator_kwargs=None,
                  ) -> None:
+        DEVICE = torch.device('cpu')
+
         self._word_generator_type = word_generator_type
         word_generator_ctor = GENERATOR_CTORS_DICT[word_generator_type]
-        self.model = model
+        self.model_architecture_name = model_architecture_name
+        self.model_weights_path = model_weights_path
+        model_getter = MODEL_GETTERS_DICT[model_architecture_name]
+        model = model_getter(DEVICE, model_weights_path)
         self.grid_name = grid_name
         self.word_char_tokenizer = word_char_tokenizer
         self.word_generator = word_generator_ctor(model, word_char_tokenizer)
         self.generator_kwargs = generator_kwargs
         self.out_path = out_path
         self.preds_csv_path = preds_csv_path
-        self.dataset_type = dataset_type
+        self.dataset_split = dataset_split
 
     def _predict_example(self,
                          data: Tuple[int, Tuple[Tensor, Tensor]]
@@ -123,8 +128,7 @@ class Predictor:
 
         Arguments:
         ----------
-        data: Tuple[int, Tuple[Tensor, Tensor]]
-            Tuple of (i, gen_in).
+        data: Tuple[i, gen_in]
             i: int
                 Index of the example in the dataset.
             gen_in: Tuple[Tensor, Tensor]
@@ -134,8 +138,9 @@ class Predictor:
         --------
         i: int
             Index of the example in the dataset.
-        pred: List[Tuple[float, str]]
-            List of tuples (log_probability, char_sequence).
+        pred: List[Tuple[log_probability, char_sequence]]
+            log_probability: float
+            char_sequence: str
         """
         i, gen_in = data
         pred = self.word_generator(*gen_in, **self.generator_kwargs)
@@ -239,7 +244,7 @@ class Predictor:
 
         predictor_id = self.get_id()
         df = pd.read_csv(self.preds_csv_path)
-        df.loc[df['predictor_id'] == predictor_id, f'{self.dataset_type}_preds_path'] = self.out_path
+        df.loc[df['predictor_id'] == predictor_id, f'{self.dataset_split}_preds_path'] = self.out_path
         df.to_csv(self.preds_csv_path, index=False)
 
         
@@ -368,11 +373,17 @@ def get_grid_name_to_grid(grid_name_to_grid__path: str) -> dict:
 def get_config(config_path: str) -> dict:
     with open(config_path, 'r') as f:
         full_config = json.load(f)
-    return full_config['prediction_config']
+    prediction_config = dict(full_config['prediction_config'])
+
+    data_split = prediction_config['sata_split']
+    data_path = full_config['data_split__to__path'][data_split]
+    prediction_config['data_path'] = data_path
+
+    return prediction_config
 
 def get_gridname_to_dataset(config,
-                             kb_tokenizer,
-                             word_char_tokenizer) -> Dict[str, Dataset]:
+                            kb_tokenizer,
+                            word_char_tokenizer) -> Dict[str, Dataset]:
 
     kb_tokenizer = KeyboardTokenizerv1()
     keyboard_selection_set = set(kb_tokenizer.i2t)
@@ -458,4 +469,38 @@ def old_main():
 
 
 if __name__ == '__main__':
-    old_main()
+    args = parse_args()
+    config = get_config(args.config)
+
+    check_all_weights_exist(config['model_params'])
+
+    word_char_tokenizer = CharLevelTokenizerv2(
+        config['voc_path'])
+
+    gridname_to_dataset = get_gridname_to_dataset(
+        config, word_char_tokenizer)
+
+    for grid_name, model_getter_name, weights_f_name in config['model_params']:
+
+        out_path = os.path.join(config['out_path'],
+                                f"{weights_f_name.replace('/', '__')}.pkl")
+        
+        if os.path.exists(out_path):
+            print(f"Path {out_path} exists. Skipping.")
+            continue
+
+        predictor = Predictor(
+            model_getter_name,
+            os.path.join(config['models_root'], weights_f_name),
+            grid_name,
+            config['generator'],
+            word_char_tokenizer,
+            out_path,
+            preds_csv_path=None,
+            dataset_split=config['dataset_split'],
+            generator_kwargs=config['generator_kwargs']
+        )
+
+        predictor.predict(gridname_to_dataset[grid_name], args.num_workers)
+
+        predictor.save_predictions()
