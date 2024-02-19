@@ -114,7 +114,7 @@ class Predictor:
         model = model_getter(DEVICE, model_weights_path)
         self.grid_name = grid_name
         self.word_char_tokenizer = word_char_tokenizer
-        self.word_generator = word_generator_ctor(model, word_char_tokenizer)
+        self.word_generator = word_generator_ctor(model, word_char_tokenizer, DEVICE)
         self.generator_kwargs = generator_kwargs
         self.out_path = out_path
         self.preds_csv_path = preds_csv_path
@@ -375,14 +375,14 @@ def get_config(config_path: str) -> dict:
         full_config = json.load(f)
     prediction_config = dict(full_config['prediction_config'])
 
-    data_split = prediction_config['sata_split']
-    data_path = full_config['data_split__to__path'][data_split]
+    data_split = prediction_config['data_split']
+    data_path = prediction_config['data_split__to__path'][data_split]
     prediction_config['data_path'] = data_path
 
     return prediction_config
 
+
 def get_gridname_to_dataset(config,
-                            kb_tokenizer,
                             word_char_tokenizer) -> Dict[str, Dataset]:
 
     kb_tokenizer = KeyboardTokenizerv1()
@@ -415,12 +415,10 @@ def get_gridname_to_dataset(config,
     return gridname_to_dataset
 
 
-def check_all_weights_exist(model_params) -> None:
+def check_all_weights_exist(model_params, models_root) -> None:
     for _, _, w_fname in model_params:
-        if not os.path.exists(os.path.join(model_params, w_fname)):
+        if not os.path.exists(os.path.join(models_root, w_fname)):
             raise ValueError(f"Path {w_fname} does not exist.")
-
-
         
 
 
@@ -472,8 +470,11 @@ if __name__ == '__main__':
     args = parse_args()
     config = get_config(args.config)
 
-    check_all_weights_exist(config['model_params'])
+    check_all_weights_exist(config['model_params'], config['models_root'])
 
+    # ! Мне кажется, с целью абстракции predictor'а есть смысл
+    # создавать токенизатор в нем. Ну и в get_gridname_to_dataset
+    # тоже перекочует word_char_tokenizer
     word_char_tokenizer = CharLevelTokenizerv2(
         config['voc_path'])
 
@@ -497,7 +498,7 @@ if __name__ == '__main__':
             word_char_tokenizer,
             out_path,
             preds_csv_path=None,
-            dataset_split=config['dataset_split'],
+            dataset_split=config['data_split'],
             generator_kwargs=config['generator_kwargs']
         )
 
