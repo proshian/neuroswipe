@@ -41,7 +41,7 @@ import os
 import json
 import pickle
 import argparse
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 
 
 import torch
@@ -184,8 +184,9 @@ class Predictor:
         return preds_with_meta
 
 
-# def create_new_df():
-#     pass
+# def create_new_df() -> pd.DataFrame:
+#     df = pd.DataFrame(columns = [
+#             'predictor_id', 'model_name', 'model_weights', 'generator_name', 'grid_name', 'dataset_split'])
 
 # def load_df(preds_csv_path: str) -> pd.DataFrame:
 #     if not os.path.exists(preds_csv_path):
@@ -198,9 +199,9 @@ def save_predictions(preds_wtih_meta:  Prediction, out_path: str, preds_csv_path
         pickle.dump(
             preds_wtih_meta.prediction, f, protocol=pickle.HIGHEST_PROTOCOL)
 
-    # df = load_df(preds_csv_path)
-    # update_databese(df)
-    # df.to_csv(preds_csv_path, index=False)
+#     # df = load_df(preds_csv_path)
+#     # update_databese(df)
+#     # df.to_csv(preds_csv_path, index=False)
 
    
 

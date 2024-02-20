@@ -1,4 +1,14 @@
 # Цель данной ветки
+
+0) Убедился, что aggregate работает корректно (для старых предсказаний выдает тот же файл)
+0.5) Начал разрабатывать создание и заполнение таблицы в конце playground.ipynb
+
+1) Добавить сохранение табоицы в predict.py -> save_results 
+2) Убедиться, что предсказание + аггрегация выдают тот же результат, что и submission
+3) Смерджить в ветку remake_after_finals, удалить ветку preditor_class
+
+* может быть, нужен pandas MultiIndex
+
 * Наладить связь между predict.py и aggregate_predictions.py
       * predict.py должен возвращать таблицу с predictior_id, Generator_type, Generator_call_kwargs_json, Model_architecture_name, Model_weights_path, Grid_name, test_preds_path, val_preds_path, validation_metric
 
