@@ -96,7 +96,6 @@ class Predictor:
                  model_architecture_name,
                  model_weights_path,
                  word_generator_type,
-                 word_char_tokenizer,
                  generator_kwargs=None,
                  ) -> None:
         DEVICE = torch.device('cpu')
@@ -107,8 +106,9 @@ class Predictor:
         self.model_weights_path = model_weights_path
         model_getter = MODEL_GETTERS_DICT[model_architecture_name]
         model = model_getter(DEVICE, model_weights_path)
-        self.word_char_tokenizer = word_char_tokenizer
-        self.word_generator = word_generator_ctor(model, word_char_tokenizer, DEVICE)
+        self.word_char_tokenizer = CharLevelTokenizerv2(config['voc_path'])
+        self.word_generator = word_generator_ctor(
+            model, self.word_char_tokenizer, DEVICE)
         self.generator_kwargs = generator_kwargs
 
     def _predict_example(self,
@@ -231,8 +231,8 @@ def get_config(config_path: str) -> dict:
     return prediction_config
 
 
-def get_gridname_to_dataset(config,
-                            word_char_tokenizer) -> Dict[str, Dataset]:
+def get_gridname_to_dataset(config) -> Dict[str, Dataset]:
+    word_char_tokenizer = CharLevelTokenizerv2(config['voc_path'])
 
     kb_tokenizer = KeyboardTokenizerv1()
     keyboard_selection_set = set(kb_tokenizer.i2t)
@@ -286,14 +286,7 @@ if __name__ == '__main__':
 
     check_all_weights_exist(config['model_params'], config['models_root'])
 
-    # ! Мне кажется, с целью абстракции predictor'а есть смысл
-    # создавать токенизатор в нем. Ну и в get_gridname_to_dataset
-    # тоже перекочует word_char_tokenizer
-    word_char_tokenizer = CharLevelTokenizerv2(
-        config['voc_path'])
-
-    gridname_to_dataset = get_gridname_to_dataset(
-        config, word_char_tokenizer)
+    gridname_to_dataset = get_gridname_to_dataset(config)
 
     for grid_name, model_getter_name, weights_f_name in config['model_params']:
 
@@ -308,7 +301,6 @@ if __name__ == '__main__':
             model_getter_name,
             os.path.join(config['models_root'], weights_f_name),
             config['generator'],
-            word_char_tokenizer,
             generator_kwargs=config['generator_kwargs']
         )
 
