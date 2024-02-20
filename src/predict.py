@@ -41,7 +41,8 @@ import os
 import json
 import pickle
 import argparse
-from functools import partial, partialmethod
+from dataclasses import dataclass
+
 
 import torch
 from torch import Tensor
@@ -54,7 +55,7 @@ from model import get_m1_model, get_m1_bigger_model, get_m1_smaller_model
 from tokenizers import CharLevelTokenizerv2
 from dataset import NeuroSwipeDatasetv3, NeuroSwipeGridSubset
 from tokenizers import KeyboardTokenizerv1
-from word_generators import WordGenerator, BeamGenerator, GreedyGenerator
+from word_generators import BeamGenerator, GreedyGenerator
 
 
 MODEL_GETTERS_DICT = {
@@ -67,6 +68,17 @@ GENERATOR_CTORS_DICT = {
     "greedy": GreedyGenerator,
     "beam": BeamGenerator
 }
+
+
+@dataclass
+class Prediction:
+    prediction: Tuple[int, List[Tuple[float, str]]]
+    model_name: str
+    model_weights: str
+    generator_name: str
+    generator_kwargs: dict
+    grid_name: str
+    dataset_split: str
 
 
 class Predictor:
@@ -149,8 +161,9 @@ class Predictor:
 
         return preds
 
-    def predict(self, dataset: NeuroSwipeDatasetv3, add_metadata: bool,
-                num_workers: int=3) -> List[List[Tuple[float, str]]]:
+    def predict(self, dataset: NeuroSwipeDatasetv3, 
+                grid_name: str, dataset_split: str,
+                num_workers: int=3) -> Prediction:
         """
         Creates predictions given a word generator
         
@@ -163,25 +176,31 @@ class Predictor:
         """
         preds = self._predict_raw_mp(dataset, num_workers)
 
-        if add_metadata:
-            predictor_metadata = {
-            'model_architecture': self.model_architecture_name,
-            'model_weights': self.model_weights_path,
-            'generator': self.word_generator_type,
-            'generator_kwargs': self.generator_kwargs
-            }
-            preds = {'preds': preds, 'predictor_metadata': predictor_metadata}
+        preds_with_meta = Prediction(
+            preds, self.model_architecture_name,
+            self.model_weights_path, self.word_generator_type,
+            self.generator_kwargs, grid_name, dataset_split)
         
-        return preds
+        return preds_with_meta
 
 
-def save_predictions(preds, predictor, out_path, grid_name, dataset_split, preds_csv_path):
+# def create_new_df():
+#     pass
+
+# def load_df(preds_csv_path: str) -> pd.DataFrame:
+#     if not os.path.exists(preds_csv_path):
+#         print(f"Warning: {preds_csv_path} does not exist. Creating a new df...")
+#         create_new_df()
+    
+
+def save_predictions(preds_wtih_meta:  Prediction, out_path: str, preds_csv_path: str):
     with open(out_path, 'wb') as f:
-        pickle.dump(preds, f, protocol=pickle.HIGHEST_PROTOCOL)
+        pickle.dump(
+            preds_wtih_meta.prediction, f, protocol=pickle.HIGHEST_PROTOCOL)
 
-    # df = pd.read_csv(self.preds_csv_path)
-    # df.loc[df['predictor_id'] == predictor_id, f'{self.dataset_split}_preds_path'] = self.out_path
-    # df.to_csv(self.preds_csv_path, index=False)
+    # df = load_df(preds_csv_path)
+    # update_databese(df)
+    # df.to_csv(preds_csv_path, index=False)
 
    
 
@@ -294,7 +313,7 @@ if __name__ == '__main__':
         )
 
         preds_and_meta = predictor.predict(
-            gridname_to_dataset[grid_name], args.num_workers, add_metadata = True)
+            gridname_to_dataset[grid_name],
+            grid_name, config['data_split'], args.num_workers)
 
-        save_predictions(preds_and_meta, out_path, grid_name,
-                         config['data_split'], preds_csv_path = config["csv_path"])
+        save_predictions(preds_and_meta, out_path, config["csv_path"])
