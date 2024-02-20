@@ -68,9 +68,6 @@ GENERATOR_CTORS_DICT = {
     "beam": BeamGenerator
 }
 
-I_GenIn_GName_GNameToWordGen = (
-    Tuple[int, Tuple[Tensor, Tensor], str, Dict[str, WordGenerator]])
-
 
 class Predictor:
     """
@@ -186,113 +183,12 @@ def save_predictions(preds, predictor, out_path, grid_name, dataset_split, preds
     # df.loc[df['predictor_id'] == predictor_id, f'{self.dataset_split}_preds_path'] = self.out_path
     # df.to_csv(self.preds_csv_path, index=False)
 
-        
-
-def predict_example(data: I_GenIn_GName_GNameToWordGen,
-                    generator_kwargs: dict = None
-                    ) -> Tuple[int, List[Tuple[float, str]]]:
-    """
-    Predicts a single example.
-
-    Arguments:
-    ----------
-    data: I_GenIn_GName_GNameToWordGen
-        Tuple of (i, gen_in, grid_name, grid_name_to_word_generator).
-        i: int
-            Index of the example in the dataset.
-        gen_in: Tuple[Tensor, Tensor]
-            Tuple of (traj_feats, kb_tokens).
-        grid_name: str
-            Name of the grid.
-        grid_name_to_word_generator: Dict[str, WordGenerator]
-            Dict mapping each grid name to a corresponing word generator object.
-            A word generator has a model as a property and returns a list of tuples
-            (log probability, char_sequence).
-    generator_kwargs: Optional[dict]
-        Dictionalry of kwargs of word_generator __call__ method.
-        Currently used in BeamGenerator only, GreedyGenerator
-        takes an empty dict.
-
-    Returns:
-    --------
-    i: int
-        Index of the example in the dataset.
-    pred: List[Tuple[float, str]]
-        List of tuples (log_probability, char_sequence).
-    """
-    if generator_kwargs is None:
-        generator_kwargs = {}
-    i, gen_in, grid_name, grid_name_to_word_generator = data
-    pred = grid_name_to_word_generator[grid_name](*gen_in, **generator_kwargs)
-    pred = pred
-    return i, pred
-    
-
-def predict_raw_mp(dataset: NeuroSwipeDatasetv3,
-                   grid_name_to_greedy_generator: dict,
-                   num_workers: int=3,
-                   generator_kwargs: Optional[dict] = None,
-                   ) ->  List[List[Tuple[float, str]]]:
-    """
-    Creates predictions given a word generator
-    
-    Arguments:
-    ----------
-    dataset: NeuroSwipeDatasetv3
-        Output[i] is a list of predictions for dataset[i] curve.
-    grid_name_to_greedy_generator: dict
-        Dict mapping each grid name to a corresponing word generator object.
-        A word generator has a model as a property and returns a list of tuples
-        (log_probability, char_sequence).
-    num_workers: int
-        Number of processes.
-    generator_kwargs: Optional[dict]
-        Dictionalry of kwargs of word_generator __init__ method.
-        Currently used in BeamGenerator only.
-    """
-    if generator_kwargs is None:
-        generator_kwargs = {}
-
-    preds = [None] * len(dataset)
-
-    data = [(i, (traj_feats, kb_tokens), grid_name, grid_name_to_greedy_generator)
-            for i, ((traj_feats, kb_tokens, _, _), _, grid_name) in enumerate(dataset)]
-    
-    process_example_ = partial(predict_example, generator_kwargs=generator_kwargs)
-
-    with ProcessPoolExecutor(num_workers) as executor:
-        for i, pred in tqdm(executor.map(process_example_, data), total=len(dataset)):
-            preds[i] = pred
-
-    return preds
-
-
+   
 
 def get_grid(grid_name: str, grids_path: str) -> dict:
     with open(grids_path, "r", encoding="utf-8") as f:
         return json.load(f)[grid_name]
 
-
-def weights_to_raw_predictions(grid_name: str,
-                               model_getter: Callable,
-                               weights_path: str,
-                               word_char_tokenizer: CharLevelTokenizerv2,
-                               dataset: Dataset,
-                               generator_ctor,
-                               n_workers: int = 4,
-                               generator_kwargs = None
-                               ):
-    DEVICE = torch.device('cpu')  # Avoid multiprocessing with GPU
-    if generator_kwargs is None:
-        generator_kwargs = {}
-
-    model = model_getter(DEVICE, weights_path)
-    grid_name_to_greedy_generator = {grid_name: generator_ctor(model, word_char_tokenizer, DEVICE)}
-    raw_predictions = predict_raw_mp(dataset,
-                                    grid_name_to_greedy_generator,
-                                    num_workers=n_workers,
-                                    generator_kwargs=generator_kwargs)
-    return raw_predictions
 
 
 def get_grid_name_to_grid(grid_name_to_grid__path: str) -> dict:
@@ -364,41 +260,6 @@ def parse_args() -> argparse.Namespace:
     return args 
 
 
-def old_main():
-    args = parse_args()
-    config = get_config(args.config)
-
-    check_all_weights_exist(config['model_params'])
-
-    word_char_tokenizer = CharLevelTokenizerv2(
-        config['voc_path'])
-
-    gridname_to_dataset = get_gridname_to_dataset(
-        config, word_char_tokenizer)
-
-    for grid_name, model_getter_name, weights_f_name in config['model_params']:
-
-        out_path = os.path.join(config['out_path'],
-                                f"{weights_f_name.replace('/', '__')}.pkl")
-        
-        if os.path.exists(out_path):
-            print(f"Path {out_path} exists. Skipping.")
-            continue
-
-        predictions = weights_to_raw_predictions(
-            grid_name = grid_name,
-            model_getter=MODEL_GETTERS_DICT[model_getter_name],
-            weights_path = os.path.join(config['models_root'], weights_f_name),
-            word_char_tokenizer=word_char_tokenizer,
-            dataset=gridname_to_dataset[grid_name],
-            generator_ctor=GENERATOR_CTORS_DICT[config['generator']],
-            n_workers=args.num_workers,
-            generator_kwargs=config['generator_kwargs']
-        )
-
-        with open(out_path, 'wb') as f:
-            pickle.dump(predictions, f, protocol=pickle.HIGHEST_PROTOCOL)
-
 
 if __name__ == '__main__':
     args = parse_args()
@@ -436,4 +297,4 @@ if __name__ == '__main__':
             gridname_to_dataset[grid_name], args.num_workers, add_metadata = True)
 
         save_predictions(preds_and_meta, out_path, grid_name,
-                         config['data_split'], preds_csv_path = None)
+                         config['data_split'], preds_csv_path = config["csv_path"])

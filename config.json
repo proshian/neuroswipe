@@ -19,6 +19,7 @@
             ["extra", "m1_bigger", "m1_bigger/m1_bigger_v2__2023_11_12__02_27_14__0.13413_extra_l2_0_ls0_switch_1.pt"]
         ],
         "out_path": "./data/saved_beamsearch_results",
+        "csv_path": "./data/saved_beamsearch_results/results.csv",
         "data_split": "test",
         "grid_name_to_grid__path": "./data/data_separated_grid/gridname_to_grid.json",
         "models_root": "./data/trained_models_for_final_submit",
