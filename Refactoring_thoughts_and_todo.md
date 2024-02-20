@@ -3,7 +3,8 @@
 0) Убедился, что aggregate работает корректно (для старых предсказаний выдает тот же файл)
 0.5) Начал разрабатывать создание и заполнение таблицы в конце playground.ipynb
 
-1) Добавить сохранение табоицы в predict.py -> save_results 
+1) Добавить сохранение таблицы в predict.py -> save_results
+      * главной проблемой является, что word_generator_kwargs, переданный скрипту может быть неисчерпывающим (если у алгоритма есть параметры по умолчанию) или наоборот избыточным (например, 'verbose': false). Обе стуации могут привести к проблемам: в случае избыточности два одинаковых predictor'а будут сочтены за разные, в случае недостаточности, наоборот, два разных predictor'а могут быть сочтены за один. Речь идет об этапе поиска predictor'а по уникальному сочитанию 'model_name', 'model_weights', 'generator_name', 'grid_name', *[f'gen_name__{k}' for k in generator_kwargs.keys()] c wелью дальнейшего заполнения пути до произведенного предсказания
 2) Убедиться, что предсказание + аггрегация выдают тот же результат, что и submission
 3) Смерджить в ветку remake_after_finals, удалить ветку preditor_class
 
@@ -21,6 +22,10 @@
 * Наладить обучение с collate_fn
 
 * Добавить в обучение логирование tensorboard
+
+
+* Можно вообще не иметь id. Организовать базу данных либо в виде pandas таблички, либо такого словаря: tuple(model name, model path, grid_name, generator-name, tuple(sorted(kwargs.items()))) -> all_results_dict = {path to validation results, path to test results}
+
 
 
 
