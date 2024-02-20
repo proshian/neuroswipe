@@ -162,9 +162,8 @@ class Predictor:
         preds = [None] * len(dataset)
 
         data = [(i, (traj_feats, kb_tokens))
-                for i, ((traj_feats, kb_tokens, _, _), _) in enumerate(dataset)]
+                for i, ((traj_feats, kb_tokens, _, _), _, _) in enumerate(dataset)]     
         
-
         with ProcessPoolExecutor(num_workers) as executor:
             for i, pred in tqdm(executor.map(self._predict_example, data), total=len(dataset)):
                 preds[i] = pred
@@ -242,10 +241,10 @@ class Predictor:
         with open(self.out_path, 'wb') as f:
             pickle.dump(self.preds, f, protocol=pickle.HIGHEST_PROTOCOL)
 
-        predictor_id = self.get_id()
-        df = pd.read_csv(self.preds_csv_path)
-        df.loc[df['predictor_id'] == predictor_id, f'{self.dataset_split}_preds_path'] = self.out_path
-        df.to_csv(self.preds_csv_path, index=False)
+        # predictor_id = self.get_id()
+        # df = pd.read_csv(self.preds_csv_path)
+        # df.loc[df['predictor_id'] == predictor_id, f'{self.dataset_split}_preds_path'] = self.out_path
+        # df.to_csv(self.preds_csv_path, index=False)
 
         
 
