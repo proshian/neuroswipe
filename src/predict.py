@@ -35,16 +35,6 @@
 # в отдельном файле / базе данных.
 
 
-# Если предсказания были получены для валидационного датасета, хочется уметь
-# Считать метрики. 
-
-
-# Есть желание получить абстракцию. В частности абстракцию сохранения данных.
-# Создать класс Predictor, который при инициализации создает поле с word_generator, 
-# model_id, ...
-# Имеет метод predict, метод save_predictions
-
-
 
 from typing import Callable, List, Tuple, Dict, Optional
 import os
@@ -96,29 +86,21 @@ class Predictor:
     def __init__(self,
                  model_architecture_name,
                  model_weights_path,
-                 grid_name,
                  word_generator_type,
                  word_char_tokenizer,
-                 out_path,
-                 preds_csv_path,
-                 dataset_split,
                  generator_kwargs=None,
                  ) -> None:
         DEVICE = torch.device('cpu')
 
-        self._word_generator_type = word_generator_type
+        self.word_generator_type = word_generator_type
         word_generator_ctor = GENERATOR_CTORS_DICT[word_generator_type]
         self.model_architecture_name = model_architecture_name
         self.model_weights_path = model_weights_path
         model_getter = MODEL_GETTERS_DICT[model_architecture_name]
         model = model_getter(DEVICE, model_weights_path)
-        self.grid_name = grid_name
         self.word_char_tokenizer = word_char_tokenizer
         self.word_generator = word_generator_ctor(model, word_char_tokenizer, DEVICE)
         self.generator_kwargs = generator_kwargs
-        self.out_path = out_path
-        self.preds_csv_path = preds_csv_path
-        self.dataset_split = dataset_split
 
     def _predict_example(self,
                          data: Tuple[int, Tuple[Tensor, Tensor]]
@@ -170,7 +152,7 @@ class Predictor:
 
         return preds
 
-    def predict(self, dataset: NeuroSwipeDatasetv3,
+    def predict(self, dataset: NeuroSwipeDatasetv3, add_metadata: bool,
                 num_workers: int=3) -> List[List[Tuple[float, str]]]:
         """
         Creates predictions given a word generator
@@ -183,75 +165,28 @@ class Predictor:
             Number of processes.
         """
         preds = self._predict_raw_mp(dataset, num_workers)
-        self.preds = preds
+
+        if add_metadata:
+            predictor_metadata = {
+            'model_architecture': self.model_architecture_name,
+            'model_weights': self.model_weights_path,
+            'generator': self.word_generator_type,
+            'generator_kwargs': self.generator_kwargs
+            }
+            preds = {'preds': preds, 'predictor_metadata': predictor_metadata}
+        
         return preds
-    
-    def get_id(self):
-        """
-        Given a csv table get the predictor_id. 
-        The predictor_id is a string that uniquely identifies the predictor.
-        It is defined by generator_type, generator_call_kwargs_json,
-        model_architecture_name, model_weights_path, grid_name.
+
+
+def save_predictions(preds, predictor, out_path, grid_name, dataset_split, preds_csv_path):
+    with open(out_path, 'wb') as f:
+        pickle.dump(preds, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+    # df = pd.read_csv(self.preds_csv_path)
+    # df.loc[df['predictor_id'] == predictor_id, f'{self.dataset_split}_preds_path'] = self.out_path
+    # df.to_csv(self.preds_csv_path, index=False)
 
         
-        The predictions_table.csv has the following columns:
-        * predictor_id
-        * word_generator_type
-        * Generator_call_kwargs_json
-        * Model_architecture_name
-        * Model_weights_path
-        * Grid_name
-        * test_preds_path
-        * val_preds_path
-        * validation_metric
-        """
-        
-        # have to find the row with same 
-        # word_generator_type, word_generator_call_kwargs_json,
-        # model_architecture_name, model_weights_path, grid_name
-        # and return the predictor_id from that row
-
-        df = pd.read_csv(self.preds_csv_path)
-        df_line = df.loc[df['word_generator_type'] == self._word_generator_type & 
-                    df['word_generator_call_kwargs_json'] == json.dumps(self.generator_kwargs) &
-                    df['model_architecture_name'] == self.model.__class__.__name__ &
-                    df['model_weights_path'] == self.model.weights_path &
-                    df['grid_name'] == self.grid_name]
-        
-        assert len(df_line) < 2, "There may be one or zero rows with same predictor"
-        
-        if len(df) == 0:
-            # create a new row
-            df = df.append({
-                'word_generator_type': self._word_generator_type,
-                'word_generator_call_kwargs_json': json.dumps(self.generator_kwargs),
-                'model_architecture_name': self.model.__class__.__name__,
-                'model_weights_path': self.model.weights_path,
-                'grid_name': self.grid_name,
-                'test_preds_path': None,
-                'val_preds_path': None,
-                'validation_metric': None
-            }, ignore_index=True)
-            df.to_csv(self.preds_csv_path, index=False)
-
-        return df_line['predictor_id'].values[0]
-
-
-    def save_predictions(self):
-        with open(self.out_path, 'wb') as f:
-            pickle.dump(self.preds, f, protocol=pickle.HIGHEST_PROTOCOL)
-
-        # predictor_id = self.get_id()
-        # df = pd.read_csv(self.preds_csv_path)
-        # df.loc[df['predictor_id'] == predictor_id, f'{self.dataset_split}_preds_path'] = self.out_path
-        # df.to_csv(self.preds_csv_path, index=False)
-
-        
-
-                         
-
-
-
 
 def predict_example(data: I_GenIn_GName_GNameToWordGen,
                     generator_kwargs: dict = None
@@ -492,15 +427,13 @@ if __name__ == '__main__':
         predictor = Predictor(
             model_getter_name,
             os.path.join(config['models_root'], weights_f_name),
-            grid_name,
             config['generator'],
             word_char_tokenizer,
-            out_path,
-            preds_csv_path=None,
-            dataset_split=config['data_split'],
             generator_kwargs=config['generator_kwargs']
         )
 
-        predictor.predict(gridname_to_dataset[grid_name], args.num_workers)
+        preds_and_meta = predictor.predict(
+            gridname_to_dataset[grid_name], args.num_workers, add_metadata = True)
 
-        predictor.save_predictions()
+        save_predictions(preds_and_meta, out_path, grid_name,
+                         config['data_split'], preds_csv_path = None)
