@@ -1,5 +1,21 @@
+# Цель данной ветки
+* Наладить связь между predict.py и aggregate_predictions.py
+      * predict.py должен возвращать таблицу с predictior_id, Generator_type, Generator_call_kwargs_json, Model_architecture_name, Model_weights_path, Grid_name, test_preds_path, val_preds_path, validation_metric
+
+      * В таблице хранить generator_kwargs как отдельные столбцы!! формируется так: f"{generator_name}_{kwarg_name}" -> kwarg_val
+
+      * aggregation.py должен иметь аггрегаторы, каждый из которых имеет fit и predict, а также хранит всю информацию о predictor'ах. Fit производится на valid части, predict - на test части. Init агрегатора получает на вход таблицу и нужные redictor_id (по умолчанию все id) 
+
+      * Возможно, Нужен utility, объединяющий несколько таблиц, если предсказания делались на разных машинах. Predicotr_id должен удаляться, далее обходим все уникальные сочетания (Generator_type, Generator_call_kwargs_json, Model_architecture_name, Model_weights_path, Grid_name). сочетание представлено более чем одной строчкиой, убеждаемся, что для каждого из столбцов {test_preds_path, val_preds_path, validation_metric} мощность объединения значений по этим строчкам не превышает 1. Если это так производим объединение и записываем в одну из строчек, остальные удаляем. Иначе вызываем ошибку. В конце переназначаем id и перезаписываем файл.
+
+* Наладить обучение с collate_fn
+
+* Добавить в обучение логирование tensorboard
+
+
+
 # Отличие от main на 20.02.24
-* Datasetv3 вместо Datasetv2. овая версия не возвращает traj_pad_mask и не производит padding траекторий. Padding будет производиться в collarte function.
+* Datasetv3 вместо Datasetv2. Новая версия не возвращает traj_pad_mask и не производит padding траекторий. Padding будет производиться в collarte function.
 * Prediction переписан. Используется predictor class. Работает, но совпадение результатов не точное (есть отличие в вероятностях, но доля отличия незначительна и может быть связана просто с другой версией pytorch например). Необходимо проверить, сгенерируется ли такой же аггрегированный выход. Также будет добавлено сохранение информации о предсказаниях в таблицу, которая в последствии будет использоваться в aggregate. 
 * Word generators переписаны, чтобы подходить Datasetv3
 * Обучение (kaggle_notebook.ipynb) переписано (но не помню переписано ли до конца). Отличие опять же в использовании Datasetv3 и collate_fn
