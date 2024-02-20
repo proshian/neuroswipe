@@ -85,11 +85,8 @@ class Predictor:
     """
     Creates a prediction for a whole dataset.
 
-    Predictor is similar to WordGenerator, but WordGenerator is
-    just an abstract decoding algorithm (that hides the model),
-    while a Predictor does not hide anything.  Its instance is
-    associated with model AND GRID so that it can be 
-    reffered to by an aggregator as a certain source of predictions.
+    The resulting prediction contains metadata with information about
+    model and decoding algorithm useful later for predictions aggregation.
     """
 
     def __init__(self,
@@ -138,7 +135,7 @@ class Predictor:
         return i, pred
     
     def _predict_raw_mp(self, dataset: NeuroSwipeDatasetv3,
-                        num_workers: int=3) -> List[List[str]]:
+                        num_workers: int=3) -> List[List[Tuple[float, str]]]:
         """
         Creates predictions given a word generator
         
@@ -149,6 +146,13 @@ class Predictor:
             containing only examples with the same grid_name as the predictor.
         num_workers: int
             Number of processes.
+
+        Returns:
+        --------
+        preds: List[one_swipe_preds]
+            one_swipe_preds: List[Tuple[log_probability, char_sequence]]
+                log_probability: float
+                char_sequence: str
         """
         preds = [None] * len(dataset)
 
@@ -171,6 +175,8 @@ class Predictor:
         ----------
         dataset: NeuroSwipeDatasetv3
             Output[i] is a list of predictions for dataset[i] curve.
+        grid_name: str
+        dataset_split: str
         num_workers: int
             Number of processes.
         """
@@ -194,7 +200,9 @@ class Predictor:
 #         create_new_df()
     
 
-def save_predictions(preds_wtih_meta:  Prediction, out_path: str, preds_csv_path: str):
+def save_predictions(preds_wtih_meta: Prediction,
+                     out_path: str,
+                     preds_csv_path: str) -> None:
     with open(out_path, 'wb') as f:
         pickle.dump(
             preds_wtih_meta.prediction, f, protocol=pickle.HIGHEST_PROTOCOL)
