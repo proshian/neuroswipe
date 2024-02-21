@@ -36,7 +36,7 @@
 
 
 
-from typing import Callable, List, Tuple, Dict, Optional
+from typing import Iterable, List, Tuple, Dict, Optional
 import os
 import json
 import pickle
@@ -90,10 +90,10 @@ class Predictor:
     """
 
     def __init__(self,
-                 model_architecture_name,
-                 model_weights_path,
-                 word_generator_type,
-                 generator_kwargs=None,
+                 model_architecture_name: str,
+                 model_weights_path: str,
+                 word_generator_type: str,
+                 generator_kwargs: Optional[dict]=None,
                  ) -> None:
         DEVICE = torch.device('cpu')
 
@@ -273,7 +273,7 @@ def get_gridname_to_dataset(config) -> Dict[str, Dataset]:
     return gridname_to_dataset
 
 
-def check_all_weights_exist(model_params, models_root) -> None:
+def check_all_weights_exist(model_params: Iterable, models_root: str) -> None:
     for _, _, w_fname in model_params:
         if not os.path.exists(os.path.join(models_root, w_fname)):
             raise ValueError(f"Path {w_fname} does not exist.")
