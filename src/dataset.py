@@ -323,8 +323,6 @@ class NeuroSwipeDatasetv3(Dataset):
                 axis = 1
             )
 
-        traj_len = len(X_list)
-
         if self.include_velocities:
             dx_dt = self._get_dx_dt(X, T)
             dy_dt = self._get_dx_dt(Y, T)
@@ -348,6 +346,14 @@ class NeuroSwipeDatasetv3(Dataset):
                 ],
                 axis = 1
             )
+        
+        
+        grid = self._grid_name_to_grid[grid_name]
+        xyt[:len(X_list), 0] = xyt[:len(X_list), 0] / grid['width'] 
+        xyt[:len(Y_list), 1] = xyt[:len(X_list), 1] / grid['height']
+        # Switch to this:
+        # xyt[:, 0] = xyt[:, 0] / grid['width'] 
+        # xyt[:, 1] = xyt[:, 1] / grid['height']
 
         kb_tokens = torch.tensor(kb_tokens, dtype=torch.int64)
 
@@ -385,12 +391,6 @@ class NeuroSwipeDatasetv3(Dataset):
                 self.word_tokenizer.char_to_idx['<pad>'],
                 dtype=torch.int64)
             decoder_out_char_seq[:len(word) + 1] = token_seq[1:]
-
-        # ! Maybe will generate derivatives from X_list and Y_list.
-        # Then, this section will be moved above
-        grid = self._grid_name_to_grid[grid_name]
-        xyt[:len(X_list), 0] = xyt[:len(X_list), 0] / grid['width'] 
-        xyt[:len(Y_list), 1] = xyt[:len(X_list), 1] / grid['height']
         
         if self.include_grid_name:
             return (xyt, kb_tokens, decoder_in_char_seq, word_mask), decoder_out_char_seq, grid_name
