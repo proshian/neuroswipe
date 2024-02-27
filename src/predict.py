@@ -208,7 +208,7 @@ def save_predictions(preds_wtih_meta: Prediction,
             preds_wtih_meta.prediction, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 #     # df = load_df(preds_csv_path)
-#     # update_databese(df)
+#     # update_database(df, preds_wtih_meta)
 #     # df.to_csv(preds_csv_path, index=False)
 
    

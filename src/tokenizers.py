@@ -1,6 +1,13 @@
 from typing import List
 
 
+ALL_CYRILLIC_LETTERS_ALPHABET_ORD = [
+    'а', 'б', 'в', 'г', 'д', 'е', 'ë', 'ж', 'з', 'и', 'й',
+    'к', 'л', 'м', 'н', 'о', 'п', 'р', 'с', 'т', 'у', 'ф',
+    'х', 'ц', 'ч', 'ш', 'щ', 'ъ', 'ы', 'ь', 'э', 'ю', 'я'
+]
+
+
 class CharLevelTokenizerv2:
     """
     Tokenizes a word into a list of integers.
@@ -59,10 +66,7 @@ class CharLevelTokenizerv2:
 
 class KeyboardTokenizerv1:
     
-    i2t = ['а', 'б', 'в', 'г', 'д', 'е', 'ë', 'ж', 'з', 'и', 'й',
-           'к', 'л', 'м', 'н', 'о', 'п', 'р', 'с', 'т', 'у', 'ф',
-           'х', 'ц', 'ч', 'ш', 'щ', 'ъ', 'ы', 'ь', 'э', 'ю', 'я',
-           '-', '<unk>', '<pad>']
+    i2t = ALL_CYRILLIC_LETTERS_ALPHABET_ORD + ['-', '<unk>', '<pad>']
     
     t2i = {t: i for i, t in enumerate(i2t)}
 
