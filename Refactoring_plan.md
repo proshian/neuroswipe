@@ -1,5 +1,8 @@
 # Refactoring Plan
 
+* перенести тестирвоание collate_fn из train.ipynb в unittest/test_collate_fn.py
+* Сделать CI github action, запускающий юнит-тесты
+
 * Написать новый trainer
 * Изучить torchl_ightning trainer
 
