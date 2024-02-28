@@ -5,15 +5,15 @@ import numpy as np
 
 
 class NearestKeyLookup:
-    def __init__(self, grid, keyboard_selection_set):
-        self._keyboard_selection_set = keyboard_selection_set
+    def __init__(self, grid, nearest_key_candidates):
+        self._nearest_key_candidates = nearest_key_candidates
         self.grid = grid
         self.coord_to_kb_label = self._create_coord_to_kb_label(grid)
     
     def is_allowed_label(self, label: str) -> bool:
-        if self._keyboard_selection_set is None:
+        if self._nearest_key_candidates is None:
             return True
-        return label in self._keyboard_selection_set
+        return label in self._nearest_key_candidates
 
     def _get_kb_label(self, key: dict) -> str:
         if 'label' in key:
@@ -93,7 +93,7 @@ class NearestKeyLookup:
         
     def save_state(self, path: str) -> None:
         state = {
-            'selectoin_set': self._keyboard_selection_set,
+            'nearest_key_candidates': self._nearest_key_candidates,
             'coord_to_kb_label': self.coord_to_kb_label,
             'grid': self.grid
         }
@@ -106,7 +106,7 @@ class NearestKeyLookup:
             state = pickle.load(f)
         obj = cls.__new__(cls)
 
-        obj._keyboard_selection_set = state['selectoin_set']
+        obj._nearest_key_candidates = state['nearest_key_candidates']
         obj.grid = state['grid']
         obj.coord_to_kb_label = state['coord_to_kb_label']
 
