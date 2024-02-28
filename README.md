@@ -2,6 +2,10 @@
 
 Распознавание слов по&nbsp;нарисованным кривым на&nbsp;экране смартфона (Яндекс Клавиатура)
 
+
+You can try out one of the models trained as part of the competition in a [web app](https://proshiang.pythonanywhere.com/)
+
+
 ## Method
 
 The model is encoder-decoder transformer.
@@ -82,3 +86,6 @@ python ./src/aggregate_predictions.py
 <!-- Перед побучением необходимо очистить тренировочный датасет -->
 
 ## Future work
+
+## For me from the future
+See refactoring plan [here](./Refactoring_plan.md)
