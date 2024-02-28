@@ -2,6 +2,7 @@
 
 Распознавание слов по&nbsp;нарисованным кривым на&nbsp;экране смартфона (Яндекс Клавиатура)
 
+# Demo
 
 You can try out one of the models trained as part of the competition in a [web app](https://proshiang.pythonanywhere.com/)
 
