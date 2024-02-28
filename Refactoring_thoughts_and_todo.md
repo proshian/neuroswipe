@@ -32,6 +32,13 @@
 
 
 
+
+* Добавить скрипт для получения метрики для предсказания
+* Убедиться, что greedy_search + этот скрипт работают
+* Заменить все, что связано с оценкой моделей в playground на вызов predict.py + evaluate.py (скорее на вызов функций из этих скриптов)
+
+
+
 * Можно вообще не иметь id. Организовать базу данных либо в виде pandas таблички, либо такого словаря: tuple(model name, model path, grid_name, generator-name, tuple(sorted(kwargs.items()))) -> all_results_dict = {path to validation results, path to test results}
 
 
