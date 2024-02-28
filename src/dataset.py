@@ -6,6 +6,7 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 from tqdm import tqdm
+from torch.nn.utils.rnn import pad_sequence
 
 from tokenizers import CharLevelTokenizerv2, KeyboardTokenizerv1
 
@@ -399,8 +400,6 @@ class NeuroSwipeDatasetv3(Dataset):
 
 
 
-
-
 class NeuroSwipeGridSubset(Dataset):
     def __init__(self, dataset: Dataset, grid_name: str):
         self.dataset = dataset
@@ -421,3 +420,36 @@ class NeuroSwipeGridSubset(Dataset):
     
     def __getitem__(self, idx):
         return self.dataset[self.grid_name_idxs[idx]]
+    
+
+
+def collate_fn(batch: list):
+    """
+    batch - list of tuples:
+    ((traj_feats, kb_tokens, dec_in_char_seq, word_pad_mask), dec_out_char_seq)
+    """
+    x, dec_out_char_seq = zip(*batch)
+    (traj_feats, kb_tokens, dec_in_char_seq, word_pad_mask) = zip(*x)
+
+    # traj_feats[i].shape = (curve_len, n_coord_feats)
+    traj_feats = pad_sequence(traj_feats, batch_first=False)  # (curves_len, batch_size, n_coord_feats)
+    # kb_tokens[i].shape = (curve_len,) 
+    kb_tokens = pad_sequence(kb_tokens, batch_first=False)  # (curves_len, batch_size)
+    
+    dec_in_char_seq = torch.stack(dec_in_char_seq).transpose_(0, 1)  # (chars_seq_len - 1, batch_size)
+    dec_out_char_seq = torch.stack(dec_out_char_seq).transpose_(0, 1)  # (chars_seq_len - 1, batch_size)
+    word_pad_mask = torch.stack(word_pad_mask)
+    
+
+    max_curve_len = traj_feats.shape[0]
+
+    traj_lens = torch.tensor([len(x) for x in traj_feats])
+    
+
+    # Берем матрицу c len(traj_lens) строками вида [0, 1, ... , max_curve_len - 1].
+    # Каждый элемент i-ой строки сравниваем с длиной i-ой траектории.  Получится
+    # матрица, где True только на позициях, больших, чем длина соответствующей траектории.
+    # ! Возможно, можно проще
+    traj_pad_mask = torch.arange(max_curve_len).expand(len(traj_lens), max_curve_len) >= traj_lens.unsqueeze(1)  # (batch_size, max_curve_len)    
+
+    return (traj_feats, kb_tokens, dec_in_char_seq, traj_pad_mask, word_pad_mask), dec_out_char_seq
