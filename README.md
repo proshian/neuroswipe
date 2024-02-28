@@ -88,5 +88,5 @@ python ./src/aggregate_predictions.py
 
 ## Future work
 
-## For me from the future
+## For future me
 See refactoring plan [here](./Refactoring_plan.md)
