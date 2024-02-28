@@ -2,16 +2,20 @@
 
 Распознавание слов по&nbsp;нарисованным кривым на&nbsp;экране смартфона (Яндекс Клавиатура)
 
+
+You can try out one of the models trained as part of the competition in a [web app](https://proshiang.pythonanywhere.com/)
+
+
 ## Method
 
 The model is encoder-decoder transformer.
-The first tranformer encoder layer can input a sequence with elements of different size relative to other encoder layers.
+The first tranformer encoder layer can input a sequence with elements of a dimension different from other encoder layers.
 
-Encoder input sequence consists of elements demonstrated on image below:
+Encoder input sequence consists of elements denoted as `swipe point embedding` on the image below.
 
 ![Here should be an image of encoder_input_sequence_element](./REAME_materials/encoder_input_sequence_element.png)
 
-Where trajectory_point_features is a vector column of $x$, $y$, $\frac{dx}{dt}$, $\frac{dy}{dt}$, $\frac{d^2x}{dt^2}$, $\frac{d^2y}{dt^2}$. The derivative values are calculated using finite difference method.
+The $\frac{dx}{dt}$, $\frac{dy}{dt}$, $\frac{d^2x}{dt^2}$, $\frac{d^2y}{dt^2}$ derivatives are calculated using finite difference method.
 
 Decoder input sequence consists of character-level embeddings (with positional encoding) of the target word.
 
@@ -62,7 +66,7 @@ python ./src/downloaders/download_weights.py
 6. Получить предсказания для каждой отдельной модели. Для этого запускаем из корня директория скрипт:
 
 ```shell
-python ./src/get_individual_models_predictions.py --num-workers 4  --config ./config.json
+python ./src/predict.py --num-workers 4  --config ./config.json
 ```
 
 В результате директория ./data/saved_beamsearch_results наполнится pickle файлами с предсказаниями
@@ -82,3 +86,6 @@ python ./src/aggregate_predictions.py
 <!-- Перед побучением необходимо очистить тренировочный датасет -->
 
 ## Future work
+
+## For me from the future
+See refactoring plan [here](./Refactoring_plan.md)

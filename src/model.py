@@ -57,10 +57,10 @@ class SwipeCurveTransformerEncoderv1(nn.Module):
             self.transformer_encoder = None
     
 
-    def forward(self, x, pad_mask: torch.tensor):
+    def forward(self, x, pad_mask: torch.Tensor):
         x = self.first_encoder_layer(x, src_key_padding_mask=pad_mask)
         x = self.liner(x)
-        if self.transformer_encoder:
+        if self.transformer_encoder is not None:
             x = self.transformer_encoder(x, src_key_padding_mask=pad_mask)
         return x
 
@@ -192,24 +192,24 @@ class SwipeCurveTransformer(nn.Module):
 
         self.mask = self._get_mask(max_out_seq_len).to(device=device)
 
-    def forward_old(self, x, kb_tokens, y, x_pad_mask, y_pad_mask):
-        # Differs from forward(): uses self.mask instead of generating it.
-        kb_k_emb = self.key_embedding(kb_tokens)  # keyboard key
-        kb_k_emb = self.key_embedding_dropout(kb_k_emb)
-        kb_k_emb = self.key_pos_encoder(kb_k_emb)
-        x = torch.cat((x, kb_k_emb), axis = -1)
-        x = self.encoder(x, x_pad_mask)
-        y = self.char_embedding(y)
-        y = self.char_embedding_dropout(y)
-        y = self.char_pos_encoder(y)
-        y = self.decoder(y, x, self.mask, x_pad_mask, y_pad_mask)
-        return y
+    # def forward_old(self, x, kb_tokens, y, x_pad_mask, y_pad_mask):
+    #     # Differs from forward(): uses self.mask instead of generating it.
+    #     kb_k_emb = self.key_embedding(kb_tokens)  # keyboard key
+    #     kb_k_emb = self.key_embedding_dropout(kb_k_emb)
+    #     kb_k_emb = self.key_pos_encoder(kb_k_emb)
+    #     x = torch.cat((x, kb_k_emb), dim = -1)
+    #     x = self.encoder(x, x_pad_mask)
+    #     y = self.char_embedding(y)
+    #     y = self.char_embedding_dropout(y)
+    #     y = self.char_pos_encoder(y)
+    #     y = self.decoder(y, x, self.mask, x_pad_mask, y_pad_mask)
+    #     return y
     
     def encode(self, x, kb_tokens, x_pad_mask):
         kb_k_emb = self.key_embedding(kb_tokens)  # keyboard key
         kb_k_emb = self.key_embedding_dropout(kb_k_emb)
         kb_k_emb = self.key_pos_encoder(kb_k_emb)
-        x = torch.cat((x, kb_k_emb), axis = -1)
+        x = torch.cat((x, kb_k_emb), dim = -1)
         x = self.encoder(x, x_pad_mask)
         return x
     
