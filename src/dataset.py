@@ -1,5 +1,5 @@
 import json
-from typing import Optional, List, Tuple, Dict, Set
+from typing import Optional, List, Tuple, Dict, Set, Callable
 import array
 
 import numpy as np
@@ -9,6 +9,92 @@ from tqdm import tqdm
 from torch.nn.utils.rnn import pad_sequence
 
 from tokenizers import CharLevelTokenizerv2, KeyboardTokenizerv1
+
+
+class CurveDataset(Dataset):
+    """
+    Dataset class for NeuroSwipe jsonl dataset
+    
+    curve_dataset_obj[i] is a tuple (X, Y, T, grid_name, tgt_word)
+    If there is no 'word' property in .json file, `tgt_word` is None.
+
+    Extracting features (for example nearest keyboard  key label) 
+    will be done via transforms.  Transfroms will be applied in __getitem__
+    but if they will be performance intensive, transforms may be
+    split into two args: init_transforms and get_item_transforms.
+    """
+
+    def __init__(self,
+                 data_path: str,
+                 transfrom: Optional[Callable] = None,
+                 total: Optional[int] = None):
+        """
+        Arguments:
+        ----------
+        data_path: str
+            Path to the NeuroSwipe dataset in JSON format.
+            A custom version of the dataset is used: "grid" property
+            is replaced with "grid_name". The grid itself is stored in
+            a separate gridname_to_grid dictionary.
+            Dataset is a list of JSON lines. Each line is a dictionary
+            with the following properties:
+            - word (str): word that was typed. 
+                Is abscent in test and val datasets.
+            - curve (dict): dictionary that contains the following properties:
+                - x (List[int]): x coordinates of the swipe trajectory.
+                - y (List[int]): y coordinates of the swipe trajectory.
+                - t (List[int]): time in milliseconds from the beginning of the swipe.
+                - grid_name (str): name of the keyboard grid.
+
+        total: Optional[int]
+            Number of dataset elements. Is used only for progress bar.
+        """
+        self.data_list = self._get_data(data_path, total = total)
+        self.transfrom = transfrom
+
+
+    def _get_data(self,
+                  data_path: str,
+                  total: Optional[int] = None):
+        data_list = []
+        with open(data_path, "r", encoding="utf-8") as json_file:
+            for line in tqdm(json_file, total = total):
+                data_list.append(self._get_data_from_json_line(line))
+        return data_list
+
+
+    def _get_data_from_json_line(self,
+                                 line
+                                 ) -> Tuple[list, list, list, str]:
+        """
+        Parses a JSON line and returns a dictionary with data.
+        """
+        data = json.loads(line)
+
+        X = array.array('h', data['curve']['x'])
+        Y = array.array('h', data['curve']['y'])
+        T = array.array('h', data['curve']['t'])
+
+        grid_name = data['curve']['grid_name']   
+
+        tgt_word = data['word'] if 'word' in data else None
+
+        return X, Y, T, grid_name, tgt_word
+
+
+    def __len__(self):
+        return len(self.data_list)
+    
+
+    def __getitem__(self, idx):
+        sample = self.data_list[idx]  # X, Y, T, grid_name, tgt_word
+        if self.transform:
+            sample = self.transform(sample)
+        return sample
+
+
+
+
 
 
 class NeuroSwipeDatasetv3(Dataset):

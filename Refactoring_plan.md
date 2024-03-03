@@ -12,7 +12,13 @@
       * Есть ПЛОХАЯ альтернатива, которая решает проблему неисчерпываемости, но не решает проблему избыточности (а скорее усугубляет) - дополнять kwargs значениями по умолчанию с помощью inspect.signature(func)
       
 2) Убедиться, что предсказание + аггрегация выдают тот же результат, что и submission
-3) Сделать datasetv4, который просто хранит x, y, t и принимает на вход transforms. Последний из transforms будет использовать nearest_key_lookup (определен в nearest_key_lookup.py)
+3) Сделать datasetv4, который просто хранит x, y, t, gridname, target для каждого примера и принимает на вход transforms.
+     * Нам потребуется множество transforms
+           * TransformsColection имеет конструктор, принимающий список других transforms, при вызове обходит свои transforms и сохраняет в tupple
+           * NearestKeyLookupTransform будет использовать nearest_key_lookup (определен в nearest_key_lookup.py) и возвращать label ближайшей клавиши
+           * nklTransform = transforms.compose([NearestKeyLookupTransform(grid_to_nearest_key_lookup), KeyboardCharTokenizer])
+           * DerivativesTransform(include_speeds, include_accelerations, include_time) возвращает cat(x, y, dxdt, dydt, ...)
+           * Итого transform: TransformsColection([transforms.compose([NearestKeyLookupTransform(grid_to_nearest_key_lookup), KeyboardCharTokenizer]), DerivativesTransform(include_speeds, include_accelerations, include_time)])
       * Во-первых, зечем тратить каждый раз 5-10 секунд на создание маппинга [координаты → лейбл ближайшей буквы], если можно одина раз создать, сохранить и всегда передавать.
       * Во-вторых, это по сути отдельная сущность, которая к тому же нужна на инференсе
 4) Добавить аугментацию датасета (случайное смещение координат x, y)

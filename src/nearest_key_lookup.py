@@ -10,6 +10,9 @@ class NearestKeyLookup:
         self.grid = grid
         self.coord_to_kb_label = self._create_coord_to_kb_label(grid)
     
+    def __call__(self, x, y):
+        return self.get_nearest_kb_label(x, y)
+    
     def is_allowed_label(self, label: str) -> bool:
         if self._nearest_key_candidates is None:
             return True
