@@ -1,51 +1,51 @@
 import torch
 from torch import Tensor
 
-from typing import Any, Tuple, Dict, Optional, Iterable, Callable
+from typing import Any, Tuple, Dict, Optional, Iterable, Callable, List
 from array import array
 from nearest_key_lookup import NearestKeyLookup
-from tokenizers import KeyboardTokenizerv1
+from tokenizers import KeyboardTokenizerv1, CharLevelTokenizerv2
 
 
 DatasetEl = Tuple[array, array, array, str, Optional[str]]
 
-class NearestKeyLookupTransform:
-    def __init__(self, grid_name_to_nk_lookup: Dict[str, NearestKeyLookup]) -> None:
-        self.grid_name_to_nk_lookup = grid_name_to_nk_lookup
+# class NearestKeyLookupTransform:
+#     def __init__(self, grid_name_to_nk_lookup: Dict[str, NearestKeyLookup]) -> None:
+#         self.grid_name_to_nk_lookup = grid_name_to_nk_lookup
 
-    def __call__(self, data: DatasetEl) -> str:
-        X, Y, _, grid_name, _ = data
-        nearest_key_lookup = self.grid_name_to_nk_lookup[grid_name]
-        return nearest_key_lookup.get_nearest_kb_label(X, Y)
+#     def __call__(self, data: DatasetEl) -> str:
+#         X, Y, _, grid_name, _ = data
+#         nearest_key_lookup = self.grid_name_to_nk_lookup[grid_name]
+#         return nearest_key_lookup.get_nearest_kb_label(X, Y)
 
 
-class Compose:
-    def __init__(self, transforms_lst: Iterable[Callable]) -> None:
-        self.transforms_lst = transforms_lst
+# class Compose:
+#     def __init__(self, transforms_lst: Iterable[Callable]) -> None:
+#         self.transforms_lst = transforms_lst
     
-    def __call__(self, data: Any) -> Any:
-        for transform in self.transforms_lst:
-            data = transform(data)
-        return data
+#     def __call__(self, data: Any) -> Any:
+#         for transform in self.transforms_lst:
+#             data = transform(data)
+#         return data
     
 
-class KeyboardLabelTokenGetter:
-    def __init__(self, tokenizer: KeyboardTokenizerv1) -> None:
-        self.tokenizer = tokenizer
+# class KeyboardLabelTokenGetter:
+#     def __init__(self, tokenizer: KeyboardTokenizerv1) -> None:
+#         self.tokenizer = tokenizer
 
-    def __call__(self, char: str):
-        return self.tokenizer.get_token(char)
+#     def __call__(self, char: str):
+#         return self.tokenizer.get_token(char)
 
 
-class ComposeTuple:
-    def __init__(self, transforms_lst: Iterable[Callable]) -> None:
-        self.transforms_lst = transforms_lst
+# class ComposeTuple:
+#     def __init__(self, transforms_lst: Iterable[Callable]) -> None:
+#         self.transforms_lst = transforms_lst
     
-    def __call__(self, data: Any) -> Any:
-        result = []
-        for transform in self.transforms_lst:
-            result.append(transform(data))
-        return result
+#     def __call__(self, data: Any) -> Any:
+#         result = []
+#         for transform in self.transforms_lst:
+#             result.append(transform(data))
+#         return result
 
 
 def get_dx_dt(X: Tensor,
@@ -80,27 +80,21 @@ def get_dx_dt(X: Tensor,
     return dx_dt
 
 
-class DerivativesAugmentor:
-    def __init__(self, 
-                 include_accelerations: bool = True, 
-                 include_time: bool = False) -> None:
-        self.include_accelerations = include_accelerations
-        self.include_time = include_time
-
-    def __call__(self, xyt) -> Any:
-        X, Y, T = xyt
-
-
-
 class EncoderFeaturesGetter:
     def __init__(self, 
                  grid_name_to_nk_lookup: Dict[str, NearestKeyLookup],
+                 grid_name_to_wh: Dict[str, Tuple[int, int]],
                  kb_tokenizer: KeyboardTokenizerv1,
                  include_time: bool,
                  include_velocities: bool,
                  include_accelerations: bool
                  ) -> None:
+        if include_accelerations and not include_velocities:
+            raise ValueError("Accelerations are supposed \
+                             to be an addition to velocities. Add velocities.")
+        
         self.grid_name_to_nk_lookup = grid_name_to_nk_lookup
+        self.grid_name_to_wh = grid_name_to_wh
         self.kb_tokenizer = kb_tokenizer
         self.include_time = include_time
         self.include_velocities = include_velocities
@@ -113,7 +107,8 @@ class EncoderFeaturesGetter:
         kb_tokens = Tensor(kb_tokens, dtype=torch.int64)
         return kb_tokens
     
-    def _get_traj_feats(self, X: Tensor, Y: Tensor, T: Tensor) -> Tensor:
+    def _get_traj_feats(self, X: Tensor, Y: Tensor, T: Tensor, 
+                        grid_name: str) -> Tensor:
         traj_feats = [X, Y]
         if self.include_time:
             traj_feats.append(T)
@@ -133,14 +128,49 @@ class EncoderFeaturesGetter:
             axis = 1
         )
 
+        width, height = self.grid_name_to_wh[grid_name]
+        traj_feats[:, 0] = traj_feats[:, 0] / width
+        traj_feats[:, 1] = traj_feats[:, 1] / height
+
         return traj_feats
 
 
-    def __call__(self, input_data):
-        X, Y, T, grid_name = input_data
+    def __call__(self, X: Iterable, Y: Iterable,
+                 T: Iterable, grid_name: str) -> Tuple[Tensor, Tensor]:
         X, Y, T = (Tensor(arr) for arr in (X, Y, T))
+        traj_feats = self._get_traj_feats(X, Y, T, grid_name)
         kb_tokens = self._get_kb_tokens(X, Y, grid_name)
-        traj_feats = self._get_traj_feats(X, Y, T)
-        return kb_tokens, traj_feats
+        return traj_feats, kb_tokens
 
 
+
+class TransformerInputGetter:
+    def __init__(self, 
+                 grid_name_to_nk_lookup: Dict[str, NearestKeyLookup],
+                 grid_name_to_wh: Dict[str, Tuple[int, int]],
+                 kb_tokenizer: KeyboardTokenizerv1,
+                 word_tokenizer: CharLevelTokenizerv2,
+                 include_time: bool,
+                 include_velocities: bool,
+                 include_accelerations: bool
+                 ) -> None:
+        self.get_encoder_feats = EncoderFeaturesGetter(
+            grid_name_to_nk_lookup, grid_name_to_wh, kb_tokenizer,
+            include_time, include_velocities, include_accelerations)
+        self.word_tokenizer = word_tokenizer
+    
+    def get_decoder_in_and_out(self, tgt_word):
+        # <sos>, token1, token2, ... token_n, <eos>
+        tgt_token_seq: List[int] = self.word_tokenizer.encode(tgt_word)
+        tgt_token_seq = torch.tensor(tgt_token_seq, dtype = torch.int64)
+
+        decoder_in = tgt_token_seq[:-1]
+        decoder_out = tgt_token_seq[1:]
+        return decoder_in, decoder_out
+
+
+    def __call__(self, data: DatasetEl):
+        X, Y, T, grid_name, tgt_word = data
+        traj_feats, kb_tokens = self.get_encoder_feats(X, Y, T, grid_name)
+        decoder_in, decoder_out = self.get_decoder_in_and_out(tgt_word)
+        return (traj_feats, kb_tokens, decoder_in), decoder_out
