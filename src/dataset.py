@@ -19,14 +19,14 @@ class CurveDataset(Dataset):
     If there is no 'word' property in .json file, `tgt_word` is None.
 
     Extracting features (for example nearest keyboard  key label) 
-    will be done via transforms.  Transfroms will be applied in __getitem__
-    but if they will be performance intensive, transforms may be
-    split into two args: init_transforms and get_item_transforms.
+    is be done via transforms.  Transfroms are be applied in __getitem__
+    but if they may be split into two args in the future: 
+    init_transforms and get_item_transforms.
     """
 
     def __init__(self,
                  data_path: str,
-                 transfrom: Optional[Callable] = None,
+                 transform: Optional[Callable] = None,
                  total: Optional[int] = None):
         """
         Arguments:
@@ -50,7 +50,7 @@ class CurveDataset(Dataset):
             Number of dataset elements. Is used only for progress bar.
         """
         self.data_list = self._get_data(data_path, total = total)
-        self.transfrom = transfrom
+        self.transform = transform
 
 
     def _get_data(self,

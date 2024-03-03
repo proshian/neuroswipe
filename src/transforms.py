@@ -92,7 +92,7 @@ class EncoderFeaturesGetter:
         if include_accelerations and not include_velocities:
             raise ValueError("Accelerations are supposed \
                              to be an addition to velocities. Add velocities.")
-        
+
         self.grid_name_to_nk_lookup = grid_name_to_nk_lookup
         self.grid_name_to_wh = grid_name_to_wh
         self.kb_tokenizer = kb_tokenizer
@@ -104,9 +104,9 @@ class EncoderFeaturesGetter:
         nearest_key_lookup = self.grid_name_to_nk_lookup[grid_name]
         kb_labels = [nearest_key_lookup(x, y) for x, y in zip(X, Y)]
         kb_tokens = [self.kb_tokenizer.get_token(label) for label in kb_labels]
-        kb_tokens = Tensor(kb_tokens, dtype=torch.int64)
+        kb_tokens = torch.tensor(kb_tokens, dtype=torch.int64)
         return kb_tokens
-    
+
     def _get_traj_feats(self, X: Tensor, Y: Tensor, T: Tensor, 
                         grid_name: str) -> Tensor:
         traj_feats = [X, Y]
@@ -124,7 +124,7 @@ class EncoderFeaturesGetter:
             traj_feats.extend([d2x_dt2, d2y_dt2])
         
         traj_feats = torch.cat(
-            traj_feats,
+            [traj_feat.reshape(-1, 1) for traj_feat in traj_feats],
             axis = 1
         )
 
@@ -134,17 +134,15 @@ class EncoderFeaturesGetter:
 
         return traj_feats
 
-
     def __call__(self, X: Iterable, Y: Iterable,
                  T: Iterable, grid_name: str) -> Tuple[Tensor, Tensor]:
-        X, Y, T = (Tensor(arr) for arr in (X, Y, T))
+        X, Y, T = (torch.tensor(arr) for arr in (X, Y, T))
         traj_feats = self._get_traj_feats(X, Y, T, grid_name)
         kb_tokens = self._get_kb_tokens(X, Y, grid_name)
         return traj_feats, kb_tokens
 
 
-
-class TransformerInputGetter:
+class TransformerInputOutputGetter:
     def __init__(self, 
                  grid_name_to_nk_lookup: Dict[str, NearestKeyLookup],
                  grid_name_to_wh: Dict[str, Tuple[int, int]],
@@ -167,7 +165,6 @@ class TransformerInputGetter:
         decoder_in = tgt_token_seq[:-1]
         decoder_out = tgt_token_seq[1:]
         return decoder_in, decoder_out
-
 
     def __call__(self, data: DatasetEl):
         X, Y, T, grid_name, tgt_word = data
