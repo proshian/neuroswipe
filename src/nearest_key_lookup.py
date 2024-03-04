@@ -37,7 +37,7 @@ class NearestKeyLookup:
         y = hitbox['y'] + hitbox['h'] / 2
         return x, y
     
-    def _get_kb_label_without_map(self, x, y, grid: dict) -> str:
+    def _get_kb_label_without_map(self, x, y) -> str:
         """
         Returns label of the nearest key on the keyboard without using a map.
          
@@ -47,7 +47,7 @@ class NearestKeyLookup:
         nearest_kb_label = None
         min_dist = float("inf")
 
-        for key in grid['keys']:
+        for key in self.grid['keys']:
             label = self._get_kb_label(key)
             
             if not self.is_allowed_label(label):
@@ -82,7 +82,7 @@ class NearestKeyLookup:
             for y in range(grid['height']):
                 if coord_to_kb_label[x, y] != '':
                     continue
-                coord_to_kb_label[x, y] = self._get_kb_label_without_map(x, y, grid)
+                coord_to_kb_label[x, y] = self._get_kb_label_without_map(x, y)
 
         return coord_to_kb_label
     
@@ -96,7 +96,7 @@ class NearestKeyLookup:
         by iterating over all keys (among nearest_key_candidates).
         """        
         if x < 0 or x >= self.grid['width'] or y < 0 or y >= self.grid['height']:
-            return self._get_kb_label_without_map(x, y, self.grid)
+            return self._get_kb_label_without_map(x, y)
         return self.coord_to_kb_label[x, y]
     
     def _get_state(self) -> dict:
