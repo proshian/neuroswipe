@@ -5,8 +5,6 @@ import heapq
 import torch
 import torch.nn.functional as F
 
-from utils import prepare_batch
-
 
 class WordGenerator(ABC):
 
@@ -176,8 +174,8 @@ class GreedyGeneratorBatched:
                 word_pad_mask = None
                 # dummy_y is any tensor with n_dims = 2 (chars_seq_len - 1, batch_size).
                 dummy_y = torch.tensor([[1]])
-                x = (xyt, kb_tokens, dec_in_char_seq, None, word_pad_mask)
-                model_input, dummy_y = prepare_batch(x, dummy_y, self.device)
+                model_input = (xyt, kb_tokens, dec_in_char_seq, None, word_pad_mask)
+                # model_input, dummy_y = prepare_batch(model_input, dummy_y, self.device)
                 one_hot_token_logits = self.model.apply(*model_input).transpose_(0, 1)  # (batch_size, chars_seq_len, vocab_size)
                 best_next_tokens = one_hot_token_logits[:, -1].argmax(dim=1)  # (batch_size)
 
@@ -190,3 +188,4 @@ class GreedyGeneratorBatched:
         predictions = [self.tokenizer.decode(dec_in_char_seq[i].tolist()) for i in range(batch_size)]
         
         return predictions
+    
