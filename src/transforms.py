@@ -9,6 +9,8 @@ from tokenizers import KeyboardTokenizerv1, CharLevelTokenizerv2
 
 DatasetEl = Tuple[array, array, array, str, Optional[str]]
 
+GetItemTransformInput = Tuple[array, array, array, str, Optional[str], array]
+
 
 def get_dx_dt(X: Tensor,
               T: Tensor) -> Tensor:
@@ -42,11 +44,9 @@ def get_dx_dt(X: Tensor,
     return dx_dt
 
 
-class EncoderFeaturesGetter:
+class TrajFeatsGetter:
     def __init__(self, 
-                 grid_name_to_nk_lookup: Dict[str, NearestKeyLookup],
                  grid_name_to_wh: Dict[str, Tuple[int, int]],
-                 kb_tokenizer: KeyboardTokenizerv1,
                  include_time: bool,
                  include_velocities: bool,
                  include_accelerations: bool
@@ -55,22 +55,13 @@ class EncoderFeaturesGetter:
             raise ValueError("Accelerations are supposed \
                              to be an addition to velocities. Add velocities.")
 
-        self.grid_name_to_nk_lookup = grid_name_to_nk_lookup
         self.grid_name_to_wh = grid_name_to_wh
-        self.kb_tokenizer = kb_tokenizer
         self.include_time = include_time
         self.include_velocities = include_velocities
         self.include_accelerations = include_accelerations
-    
-    def _get_kb_tokens(self, X, Y, grid_name) -> Tensor:
-        nearest_key_lookup = self.grid_name_to_nk_lookup[grid_name]
-        kb_labels = [nearest_key_lookup(x, y) for x, y in zip(X, Y)]
-        kb_tokens = [self.kb_tokenizer.get_token(label) for label in kb_labels]
-        kb_tokens = torch.tensor(kb_tokens, dtype=torch.int64)
-        return kb_tokens
 
-    def _get_traj_feats(self, X: Tensor, Y: Tensor, T: Tensor, 
-                        grid_name: str) -> Tensor:
+    def __call__(self, X: Iterable, Y: Iterable, T: Iterable, grid_name: str) -> Tensor:
+        X, Y, T = (torch.tensor(arr) for arr in (X, Y, T))
         traj_feats = [X, Y]
         if self.include_time:
             traj_feats.append(T)
@@ -95,6 +86,46 @@ class EncoderFeaturesGetter:
         traj_feats[:, 1] = traj_feats[:, 1] / height
 
         return traj_feats
+    
+
+class KbTokensGetter:
+    def __init__(self, 
+                 grid_name_to_nk_lookup: Dict[str, NearestKeyLookup],
+                 kb_tokenizer: KeyboardTokenizerv1,
+                 return_tensor: bool
+                 ) -> None:
+        self.return_tensor = return_tensor
+        self.grid_name_to_nk_lookup = grid_name_to_nk_lookup
+        self.kb_tokenizer = kb_tokenizer
+    
+    def __call__(self, X: Iterable, Y: Iterable, grid_name: str) -> Tensor:
+        nearest_key_lookup = self.grid_name_to_nk_lookup[grid_name]
+        kb_labels = [nearest_key_lookup(x, y) for x, y in zip(X, Y)]
+        kb_tokens = [self.kb_tokenizer.get_token(label) for label in kb_labels]
+
+        if self.return_tensor:
+            kb_tokens = torch.tensor(kb_tokens, dtype = torch.int64)
+        else:
+            kb_tokens = array('B', kb_tokens)
+
+        return kb_tokens
+
+
+class EncoderFeaturesGetter:
+    def __init__(self, 
+                 grid_name_to_nk_lookup: Dict[str, NearestKeyLookup],
+                 grid_name_to_wh: Dict[str, Tuple[int, int]],
+                 kb_tokenizer: KeyboardTokenizerv1,
+                 include_time: bool,
+                 include_velocities: bool,
+                 include_accelerations: bool
+                 ) -> None:
+        self._get_traj_feats = TrajFeatsGetter(
+            grid_name_to_nk_lookup, grid_name_to_wh,
+            include_time, include_velocities, include_accelerations)
+        
+        self._get_kb_tokens = KbTokensGetter(
+            grid_name_to_nk_lookup, kb_tokenizer)
 
     def __call__(self, X: Iterable, Y: Iterable,
                  T: Iterable, grid_name: str) -> Tuple[Tensor, Tensor]:
@@ -141,3 +172,42 @@ class TransformerInputOutputGetter:
         traj_feats, kb_tokens = self.get_encoder_feats(X, Y, T, grid_name)
         decoder_in, decoder_out = self.get_decoder_in_out(tgt_word)
         return (traj_feats, kb_tokens, decoder_in), decoder_out
+
+
+class InitTransform:
+    """
+    Converts (X, Y, T, grid_name, tgt_word) into
+    (X, Y, T, grid_name, tgt_word, kb_tokens)
+    """
+    def __init__(self, 
+                 grid_name_to_nk_lookup: Dict[str, NearestKeyLookup],
+                 kb_tokenizer: KeyboardTokenizerv1
+                 ) -> None:
+        self.get_kb_tokens = KbTokensGetter(
+            grid_name_to_nk_lookup, kb_tokenizer, False)
+        
+    def __call__(self, data: DatasetEl) -> GetItemTransformInput:
+        X, Y, T, grid_name, tgt_word = data
+        kb_tokens = self.get_kb_tokens(X, Y, grid_name)
+        return (X, Y, T, grid_name, tgt_word, kb_tokens)
+    
+
+class GetItemTransform:
+    def __init__(self, 
+                 grid_name_to_wh: Dict[str, Tuple[int, int]],
+                 word_tokenizer: CharLevelTokenizerv2,
+                 include_time: bool,
+                 include_velocities: bool,
+                 include_accelerations: bool
+                 ) -> None:
+        self.get_traj_feats = TrajFeatsGetter(
+            grid_name_to_wh, include_time, include_velocities, include_accelerations)
+        self.get_decoder_in_out = DecoderInputOutputGetter(word_tokenizer)
+
+    def __call__(self, data: GetItemTransformInput) -> Tuple[Tuple[Tensor, Tensor, Tensor], Tensor]:
+        X, Y, T, grid_name, tgt_word, kb_tokens = data
+        X, Y, T = (torch.tensor(arr) for arr in (X, Y, T))
+        traj_feats = self.get_traj_feats(X, Y, T, grid_name)
+        decoder_in, decoder_out = self.get_decoder_in_out(tgt_word)
+        return (traj_feats, kb_tokens, decoder_in), decoder_out
+    

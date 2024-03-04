@@ -15,18 +15,25 @@ class CurveDataset(Dataset):
     """
     Dataset class for NeuroSwipe jsonl dataset
     
+    if `init_transform` and `get_item_transform` are None, 
     curve_dataset_obj[i] is a tuple (X, Y, T, grid_name, tgt_word)
     If there is no 'word' property in .json file, `tgt_word` is None.
 
-    Extracting features (for example nearest keyboard  key label) 
-    is be done via transforms.  Transfroms are be applied in __getitem__
-    but if they may be split into two args in the future: 
-    init_transforms and get_item_transforms.
+    Transforms are separated into two parts: 
+    * `init_transform` - takes raw data and returns semi-extracted features 
+    * `get_item_transform` takes semi-extracted features and returns 
+        (model_input, target).
+    
+    If `init_transform` is a full transform, the dataset may take too much memory.
+    If `get_item_transform` is a full transform, iterating over 
+        the dataset may be slow. 
     """
 
     def __init__(self,
                  data_path: str,
-                 transform: Optional[Callable] = None,
+                 store_gnames: bool,
+                 init_transform: Optional[Callable] = None,
+                 get_item_transform: Optional[Callable] = None,
                  total: Optional[int] = None):
         """
         Arguments:
@@ -45,22 +52,39 @@ class CurveDataset(Dataset):
                 - y (List[int]): y coordinates of the swipe trajectory.
                 - t (List[int]): time (in ms) from the beginning of the swipe.
                 - grid_name (str): name of the keyboard grid.
-        transform: Optional[Callable]
+        store_gnames: bool
+            If True, stores grid names in self.grid_name_list.
+        init_transform: Optional[Callable]
             A function that takes raw data (X, Y, T, grid_name, tgt_word)
-            and returns a tuple (model_input, target).
+            and returns semi-extracted features.
+        get_item_transform: Optional[Callable]
+            A function that takes semi-extracted features and returns 
+            (model_input, target).
         total: Optional[int]
             Number of dataset elements. Is used only for progress bar.
         """
-        self.data_list = self._get_data(data_path, total = total)
-        self.transform = transform
+        self.transform = get_item_transform
+        self.data_list = self._get_data(data_path, 
+                                        init_transform, 
+                                        set_gnames=store_gnames,
+                                        total = total)
 
     def _get_data(self,
                   data_path: str,
+                  transform: Optional[Callable],
+                  set_gnames: bool,
                   total: Optional[int] = None):
         data_list = []
+        if set_gnames:
+            self.grid_name_list = []
         with open(data_path, "r", encoding="utf-8") as json_file:
             for line in tqdm(json_file, total = total):
-                data_list.append(self._get_data_from_json_line(line))
+                data_el = self._get_data_from_json_line(line)
+                if set_gnames:
+                    self.grid_name_list.append(data_el[3])
+                if transform is not None:
+                    data_el = transform(data_el)
+                data_list.append(data_el)
         return data_list
 
     def _get_data_from_json_line(self,
