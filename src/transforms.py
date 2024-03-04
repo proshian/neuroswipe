@@ -9,44 +9,6 @@ from tokenizers import KeyboardTokenizerv1, CharLevelTokenizerv2
 
 DatasetEl = Tuple[array, array, array, str, Optional[str]]
 
-# class NearestKeyLookupTransform:
-#     def __init__(self, grid_name_to_nk_lookup: Dict[str, NearestKeyLookup]) -> None:
-#         self.grid_name_to_nk_lookup = grid_name_to_nk_lookup
-
-#     def __call__(self, data: DatasetEl) -> str:
-#         X, Y, _, grid_name, _ = data
-#         nearest_key_lookup = self.grid_name_to_nk_lookup[grid_name]
-#         return nearest_key_lookup.get_nearest_kb_label(X, Y)
-
-
-# class Compose:
-#     def __init__(self, transforms_lst: Iterable[Callable]) -> None:
-#         self.transforms_lst = transforms_lst
-    
-#     def __call__(self, data: Any) -> Any:
-#         for transform in self.transforms_lst:
-#             data = transform(data)
-#         return data
-    
-
-# class KeyboardLabelTokenGetter:
-#     def __init__(self, tokenizer: KeyboardTokenizerv1) -> None:
-#         self.tokenizer = tokenizer
-
-#     def __call__(self, char: str):
-#         return self.tokenizer.get_token(char)
-
-
-# class ComposeTuple:
-#     def __init__(self, transforms_lst: Iterable[Callable]) -> None:
-#         self.transforms_lst = transforms_lst
-    
-#     def __call__(self, data: Any) -> Any:
-#         result = []
-#         for transform in self.transforms_lst:
-#             result.append(transform(data))
-#         return result
-
 
 def get_dx_dt(X: Tensor,
               T: Tensor) -> Tensor:
