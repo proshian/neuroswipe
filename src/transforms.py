@@ -142,6 +142,22 @@ class EncoderFeaturesGetter:
         return traj_feats, kb_tokens
 
 
+class DecoderInputOutputGetter:
+    def __init__(self,
+                 word_tokenizer: CharLevelTokenizerv2,
+                 ) -> None:
+        self.word_tokenizer = word_tokenizer
+    
+    def __call__(self, tgt_word: str) -> Tuple[Tensor, Tensor]:
+        # <sos>, token1, token2, ... token_n, <eos>
+        tgt_token_seq: List[int] = self.word_tokenizer.encode(tgt_word)
+        tgt_token_seq = torch.tensor(tgt_token_seq, dtype = torch.int64)
+
+        decoder_in = tgt_token_seq[:-1]
+        decoder_out = tgt_token_seq[1:]
+        return decoder_in, decoder_out       
+
+
 class TransformerInputOutputGetter:
     def __init__(self, 
                  grid_name_to_nk_lookup: Dict[str, NearestKeyLookup],
@@ -155,19 +171,11 @@ class TransformerInputOutputGetter:
         self.get_encoder_feats = EncoderFeaturesGetter(
             grid_name_to_nk_lookup, grid_name_to_wh, kb_tokenizer,
             include_time, include_velocities, include_accelerations)
-        self.word_tokenizer = word_tokenizer
+        self.get_decoder_in_out = DecoderInputOutputGetter(word_tokenizer)
     
-    def get_decoder_in_and_out(self, tgt_word):
-        # <sos>, token1, token2, ... token_n, <eos>
-        tgt_token_seq: List[int] = self.word_tokenizer.encode(tgt_word)
-        tgt_token_seq = torch.tensor(tgt_token_seq, dtype = torch.int64)
-
-        decoder_in = tgt_token_seq[:-1]
-        decoder_out = tgt_token_seq[1:]
-        return decoder_in, decoder_out
-
-    def __call__(self, data: DatasetEl):
+    def __call__(self, data: DatasetEl
+                 ) -> Tuple[Tuple[Tensor, Tensor, Tensor], Tensor]:
         X, Y, T, grid_name, tgt_word = data
         traj_feats, kb_tokens = self.get_encoder_feats(X, Y, T, grid_name)
-        decoder_in, decoder_out = self.get_decoder_in_and_out(tgt_word)
+        decoder_in, decoder_out = self.get_decoder_in_out(tgt_word)
         return (traj_feats, kb_tokens, decoder_in), decoder_out
