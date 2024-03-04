@@ -11,6 +11,10 @@ from torch.nn.utils.rnn import pad_sequence
 from tokenizers import CharLevelTokenizerv2, KeyboardTokenizerv1
 
 
+RawDatasetEl = Tuple[array.array, array.array, 
+                     array.array, str, Optional[str]]
+
+
 class CurveDataset(Dataset):
     """
     Dataset class for NeuroSwipe jsonl dataset
@@ -73,7 +77,7 @@ class CurveDataset(Dataset):
                   data_path: str,
                   transform: Optional[Callable],
                   set_gnames: bool,
-                  total: Optional[int] = None):
+                  total: Optional[int] = None) -> List[RawDatasetEl]:
         data_list = []
         if set_gnames:
             self.grid_name_list = []
@@ -89,10 +93,7 @@ class CurveDataset(Dataset):
 
     def _get_data_from_json_line(self,
                                  line
-                                 ) -> Tuple[list, list, list, str]:
-        """
-        Parses a JSON line and returns a dictionary with data.
-        """
+                                 ) -> RawDatasetEl:
         data = json.loads(line)
 
         X = array.array('h', data['curve']['x'])
@@ -108,18 +109,11 @@ class CurveDataset(Dataset):
     def __len__(self):
         return len(self.data_list)
     
-    def get_raw_item(self, idx):
-        return self.data_list[idx]
-    
     def __getitem__(self, idx):
         sample = self.data_list[idx]  # X, Y, T, grid_name, tgt_word
         if self.transform:
             sample = self.transform(sample)
         return sample
-
-
-
-
 
 
 class NeuroSwipeDatasetv3(Dataset):

@@ -5,9 +5,8 @@ from typing import Tuple, Dict, Optional, Iterable, List
 from array import array
 from nearest_key_lookup import NearestKeyLookup
 from tokenizers import KeyboardTokenizerv1, CharLevelTokenizerv2
+from dataset import RawDatasetEl 
 
-
-DatasetEl = Tuple[array, array, array, str, Optional[str]]
 
 GetItemTransformInput = Tuple[array, array, array, str, Optional[str], array]
 
@@ -166,7 +165,7 @@ class TransformerInputOutputGetter:
             include_time, include_velocities, include_accelerations)
         self.get_decoder_in_out = DecoderInputOutputGetter(word_tokenizer)
     
-    def __call__(self, data: DatasetEl
+    def __call__(self, data: RawDatasetEl
                  ) -> Tuple[Tuple[Tensor, Tensor, Tensor], Tensor]:
         X, Y, T, grid_name, tgt_word = data
         traj_feats, kb_tokens = self.get_encoder_feats(X, Y, T, grid_name)
@@ -186,7 +185,7 @@ class InitTransform:
         self.get_kb_tokens = KbTokensGetter(
             grid_name_to_nk_lookup, kb_tokenizer, False)
         
-    def __call__(self, data: DatasetEl) -> GetItemTransformInput:
+    def __call__(self, data: RawDatasetEl) -> GetItemTransformInput:
         X, Y, T, grid_name, tgt_word = data
         kb_tokens = self.get_kb_tokens(X, Y, grid_name)
         return (X, Y, T, grid_name, tgt_word, kb_tokens)
