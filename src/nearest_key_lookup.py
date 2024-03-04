@@ -5,6 +5,11 @@ import numpy as np
 
 
 class NearestKeyLookup:
+    """
+    Given a keyboard grid and a list of nearest_key_candidates
+    returns the nearest key label for a given (x, y) coordinate.
+    """
+
     def __init__(self, 
                  grid: dict, 
                  nearest_key_candidates: Iterable[str]) -> None:
@@ -83,13 +88,12 @@ class NearestKeyLookup:
     
     def get_nearest_kb_label(self, x, y):
         """
-        Given coords on a keyboard (x, y) and its grid_name returns the nearest keyboard key
-
-        By default it uses an array assosiated with grid_name
-        that stores the nearest key label for every possible coord pair.
-
-        If coords are outside of the keyboard boarders finds
-        the nearest key by iterating over all keys.
+        Returns the nearest key label for a given (x, y) coordinate.
+        
+        By default it uses an array assosiated that stores 
+        the nearest key label for every coord pair within the keyboard.
+        If the coordinate is out of bounds, finds the nearest key 
+        by iterating over all keys (among nearest_key_candidates).
         """        
         if x < 0 or x >= self.grid['width'] or y < 0 or y >= self.grid['height']:
             return self._get_kb_label_without_map(x, y, self.grid)
