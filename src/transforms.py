@@ -1,7 +1,7 @@
 import torch
 from torch import Tensor
 
-from typing import Any, Tuple, Dict, Optional, Iterable, Callable, List
+from typing import Tuple, Dict, Optional, Iterable, List
 from array import array
 from nearest_key_lookup import NearestKeyLookup
 from tokenizers import KeyboardTokenizerv1, CharLevelTokenizerv2

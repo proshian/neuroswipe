@@ -43,15 +43,16 @@ class CurveDataset(Dataset):
             - curve (dict): dictionary that contains the following properties:
                 - x (List[int]): x coordinates of the swipe trajectory.
                 - y (List[int]): y coordinates of the swipe trajectory.
-                - t (List[int]): time in milliseconds from the beginning of the swipe.
+                - t (List[int]): time (in ms) from the beginning of the swipe.
                 - grid_name (str): name of the keyboard grid.
-
+        transform: Optional[Callable]
+            A function that takes raw data (X, Y, T, grid_name, tgt_word)
+            and returns a tuple (model_input, target).
         total: Optional[int]
             Number of dataset elements. Is used only for progress bar.
         """
         self.data_list = self._get_data(data_path, total = total)
         self.transform = transform
-
 
     def _get_data(self,
                   data_path: str,
@@ -61,7 +62,6 @@ class CurveDataset(Dataset):
             for line in tqdm(json_file, total = total):
                 data_list.append(self._get_data_from_json_line(line))
         return data_list
-
 
     def _get_data_from_json_line(self,
                                  line
@@ -81,11 +81,12 @@ class CurveDataset(Dataset):
 
         return X, Y, T, grid_name, tgt_word
 
-
     def __len__(self):
         return len(self.data_list)
     
-
+    def get_raw_item(self, idx):
+        return self.data_list[idx]
+    
     def __getitem__(self, idx):
         sample = self.data_list[idx]  # X, Y, T, grid_name, tgt_word
         if self.transform:
@@ -509,33 +510,47 @@ class NeuroSwipeGridSubset(Dataset):
     
 
 
-def collate_fn(batch: list):
-    """
-    batch - list of tuples:
-    ((traj_feats, kb_tokens, dec_in_char_seq, word_pad_mask), dec_out_char_seq)
-    """
-    x, dec_out_char_seq = zip(*batch)
-    (traj_feats_no_pad, kb_tokens_no_pad,
-     dec_in_char_seq, word_pad_mask) = zip(*x)
-
-    # traj_feats[i].shape = (curve_len, n_coord_feats)
-    traj_feats = pad_sequence(traj_feats_no_pad, batch_first=False)  # (curves_len, batch_size, n_coord_feats)
-    # kb_tokens[i].shape = (curve_len,) 
-    kb_tokens = pad_sequence(kb_tokens_no_pad, batch_first=False)  # (curves_len, batch_size)
+class CollateFn:
+    def __init__(self, word_pad_idx: int, batch_first: bool):
+        self.word_pad_idx = word_pad_idx
+        self.batch_first = batch_first
     
-    dec_in_char_seq = torch.stack(dec_in_char_seq).transpose_(0, 1)  # (chars_seq_len - 1, batch_size)
-    dec_out_char_seq = torch.stack(dec_out_char_seq).transpose_(0, 1)  # (chars_seq_len - 1, batch_size)
-    word_pad_mask = torch.stack(word_pad_mask)
-    
+    def __call__(self, batch: list):
+        """
+        batch - list of tuples:
+        ((traj_feats, kb_tokens, dec_in_char_seq), dec_out_char_seq)
+        """
+        x, dec_out_no_pad = zip(*batch)
+        (traj_feats_no_pad, kb_tokens_no_pad, dec_in_no_pad) = zip(*x)
 
-    max_curve_len = traj_feats.shape[0]
+        # traj_feats[i].shape = (curve_len, batch_size, n_coord_feats)
+        traj_feats = pad_sequence(traj_feats_no_pad, batch_first=self.batch_first)
+        # kb_tokens[i].shape = (curve_len, batch_size)
+        kb_tokens = pad_sequence(kb_tokens_no_pad, batch_first=self.batch_first)
 
-    traj_lens = torch.tensor([len(x) for x in traj_feats_no_pad])
+        # (chars_seq_len - 1, batch_size)
+        dec_in = pad_sequence(dec_in_no_pad, batch_first=self.batch_first, 
+                                       padding_value=self.word_pad_idx)
+        dec_out = pad_sequence(dec_out_no_pad, batch_first=self.batch_first,
+                                        padding_value=self.word_pad_idx)
+        
+        
+        word_pad_mask = dec_in == self.word_pad_idx
+        if not self.batch_first:
+            word_pad_mask = word_pad_mask.T  # word_pad_mask is always batch first
 
-    # Берем матрицу c len(traj_lens) строками вида [0, 1, ... , max_curve_len - 1].
-    # Каждый элемент i-ой строки сравниваем с длиной i-ой траектории.  Получится
-    # матрица, где True только на позициях, больших, чем длина соответствующей траектории.
-    # (batch_size, max_curve_len)    
-    traj_pad_mask = torch.arange(max_curve_len).expand(len(traj_lens), max_curve_len) >= traj_lens.unsqueeze(1)
+        max_curve_len = traj_feats.shape[0]
+        traj_lens = torch.tensor([len(x) for x in traj_feats_no_pad])
 
-    return (traj_feats, kb_tokens, dec_in_char_seq, traj_pad_mask, word_pad_mask), dec_out_char_seq
+        # Берем матрицу c len(traj_lens) строками вида 
+        # [0, 1, ... , max_curve_len - 1].  Каждый элемент i-ой строки 
+        # сравниваем с длиной i-ой траектории.  Получится матрица, где True 
+        # только на позициях, больших, чем длина соответствующей траектории.
+        # (batch_size, max_curve_len)    
+        traj_pad_mask = torch.arange(max_curve_len).expand(
+            len(traj_lens), max_curve_len) >= traj_lens.unsqueeze(1)
+        
+        transformer_in = (traj_feats, kb_tokens, dec_in, 
+                          traj_pad_mask, word_pad_mask)
+
+        return transformer_in, dec_out
