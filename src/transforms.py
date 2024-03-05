@@ -59,8 +59,7 @@ class TrajFeatsGetter:
         self.include_velocities = include_velocities
         self.include_accelerations = include_accelerations
 
-    def __call__(self, X: Iterable, Y: Iterable, T: Iterable, grid_name: str) -> Tensor:
-        X, Y, T = (torch.tensor(arr) for arr in (X, Y, T))
+    def __call__(self, X: Tensor, Y: Tensor, T: Tensor, grid_name: str) -> Tensor:
         traj_feats = [X, Y]
         if self.include_time:
             traj_feats.append(T)
@@ -126,9 +125,9 @@ class EncoderFeaturesGetter:
         self._get_kb_tokens = KbTokensGetter(
             grid_name_to_nk_lookup, kb_tokenizer)
 
-    def __call__(self, X: Iterable, Y: Iterable,
-                 T: Iterable, grid_name: str) -> Tuple[Tensor, Tensor]:
-        X, Y, T = (torch.tensor(arr) for arr in (X, Y, T))
+    def __call__(self, X: array, Y: array,
+                 T: array, grid_name: str) -> Tuple[Tensor, Tensor]:
+        X, Y, T = (torch.tensor(arr, dtype=torch.float32) for arr in (X, Y, T))
         traj_feats = self._get_traj_feats(X, Y, T, grid_name)
         kb_tokens = self._get_kb_tokens(X, Y, grid_name)
         return traj_feats, kb_tokens
