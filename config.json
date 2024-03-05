@@ -37,14 +37,7 @@
         
         "data_split__to__path": {
             "test": "./data/data_separated_grid/test.jsonl",
-            "val": "./data/data_separated_grid/valid.jsonl",
-    
-            "val_default": "./data/data_separated_grid/valid__in_train_format__default_only.jsonl",
-            "val_extra": "./data/data_separated_grid/valid__in_train_format__extra_only.jsonl",
-            "test_default": "./data/data_separated_grid/test__default_only.jsonl",
-            "test_extra": "./data/data_separated_grid/test__extra_only.jsonl"
+            "val": "./data/data_separated_grid/valid.jsonl"
         }
     }
-
-
 } 

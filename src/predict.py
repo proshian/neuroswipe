@@ -52,10 +52,12 @@ from concurrent.futures import ProcessPoolExecutor
 # import pandas as pd
 
 from model import get_m1_model, get_m1_bigger_model, get_m1_smaller_model
-from tokenizers import CharLevelTokenizerv2
-from dataset import NeuroSwipeDatasetv3, NeuroSwipeGridSubset
-from tokenizers import KeyboardTokenizerv1
+from tokenizers import CharLevelTokenizerv2, KeyboardTokenizerv1
+from dataset import CurveDataset, CurveDatasetSubset
+from tokenizers import ALL_CYRILLIC_LETTERS_ALPHABET_ORD
 from word_generators import BeamGenerator, GreedyGenerator
+from transforms import  InitTransform, GetItemTransform
+from nearest_key_lookup import NearestKeyLookup
 
 
 MODEL_GETTERS_DICT = {
@@ -134,14 +136,14 @@ class Predictor:
         pred = self.word_generator(*gen_in, **self.generator_kwargs)
         return i, pred
     
-    def _predict_raw_mp(self, dataset: NeuroSwipeDatasetv3,
+    def _predict_raw_mp(self, dataset: CurveDataset,
                         num_workers: int=3) -> List[List[Tuple[float, str]]]:
         """
         Creates predictions given a word generator
         
         Arguments:
         ----------
-        dataset: NeuroSwipeDatasetv3
+        dataset: CurveDataset
             The dataset is supposed to be a subset of the original dataset
             containing only examples with the same grid_name as the predictor.
         num_workers: int
@@ -157,7 +159,7 @@ class Predictor:
         preds = [None] * len(dataset)
 
         data = [(i, (traj_feats, kb_tokens))
-                for i, ((traj_feats, kb_tokens, _, _), _, _) in enumerate(dataset)]     
+                for i, ((traj_feats, kb_tokens, _), _) in enumerate(dataset)]     
         
         with ProcessPoolExecutor(num_workers) as executor:
             for i, pred in tqdm(executor.map(self._predict_example, data), total=len(dataset)):
@@ -165,7 +167,7 @@ class Predictor:
 
         return preds
 
-    def predict(self, dataset: NeuroSwipeDatasetv3, 
+    def predict(self, dataset: CurveDataset, 
                 grid_name: str, dataset_split: str,
                 num_workers: int=3) -> Prediction:
         """
@@ -173,7 +175,7 @@ class Predictor:
         
         Arguments:
         ----------
-        dataset: NeuroSwipeDatasetv3
+        dataset: CurveDataset
             Output[i] is a list of predictions for dataset[i] curve.
         grid_name: str
         dataset_split: str
@@ -211,12 +213,10 @@ def save_predictions(preds_wtih_meta: Prediction,
 #     # update_database(df, preds_wtih_meta)
 #     # df.to_csv(preds_csv_path, index=False)
 
-   
 
 def get_grid(grid_name: str, grids_path: str) -> dict:
     with open(grids_path, "r", encoding="utf-8") as f:
         return json.load(f)[grid_name]
-
 
 
 def get_grid_name_to_grid(grid_name_to_grid__path: str) -> dict:
@@ -244,30 +244,47 @@ def get_gridname_to_dataset(config) -> Dict[str, Dataset]:
     word_char_tokenizer = CharLevelTokenizerv2(config['voc_path'])
 
     kb_tokenizer = KeyboardTokenizerv1()
-    keyboard_selection_set = set(kb_tokenizer.i2t)
                                  
     grid_name_to_grid = get_grid_name_to_grid(
         config['grid_name_to_grid__path'])
     
-    print("Loading dataset...")
-    dataset = NeuroSwipeDatasetv3(
-        data_path = config['data_path'],
-        gridname_to_grid = grid_name_to_grid,
-        kb_tokenizer = kb_tokenizer,
-        word_tokenizer = word_char_tokenizer,
-        include_time = False,
-        include_velocities = True,
-        include_accelerations = True,
-        has_target=False,
-        has_one_grid_only=False,
-        include_grid_name=True,
-        keyboard_selection_set=keyboard_selection_set,
-        total = 10_000
+
+    gname_to_wh = {
+        gname: (grid['width'], grid['height']) 
+        for gname, grid in grid_name_to_grid.items()
+    }
+    
+    print("Creating NearestKeyLookups...")
+    gridname_to_nkl = {
+        gname: NearestKeyLookup(grid, ALL_CYRILLIC_LETTERS_ALPHABET_ORD)
+        for gname, grid in grid_name_to_grid.items()
+    }
+    
+    init_transform = InitTransform(
+        grid_name_to_nk_lookup=gridname_to_nkl,
+        kb_tokenizer=kb_tokenizer,
+    )
+
+    get_item_transform = GetItemTransform(
+        grid_name_to_wh=gname_to_wh,
+        word_tokenizer=word_char_tokenizer,
+        include_time=False,
+        include_velocities=True,
+        include_accelerations=True,
+    )
+
+    print("Creating dataset...")
+    dataset = CurveDataset(
+        data_path=config['data_path'],
+        store_gnames = True,
+        init_transform=init_transform,
+        get_item_transform=get_item_transform,
+        total = 10_000,
     )
 
     gridname_to_dataset = {
-        'default': NeuroSwipeGridSubset(dataset, grid_name='default'),
-        'extra': NeuroSwipeGridSubset(dataset, grid_name='extra'),
+        'default': CurveDatasetSubset(dataset, grid_name='default'),
+        'extra': CurveDatasetSubset(dataset, grid_name='extra'),
     }
 
     return gridname_to_dataset
@@ -278,7 +295,6 @@ def check_all_weights_exist(model_params: Iterable, models_root: str) -> None:
         if not os.path.exists(os.path.join(models_root, w_fname)):
             raise ValueError(f"Path {w_fname} does not exist.")
         
-
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser()

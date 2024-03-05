@@ -191,6 +191,10 @@ class InitTransform:
     
 
 class GetItemTransform:
+    """
+    Converts (X, Y, T, grid_name, tgt_word, kb_tokens) into
+    (traj_feats, kb_tokens, decoder_in), decoder_out
+    """
     def __init__(self, 
                  grid_name_to_wh: Dict[str, Tuple[int, int]],
                  word_tokenizer: CharLevelTokenizerv2,
@@ -207,6 +211,8 @@ class GetItemTransform:
         X, Y, T = (torch.tensor(arr, dtype=torch.float32) for arr in (X, Y, T))
         kb_tokens = torch.tensor(kb_tokens, dtype=torch.int64)
         traj_feats = self.get_traj_feats(X, Y, T, grid_name)
-        decoder_in, decoder_out = self.get_decoder_in_out(tgt_word)
+        decoder_in, decoder_out = None, None
+        if tgt_word is not None:
+            decoder_in, decoder_out = self.get_decoder_in_out(tgt_word)
         return (traj_feats, kb_tokens, decoder_in), decoder_out
     

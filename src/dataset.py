@@ -113,6 +113,26 @@ class CurveDataset(Dataset):
         return sample
 
 
+class CurveDatasetSubset:
+    def __init__(self, dataset: CurveDataset, grid_name: str):
+        assert hasattr(dataset, 'grid_name_list'), \
+            "Dataset doesn't have grid_name_list property. " \
+            "To fix this create the dataset with store_gnames=True"
+        self.dataset = dataset
+        self.grid_name = grid_name
+        self.grid_idxs = self._get_grid_idxs()
+    
+    def _get_grid_idxs(self):
+        return [i for i, gname in enumerate(self.dataset.grid_name_list)
+                if gname == self.grid_name]
+    
+    def __len__(self):
+        return len(self.grid_idxs)
+    
+    def __getitem__(self, idx):
+        return self.dataset[self.grid_idxs[idx]]
+    
+
 class CollateFn:
     def __init__(self, word_pad_idx: int, batch_first: bool):
         self.word_pad_idx = word_pad_idx

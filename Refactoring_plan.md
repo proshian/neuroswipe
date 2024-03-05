@@ -1,10 +1,11 @@
 # Refactoring Plan
 
+* Написать новый trainer
+* Изучить torch_lightning trainer
+
+
 * перенести тестирвоание collate_fn из train.ipynb в unittest/test_collate_fn.py
 * Сделать CI github action, запускающий юнит-тесты
-
-* Написать новый trainer
-* Изучить torchl_ightning trainer
 
 1) Добавить сохранение таблицы в predict.py -> save_results
       * В predict.py определить словарь word_generator_name__to__kwarg_keys: Dict[str, Set[str]], отображающий название алгоритма декодирования в множество, которому должно быть равно word_generator_kwargs.keys(). На основе этого словаря необходимо определить пред-условие для выполнения скрипта: `assert word_generator_name__to__kwarg_keys[word_generator_name] == set(config['word_generator_kwargs'])`
@@ -12,16 +13,6 @@
       * Есть ПЛОХАЯ альтернатива, которая решает проблему неисчерпываемости, но не решает проблему избыточности (а скорее усугубляет) - дополнять kwargs значениями по умолчанию с помощью inspect.signature(func)
       
 2) Убедиться, что предсказание + аггрегация выдают тот же результат, что и submission
-3) Сделать datasetv4, который просто хранит x, y, t, gridname, target для каждого примера и принимает на вход transforms.
-     * Нам потребуется множество transforms
-           * TransformsColection имеет конструктор, принимающий список других transforms, при вызове обходит свои transforms и сохраняет в tupple
-           * NearestKeyLookupTransform будет использовать nearest_key_lookup (определен в nearest_key_lookup.py) и возвращать label ближайшей клавиши
-           * nklTransform = transforms.compose([NearestKeyLookupTransform(grid_to_nearest_key_lookup), KeyboardCharTokenizer])
-           * DerivativesTransform(include_speeds, include_accelerations, include_time) возвращает cat(x, y, dxdt, dydt, ...)
-           * Итого transform: TransformsColection([transforms.compose([NearestKeyLookupTransform(grid_to_nearest_key_lookup), KeyboardCharTokenizer]), DerivativesTransform(include_speeds, include_accelerations, include_time)])
-      * Во-первых, зечем тратить каждый раз 5-10 секунд на создание маппинга [координаты → лейбл ближайшей буквы], если можно одина раз создать, сохранить и всегда передавать.
-      * Во-вторых, это по сути отдельная сущность, которая к тому же нужна на инференсе
-4) Добавить аугментацию датасета (случайное смещение координат x, y)
 
 * Возможно, лучше добавить сущность, хранящую словарь [координаты → список расстояний до каждой из клавиш ]. Мб это поможет сделать линейную интерполяцию.
 
@@ -38,20 +29,38 @@
       * Возможно, Нужен utility, объединяющий несколько таблиц, если предсказания делались на разных машинах. Predicotr_id должен удаляться, далее обходим все уникальные сочетания (Generator_type, Generator_call_kwargs_json, Model_architecture_name, Model_weights_path, Grid_name). сочетание представлено более чем одной строчкиой, убеждаемся, что для каждого из столбцов {test_preds_path, val_preds_path, validation_metric} мощность объединения значений по этим строчкам не превышает 1. Если это так производим объединение и записываем в одну из строчек, остальные удаляем. Иначе вызываем ошибку. В конце переназначаем id и перезаписываем файл.
 
 
-
 * Добавить скрипт для получения метрики для предсказания
 * Убедиться, что greedy_search + этот скрипт работают
 * Заменить все, что связано с оценкой моделей в playground на вызов predict.py + evaluate.py (скорее на вызов функций из этих скриптов)
 
 
-
 * Можно вообще не иметь id. Организовать базу данных либо в виде pandas таблички, либо такого словаря: tuple(model name, model path, grid_name, generator-name, tuple(sorted(kwargs.items()))) -> all_results_dict = {path to validation results, path to test results}
 
 
-* Убрать padding слов из датасета, перенести в collate_fn
-
-
 * Сделать batch_first ветку, обучить там транфсормер, у которого dim encoder целиком равен dim decoder
+
+
+
+# Notes about dataset
+
+Input_transform controls what would be stored in `dataset.data_list`. Tuples of `x, y, t, gridname, target` are stored if no input_transform is given.  
+
+`get_item_transform(input_trasform(x, y, t, gridname, target)) = model_input, target`. 
+
+Currently `dataset.data_list` stores `(x, y, t, gridname, target, kb_tokens)`.
+
+I tried:
+* storing `(x, y, t, gridname, target)` and calculating all featurs on `__getitem__`. Getting items became to slow. Iterating over the dataset takes 4 times more time compare to storing `(x, y, t, gridname, target, kb_tokens)`
+* storing `model_input, target`. Creating dataset became too slow (around 5 hours)
+
+
+
+Выделение nearest_key_loookup в отдельную сущность хорошая идея, потому что:
+* Во-первых, зечем тратить каждый раз 5-10 секунд на создание маппинга [координаты → лейбл ближайшей буквы], если можно одина раз создать, сохранить и всегда передавать.
+* Эта сущность нужна на инференсе
+
+Большим плюсом датасета, хранящего `(x, y, t, gridname, target)` является возможность добавления аугментаций датасета (случайное смещение координат x, y)
+
 
 
 # General
