@@ -205,7 +205,8 @@ class GetItemTransform:
 
     def __call__(self, data: GetItemTransformInput) -> Tuple[Tuple[Tensor, Tensor, Tensor], Tensor]:
         X, Y, T, grid_name, tgt_word, kb_tokens = data
-        X, Y, T = (torch.tensor(arr) for arr in (X, Y, T))
+        X, Y, T = (torch.tensor(arr, dtype=torch.float32) for arr in (X, Y, T))
+        kb_tokens = torch.tensor(kb_tokens, dtype=torch.int64)
         traj_feats = self.get_traj_feats(X, Y, T, grid_name)
         decoder_in, decoder_out = self.get_decoder_in_out(tgt_word)
         return (traj_feats, kb_tokens, decoder_in), decoder_out
