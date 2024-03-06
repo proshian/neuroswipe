@@ -5,6 +5,7 @@
 
 
 * перенести тестирвоание collate_fn из train.ipynb в unittest/test_collate_fn.py
+* обновить существующие тесты
 * Сделать CI github action, запускающий юнит-тесты
 
 1) Добавить сохранение таблицы в predict.py -> save_results
@@ -39,6 +40,14 @@
 
 * Сделать batch_first ветку, обучить там транфсормер, у которого dim encoder целиком равен dim decoder
 
+
+* Обновить word_generation.ipynb. 
+      1. Генерация с помощью greedy или beam generator
+      2. Предсказание для датасета с помощью Predictor(generatr="greedy")
+      3. Рассчет mmr для результата predictor
+      4. Рассчет mmr для предсказаний, сохраненных в файлах
+      5. Аггрегация
+      6. Рассчет mmr для аггрегированных предсказаний
 
 
 # Notes about dataset
