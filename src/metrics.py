@@ -1,6 +1,8 @@
+from typing import Collection
+
 from aggregate_predictions import delete_duplicates_stable
 
-def get_mmr(preds_list, ref):
+def get_mmr(preds_list: Collection[Collection[str]], ref: Collection[str]) -> float:
     # Works properly if has duplicates or n_line_preds < 4
 
     MMR = 0

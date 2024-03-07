@@ -32,7 +32,7 @@ class NearestKeyLookup:
             return key['action']
         raise ValueError("Key has no label or action property")
 
-    def _get_key_center(self, hitbox: Dict[str, int]) -> Tuple[int, int]:
+    def _get_key_center(self, hitbox: Dict[str, int]) -> Tuple[float, float]:
         x = hitbox['x'] + hitbox['w'] / 2
         y = hitbox['y'] + hitbox['h'] / 2
         return x, y

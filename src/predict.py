@@ -74,7 +74,7 @@ GENERATOR_CTORS_DICT = {
 
 @dataclass
 class Prediction:
-    prediction: Tuple[int, List[Tuple[float, str]]]
+    prediction: List[List[Tuple[float, str]]]
     model_name: str
     model_weights: str
     generator_name: str

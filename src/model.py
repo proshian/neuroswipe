@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Optional
 import math
 
 import torch
@@ -158,11 +158,12 @@ class SwipeCurveTransformer(nn.Module):
                  max_out_seq_len: int,
                  max_curves_seq_len: int,
                  activation: Callable = F.relu,
-                 device: str = None):
+                 device: Optional[str] = None):
         super().__init__()
 
-        device = device or torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.device = device
+        self.device = torch.device(
+            device 
+            or 'cuda' if torch.cuda.is_available() else 'cpu')
 
         input_feats_size = n_coord_feats + key_emb_size
 
