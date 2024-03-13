@@ -1,6 +1,8 @@
 import json
 from typing import Optional, List, Tuple, Callable
 import array
+from concurrent.futures import ProcessPoolExecutor
+
 
 import torch
 from torch.utils.data import Dataset
@@ -35,6 +37,7 @@ class CurveDataset(Dataset):
                  store_gnames: bool,
                  init_transform: Optional[Callable] = None,
                  get_item_transform: Optional[Callable] = None,
+                 n_workers: int = 0,
                  total: Optional[int] = None):
         """
         Arguments:
@@ -55,6 +58,8 @@ class CurveDataset(Dataset):
                 - grid_name (str): name of the keyboard grid.
         store_gnames: bool
             If True, stores grid names in self.grid_name_list.
+        n_workers: int
+            If `n_workers` > 0, dataset creation will be parallelized.
         init_transform: Optional[Callable]
             A function that takes raw data (X, Y, T, grid_name, tgt_word)
             and returns semi-extracted features.
@@ -64,12 +69,32 @@ class CurveDataset(Dataset):
         total: Optional[int]
             Number of dataset elements. Is used only for progress bar.
         """
+        self.n_workers = n_workers
         self.transform = get_item_transform
-        self.data_list = self._get_data(data_path, 
-                                        init_transform, 
-                                        set_gnames=store_gnames,
-                                        total = total)
 
+        get_data_fn = self._get_data_mp if n_workers > 0 else self._get_data
+        self.data_list = get_data_fn(data_path, init_transform, 
+                                     store_gnames, total)
+
+    def _get_data_mp(self,
+                    data_path: str,
+                    transform: Optional[Callable],
+                    set_gnames: bool,
+                    total: Optional[int] = None) -> List[RawDatasetEl]:
+        data_list = []
+        if set_gnames:
+            self.grid_name_list = []
+        with open(data_path, "r", encoding="utf-8") as json_file:
+            with ProcessPoolExecutor(max_workers=self.n_workers) as executor:
+                for data_el in tqdm(executor.map(self._get_data_from_json_line, json_file), total = total):
+                    if set_gnames:
+                        self.grid_name_list.append(data_el[3])
+                    if transform is not None:
+                        data_el = transform(data_el)
+                    data_list.append(data_el)
+
+        return data_list
+        
     def _get_data(self,
                   data_path: str,
                   transform: Optional[Callable],
