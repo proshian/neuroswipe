@@ -119,17 +119,22 @@ class EncoderFeaturesGetter:
                  include_accelerations: bool
                  ) -> None:
         self._get_traj_feats = TrajFeatsGetter(
-            grid_name_to_nk_lookup, grid_name_to_wh,
+            grid_name_to_wh,
             include_time, include_velocities, include_accelerations)
         
         self._get_kb_tokens = KbTokensGetter(
-            grid_name_to_nk_lookup, kb_tokenizer)
+            grid_name_to_nk_lookup, kb_tokenizer, True)
 
     def __call__(self, X: array, Y: array,
                  T: array, grid_name: str) -> Tuple[Tensor, Tensor]:
+        # Conversion to tensor would lead to indexing error since 
+        # tensor(`index_val`) is not a proper index 
+        # even if `index_val` is an integer
+        kb_tokens = self._get_kb_tokens(X, Y, grid_name)
+
         X, Y, T = (torch.tensor(arr, dtype=torch.float32) for arr in (X, Y, T))
         traj_feats = self._get_traj_feats(X, Y, T, grid_name)
-        kb_tokens = self._get_kb_tokens(X, Y, grid_name)
+        
         return traj_feats, kb_tokens
 
 
