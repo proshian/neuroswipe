@@ -44,7 +44,6 @@ class NearestKeyLookup:
         Iterates over all keys and calculates the
         distance to (x, y) to find the nearest one.
         """
-        nearest_kb_label = None
         min_dist = float("inf")
 
         for key in self.grid['keys']:
@@ -60,7 +59,7 @@ class NearestKeyLookup:
                 nearest_kb_label = label 
         return nearest_kb_label
     
-    def _create_coord_to_kb_label(self, grid: dict) -> np.array: # dtype = object
+    def _create_coord_to_kb_label(self, grid: dict) -> np.ndarray: # dtype = object
         coord_to_kb_label = np.zeros(
             (grid['width'], grid['height']), dtype=object)  # 1080 x 640 in our case
         coord_to_kb_label.fill('')

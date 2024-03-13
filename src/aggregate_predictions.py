@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Tuple, List, Set, Dict, Callable
+from typing import Tuple, List, Set, Dict, Callable, Iterable
 import os
 import pickle
 import copy
@@ -285,7 +285,7 @@ def merge_sorted_preds(model_preds_list: List[List[List[Tuple[float, str]]]]
     return merged_preds
 
 
-def delete_duplicates_stable(lst: list) -> list:
+def delete_duplicates_stable(lst: Iterable) -> list:
     """
     Deletes duplicates from a list. Maintains the order of elements.
     """
