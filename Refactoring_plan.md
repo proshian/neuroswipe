@@ -156,4 +156,6 @@ predictions_dict будет поучаться с помощью функции 
 
 
 # Notes 
-* Datasetv3, в отличие от Datasetv2, не возвращает traj_pad_mask и не производит padding траекторий. Padding будет производиться в collarte function. Padding выходной последовательности все еще производится в датасете.
+* Датасет принимает на вход initial_transform и get_item_transform. Подробнее написано в классе датасета. Обучение производилось с initial_transform = InitTransform, get_item_transform = GetItemTransform из файла transforms
+
+* Все, что многопоточное (Predictor._predict_raw_mp и CurveDataset._get_data_mp) работает только в скриптах. В jupyter notebook'ах - нет
