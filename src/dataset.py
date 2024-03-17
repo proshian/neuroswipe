@@ -81,15 +81,19 @@ class CurveDataset(Dataset):
                     transform: Optional[Callable],
                     set_gnames: bool,
                     total: Optional[int] = None) -> List[RawDatasetEl]:
-        raise NotImplementedError
         data_list = []
         if set_gnames:
             self.grid_name_list = []
         with open(data_path, "r", encoding="utf-8") as json_file:
             with Pool(self.n_workers) as executor:
+                # Seems like choosing proper chunk size is crucial for efficiency.
+                # Seems like splitting the file into portions leads to overhead.
+                # Note that processign speeds up a lot after around 10 minutes. 
+                n_chunks_per_workser = 8
+                chunksize = int(total / n_chunks_per_workser / self.n_workers)
                 # cuncurrent.futures.PoolExecutor.map and Pool.map do not 
                 # satisfy the task since they collect iterable immediately.
-                for data_el in tqdm(executor.imap(self._get_data_from_json_line, json_file), total = total):
+                for data_el in tqdm(executor.imap(self._get_data_from_json_line, json_file, chunksize = chunksize), total = total):
                     if set_gnames:
                         self.grid_name_list.append(data_el[3])
                     if transform is not None:
