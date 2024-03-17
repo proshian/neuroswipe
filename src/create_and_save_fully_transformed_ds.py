@@ -1,5 +1,5 @@
 # command:
-# python ./src/create_and_save_fully_transformed_ds.py --jsonl_path ./data/data_separated_grid/train__default_only_no_errors__2023_10_31__03_26_16.jsonl --output_path ./train_default_grid_no_errors__2023_10_31_ft__int32.pkl --vocab_path ./data/data_separated_grid/voc.txt --gridname_to_grid_path ./data/data_separated_grid/gridname_to_grid.json --n_workers 2
+# python ./src/create_and_save_fully_transformed_ds.py --jsonl_path ./data/data_separated_grid/train__default_only_no_errors__2023_10_31__03_26_16.jsonl --output_path ./train_default_grid_no_errors__2023_10_31_ft__int32.pkl --vocab_path ./data/data_separated_grid/voc.txt --gridname_to_grid_path ./data/data_separated_grid/gridname_to_grid.json --n_workers 0
 
 import os; import sys; current_dir = os.path.dirname(os.path.abspath(__file__)); parent_dir = os.path.dirname(current_dir); sys.path.append(os.path.join(parent_dir, 'src'))
 
@@ -7,7 +7,7 @@ import os; import sys; current_dir = os.path.dirname(os.path.abspath(__file__));
 import argparse
 import pickle
 
-from dataset import CurveDataset
+from dataset import CurveDatasetWithMultiProcInit
 from nearest_key_lookup import NearestKeyLookup
 from tokenizers import KeyboardTokenizerv1, CharLevelTokenizerv2
 from tokenizers import ALL_CYRILLIC_LETTERS_ALPHABET_ORD
@@ -58,8 +58,8 @@ if __name__ == '__main__':
         include_accelerations=True
     )
 
-    print("Calling CurveDataset.__init__ with full_transform...")
-    ds = CurveDataset(
+    print("Calling CurveDatasetWithMultiProcInit.__init__ with full_transform...")
+    ds = CurveDatasetWithMultiProcInit(
         data_path=args.jsonl_path,
         store_gnames=False,
         init_transform=full_transform,
@@ -68,5 +68,6 @@ if __name__ == '__main__':
         total=6_000_000
     )
 
+    # ! Probably better to use torch.save 
     with open(args.output_path, 'wb') as f:
-        pickle.dump(ds, f)
+        pickle.dump(ds.data_list, f)
