@@ -5,7 +5,7 @@ import os; import sys; current_dir = os.path.dirname(os.path.abspath(__file__));
 
 
 import argparse
-import pickle
+import torch
 
 from dataset import CurveDatasetWithMultiProcInit
 from nearest_key_lookup import NearestKeyLookup
@@ -68,6 +68,10 @@ if __name__ == '__main__':
         total=6_000_000
     )
 
-    # ! Probably better to use torch.save 
-    with open(args.output_path, 'wb') as f:
-        pickle.dump(ds.data_list, f)
+    print("saving")
+
+    torch.save(ds.data_list, args.output_path)
+    
+    # The script craches without error message sometimes and there's no way
+    # to know that it succeeded without this print
+    print("saved")
