@@ -1,7 +1,7 @@
 import json
 from typing import Optional, List, Tuple, Callable
 import array
-from concurrent.futures import ProcessPoolExecutor
+from multiprocessing import Pool
 
 
 import torch
@@ -81,12 +81,15 @@ class CurveDataset(Dataset):
                     transform: Optional[Callable],
                     set_gnames: bool,
                     total: Optional[int] = None) -> List[RawDatasetEl]:
+        raise NotImplementedError
         data_list = []
         if set_gnames:
             self.grid_name_list = []
         with open(data_path, "r", encoding="utf-8") as json_file:
-            with ProcessPoolExecutor(max_workers=self.n_workers) as executor:
-                for data_el in tqdm(executor.map(self._get_data_from_json_line, json_file), total = total):
+            with Pool(self.n_workers) as executor:
+                # cuncurrent.futures.PoolExecutor.map and Pool.map do not 
+                # satisfy the task since they collect iterable immediately.
+                for data_el in tqdm(executor.imap(self._get_data_from_json_line, json_file), total = total):
                     if set_gnames:
                         self.grid_name_list.append(data_el[3])
                     if transform is not None:
