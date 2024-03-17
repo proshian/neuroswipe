@@ -37,7 +37,6 @@ class CurveDataset(Dataset):
                  store_gnames: bool,
                  init_transform: Optional[Callable] = None,
                  get_item_transform: Optional[Callable] = None,
-                 n_workers: int = 0,
                  total: Optional[int] = None):
         """
         Arguments:
@@ -58,8 +57,6 @@ class CurveDataset(Dataset):
                 - grid_name (str): name of the keyboard grid.
         store_gnames: bool
             If True, stores grid names in self.grid_name_list.
-        n_workers: int
-            If `n_workers` > 0, dataset creation will be parallelized.
         init_transform: Optional[Callable]
             A function that takes raw data (X, Y, T, grid_name, tgt_word)
             and returns semi-extracted features.
@@ -69,38 +66,9 @@ class CurveDataset(Dataset):
         total: Optional[int]
             Number of dataset elements. Is used only for progress bar.
         """
-        self.n_workers = n_workers
         self.transform = get_item_transform
-
-        get_data_fn = self._get_data_mp if n_workers > 0 else self._get_data
-        self.data_list = get_data_fn(data_path, init_transform, 
-                                     store_gnames, total)
-
-    def _get_data_mp(self,
-                    data_path: str,
-                    transform: Optional[Callable],
-                    set_gnames: bool,
-                    total: Optional[int] = None) -> List[RawDatasetEl]:
-        data_list = []
-        if set_gnames:
-            self.grid_name_list = []
-        with open(data_path, "r", encoding="utf-8") as json_file:
-            with Pool(self.n_workers) as executor:
-                # Seems like choosing proper chunk size is crucial for efficiency.
-                # Seems like splitting the file into portions leads to overhead.
-                # Note that processign speeds up a lot after around 10 minutes. 
-                n_chunks_per_workser = 8
-                chunksize = int(total / n_chunks_per_workser / self.n_workers)
-                # cuncurrent.futures.PoolExecutor.map and Pool.map do not 
-                # satisfy the task since they collect iterable immediately.
-                for data_el in tqdm(executor.imap(self._get_data_from_json_line, json_file, chunksize = chunksize), total = total):
-                    if set_gnames:
-                        self.grid_name_list.append(data_el[3])
-                    if transform is not None:
-                        data_el = transform(data_el)
-                    data_list.append(data_el)
-
-        return data_list
+        self.data_list = self._get_data(
+            data_path, init_transform, store_gnames, total)
         
     def _get_data(self,
                   data_path: str,
@@ -143,6 +111,75 @@ class CurveDataset(Dataset):
         if self.transform:
             sample = self.transform(sample)
         return sample
+    
+    @classmethod
+    def from_data_list(cls, 
+                       data_list: list, 
+                       grid_name_list: Optional[List[str]] = None,
+                       get_item_transform: Optional[Callable] = None,
+                       ):
+        if grid_name_list:
+            assert len(grid_name_list) == len(data_list)
+        
+        obj = cls.__new__(cls)
+
+        obj.data_list = data_list
+        obj.get_item_transform = get_item_transform
+
+        if grid_name_list:
+            obj.grid_name_list = grid_name_list
+
+        return obj
+
+
+class CurveDatasetWithMultiProcInit(CurveDataset):
+    def __init__(self,
+                 data_path: str,
+                 store_gnames: bool,
+                 init_transform: Optional[Callable] = None,
+                 get_item_transform: Optional[Callable] = None,
+                 n_workers: int = 0,
+                 total: Optional[int] = None):
+        """
+        Arguments:
+        ----------
+        **All arguments from CurveDatase are present and are same**.
+        n_workers: int
+            If `n_workers` > 0, dataset creation will be parallelized.
+        """
+        self.n_workers = n_workers
+        self.transform = get_item_transform
+
+        get_data_fn = self._get_data_mp if n_workers > 0 else self._get_data
+        self.data_list = get_data_fn(data_path, init_transform, 
+                                     store_gnames, total)
+        
+    def _get_data_mp(self,
+                    data_path: str,
+                    transform: Optional[Callable],
+                    set_gnames: bool,
+                    total: Optional[int] = None) -> List[RawDatasetEl]:
+        data_list = []
+        if set_gnames:
+            self.grid_name_list = []
+        with open(data_path, "r", encoding="utf-8") as json_file:
+            with Pool(self.n_workers) as executor:
+                # Seems like choosing proper chunk size is crucial for efficiency.
+                # Seems like splitting the file into portions leads to overhead.
+                # Note that processign speeds up a lot after around 10 minutes. 
+                n_chunks_per_workser = 8
+                chunksize = int(total / n_chunks_per_workser / self.n_workers)
+                # cuncurrent.futures.PoolExecutor.map and Pool.map do not 
+                # satisfy the task since they collect iterable immediately.
+                for data_el in tqdm(executor.imap(self._get_data_from_json_line, json_file, chunksize = chunksize), total = total):
+                    if set_gnames:
+                        self.grid_name_list.append(data_el[3])
+                    if transform is not None:
+                        data_el = transform(data_el)
+                    data_list.append(data_el)
+
+        return data_list
+
 
 
 class CurveDatasetSubset:
@@ -150,6 +187,10 @@ class CurveDatasetSubset:
         assert hasattr(dataset, 'grid_name_list'), \
             "Dataset doesn't have grid_name_list property. " \
             "To fix this create the dataset with store_gnames=True"
+        # ! Maybe check dataset.grid_name_list is Iterable
+        assert dataset.grid_name_list is not None
+        assert len(dataset) == len(dataset.grid_name_list)
+        
         self.dataset = dataset
         self.grid_name = grid_name
         self.grid_idxs = self._get_grid_idxs()
