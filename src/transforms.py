@@ -90,19 +90,22 @@ class KbTokensGetter:
     def __init__(self, 
                  grid_name_to_nk_lookup: Dict[str, NearestKeyLookup],
                  kb_tokenizer: KeyboardTokenizerv1,
-                 return_tensor: bool
+                 return_tensor: bool,
+                 dtype: torch.dtype = torch.int32
                  ) -> None:
+        self.dtype = dtype
         self.return_tensor = return_tensor
         self.grid_name_to_nk_lookup = grid_name_to_nk_lookup
         self.kb_tokenizer = kb_tokenizer
     
-    def __call__(self, X: Iterable, Y: Iterable, grid_name: str) -> Tensor:
+    def __call__(self, X: Iterable, Y: Iterable, grid_name: str
+                 ) -> Tensor:
         nearest_key_lookup = self.grid_name_to_nk_lookup[grid_name]
         kb_labels = [nearest_key_lookup(x, y) for x, y in zip(X, Y)]
         kb_tokens = [self.kb_tokenizer.get_token(label) for label in kb_labels]
 
         if self.return_tensor:
-            kb_tokens = torch.tensor(kb_tokens, dtype = torch.int64)
+            kb_tokens = torch.tensor(kb_tokens, dtype=self.dtype)
         else:
             kb_tokens = array('B', kb_tokens)
 
@@ -141,13 +144,16 @@ class EncoderFeaturesGetter:
 class DecoderInputOutputGetter:
     def __init__(self,
                  word_tokenizer: CharLevelTokenizerv2,
+                 dtype: torch.dtype = torch.int32
                  ) -> None:
         self.word_tokenizer = word_tokenizer
+        self.dtype = dtype
     
-    def __call__(self, tgt_word: str) -> Tuple[Tensor, Tensor]:
+    def __call__(self, tgt_word: str, 
+                 ) -> Tuple[Tensor, Tensor]:
         # <sos>, token1, token2, ... token_n, <eos>
         tgt_token_seq: List[int] = self.word_tokenizer.encode(tgt_word)
-        tgt_token_seq = torch.tensor(tgt_token_seq, dtype = torch.int64)
+        tgt_token_seq = torch.tensor(tgt_token_seq, dtype=self.dtype)
 
         decoder_in = tgt_token_seq[:-1]
         decoder_out = tgt_token_seq[1:]
@@ -173,7 +179,10 @@ class TransformerInputOutputGetter:
                  ) -> Tuple[Tuple[Tensor, Tensor, Tensor], Tensor]:
         X, Y, T, grid_name, tgt_word = data
         traj_feats, kb_tokens = self.get_encoder_feats(X, Y, T, grid_name)
-        decoder_in, decoder_out = self.get_decoder_in_out(tgt_word)
+
+        decoder_in, decoder_out = None, None
+        if tgt_word is not None:
+            decoder_in, decoder_out = self.get_decoder_in_out(tgt_word)
         return (traj_feats, kb_tokens, decoder_in), decoder_out
 
 
@@ -205,16 +214,20 @@ class GetItemTransform:
                  word_tokenizer: CharLevelTokenizerv2,
                  include_time: bool,
                  include_velocities: bool,
-                 include_accelerations: bool
+                 include_accelerations: bool,
+                 kb_tokens_dtype: torch.dtype = torch.int32,
+                 tgt_word_dtype: torch.dtype = torch.int32
                  ) -> None:
+        self.kb_tokens_dtype = kb_tokens_dtype
         self.get_traj_feats = TrajFeatsGetter(
             grid_name_to_wh, include_time, include_velocities, include_accelerations)
-        self.get_decoder_in_out = DecoderInputOutputGetter(word_tokenizer)
+        self.get_decoder_in_out = DecoderInputOutputGetter(
+            word_tokenizer, dtype=tgt_word_dtype)
 
     def __call__(self, data: GetItemTransformInput) -> Tuple[Tuple[Tensor, Tensor, Tensor], Tensor]:
         X, Y, T, grid_name, tgt_word, kb_tokens = data
         X, Y, T = (torch.tensor(arr, dtype=torch.float32) for arr in (X, Y, T))
-        kb_tokens = torch.tensor(kb_tokens, dtype=torch.int64)
+        kb_tokens = torch.tensor(kb_tokens, dtype=self.kb_tokens_dtype)
         traj_feats = self.get_traj_feats(X, Y, T, grid_name)
         decoder_in, decoder_out = None, None
         if tgt_word is not None:
