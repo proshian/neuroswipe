@@ -13,7 +13,7 @@ from tokenizers import KeyboardTokenizerv1, CharLevelTokenizerv2
 from tokenizers import ALL_CYRILLIC_LETTERS_ALPHABET_ORD
 from predict import get_grid_name_to_grid
 # from transforms import InitTransform, GetItemTransform
-from transforms import TransformerInputOutputGetter
+from transforms import FullTransform
 
 
 def parse_args() -> argparse.Namespace:
@@ -48,14 +48,16 @@ if __name__ == '__main__':
     word_tokenizer = CharLevelTokenizerv2(args.vocab_path)
 
 
-    full_transform = TransformerInputOutputGetter(
+    full_transform = FullTransform(
         grid_name_to_nk_lookup=gridname_to_nkl,
         grid_name_to_wh=gname_to_wh,
         kb_tokenizer=kb_tokenizer,
         word_tokenizer=word_tokenizer,
         include_time=False,
         include_velocities=True,
-        include_accelerations=True
+        include_accelerations=True,
+        kb_tokens_dtype=torch.uint8,
+        word_tokens_dtype=torch.uint8
     )
 
     print("Calling CurveDatasetWithMultiProcInit.__init__ with full_transform...")

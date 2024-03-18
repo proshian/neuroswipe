@@ -9,6 +9,7 @@ from dataset import RawDatasetEl
 
 
 GetItemTransformInput = Tuple[array, array, array, str, Optional[str], array]
+FullTransformResultType = Tuple[Tuple[Tensor, Tensor, Tensor], Tensor]
 
 
 def get_dx_dt(X: Tensor,
@@ -119,14 +120,15 @@ class EncoderFeaturesGetter:
                  kb_tokenizer: KeyboardTokenizerv1,
                  include_time: bool,
                  include_velocities: bool,
-                 include_accelerations: bool
+                 include_accelerations: bool,
+                 kb_tokens_dtype: torch.dtype = torch.int32,
                  ) -> None:
         self._get_traj_feats = TrajFeatsGetter(
             grid_name_to_wh,
             include_time, include_velocities, include_accelerations)
         
         self._get_kb_tokens = KbTokensGetter(
-            grid_name_to_nk_lookup, kb_tokenizer, True)
+            grid_name_to_nk_lookup, kb_tokenizer, True, dtype=kb_tokens_dtype)
 
     def __call__(self, X: array, Y: array,
                  T: array, grid_name: str) -> Tuple[Tensor, Tensor]:
@@ -160,7 +162,7 @@ class DecoderInputOutputGetter:
         return decoder_in, decoder_out       
 
 
-class TransformerInputOutputGetter:
+class FullTransform:
     def __init__(self, 
                  grid_name_to_nk_lookup: Dict[str, NearestKeyLookup],
                  grid_name_to_wh: Dict[str, Tuple[int, int]],
@@ -168,15 +170,19 @@ class TransformerInputOutputGetter:
                  word_tokenizer: CharLevelTokenizerv2,
                  include_time: bool,
                  include_velocities: bool,
-                 include_accelerations: bool
+                 include_accelerations: bool,
+                 kb_tokens_dtype: torch.dtype = torch.int32,
+                 word_tokens_dtype: torch.dtype = torch.int32,
                  ) -> None:
         self.get_encoder_feats = EncoderFeaturesGetter(
             grid_name_to_nk_lookup, grid_name_to_wh, kb_tokenizer,
-            include_time, include_velocities, include_accelerations)
-        self.get_decoder_in_out = DecoderInputOutputGetter(word_tokenizer)
+            include_time, include_velocities, include_accelerations, 
+            kb_tokens_dtype)
+        self.get_decoder_in_out = DecoderInputOutputGetter(
+            word_tokenizer, dtype = word_tokens_dtype)
     
     def __call__(self, data: RawDatasetEl
-                 ) -> Tuple[Tuple[Tensor, Tensor, Tensor], Tensor]:
+                 ) -> FullTransformResultType:
         X, Y, T, grid_name, tgt_word = data
         traj_feats, kb_tokens = self.get_encoder_feats(X, Y, T, grid_name)
 
@@ -186,7 +192,19 @@ class TransformerInputOutputGetter:
         return (traj_feats, kb_tokens, decoder_in), decoder_out
 
 
+class TokensTypeCastTransform:
+    def __call__(self, data: FullTransformResultType) -> torch.Any:
+        (traj_feats, kb_tokens, decoder_in), decoder_out = data
+        # Embedding layer accepts int32, but not smaller types
+        kb_tokens = kb_tokens.to(torch.int32)
+        decoder_in = decoder_in.to(torch.int32)
+        # CELoss accepts int64 only
+        decoder_out = decoder_out.to(torch.int64)
+        return (traj_feats, kb_tokens, decoder_in), decoder_out
+
+
 class InitTransform:
+    # laternative name: AddKbTokensToRawTransform
     """
     Converts (X, Y, T, grid_name, tgt_word) into
     (X, Y, T, grid_name, tgt_word, kb_tokens)
