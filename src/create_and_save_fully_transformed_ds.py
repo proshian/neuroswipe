@@ -4,6 +4,8 @@
 import os; import sys; current_dir = os.path.dirname(os.path.abspath(__file__)); parent_dir = os.path.dirname(current_dir); sys.path.append(os.path.join(parent_dir, 'src'))
 
 
+import pickle
+
 import argparse
 import torch
 
@@ -72,7 +74,9 @@ if __name__ == '__main__':
 
     print("saving")
 
-    torch.save(ds.data_list, args.output_path)
+    # torch.save(ds.data_list, args.output_path)
+    with open(args.output_path, 'wb') as f:
+        pickle.dump(ds.data_list, f)
     
     # The script craches without error message sometimes and there's no way
     # to know that it succeeded without this print
