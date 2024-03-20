@@ -51,25 +51,14 @@ from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor
 # import pandas as pd
 
-from model import get_m1_model, get_m1_bigger_model, get_m1_smaller_model
+from model import MODEL_GETTERS_DICT
 from tokenizers import CharLevelTokenizerv2, KeyboardTokenizerv1
 from dataset import CurveDataset, CurveDatasetSubset
 from tokenizers import ALL_CYRILLIC_LETTERS_ALPHABET_ORD
-from word_generators import BeamGenerator, GreedyGenerator
+from word_generators import GENERATOR_CTORS_DICT
 from transforms import  InitTransform, GetItemTransform
 from nearest_key_lookup import NearestKeyLookup
 
-
-MODEL_GETTERS_DICT = {
-    "m1": get_m1_model,
-    "m1_bigger": get_m1_bigger_model,
-    "m1_smaller": get_m1_smaller_model
-}
-
-GENERATOR_CTORS_DICT = {
-    "greedy": GreedyGenerator,
-    "beam": BeamGenerator
-}
 
 
 @dataclass
