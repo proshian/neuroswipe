@@ -14,6 +14,20 @@ RawDatasetEl = Tuple[array.array, array.array,
                      array.array, str, Optional[str]]
 
 
+def _get_data_from_json_line(line) -> RawDatasetEl:
+    data = json.loads(line)
+
+    X = array.array('h', data['curve']['x'])
+    Y = array.array('h', data['curve']['y'])
+    T = array.array('h', data['curve']['t'])
+
+    grid_name = data['curve']['grid_name']   
+
+    tgt_word = data['word'] if 'word' in data else None
+
+    return X, Y, T, grid_name, tgt_word
+
+
 class CurveDataset(Dataset):
     """
     Dataset class for NeuroSwipe jsonl dataset
@@ -91,18 +105,8 @@ class CurveDataset(Dataset):
     def _get_data_from_json_line(self,
                                  line
                                  ) -> RawDatasetEl:
-        data = json.loads(line)
-
-        X = array.array('h', data['curve']['x'])
-        Y = array.array('h', data['curve']['y'])
-        T = array.array('h', data['curve']['t'])
-
-        grid_name = data['curve']['grid_name']   
-
-        tgt_word = data['word'] if 'word' in data else None
-
-        return X, Y, T, grid_name, tgt_word
-
+        return _get_data_from_json_line(line)
+    
     def __len__(self):
         return len(self.data_list)
     
