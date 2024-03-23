@@ -128,7 +128,7 @@ class CurveDataset(Dataset):
         obj = cls.__new__(cls)
 
         obj.data_list = data_list
-        obj.get_item_transform = get_item_transform
+        obj.transform = get_item_transform
 
         if grid_name_list:
             obj.grid_name_list = grid_name_list
