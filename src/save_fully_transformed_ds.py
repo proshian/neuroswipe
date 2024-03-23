@@ -1,5 +1,6 @@
 # commands:
 # python ./src/save_fully_transformed_ds.py --jsonl_path ./data/data_separated_grid/train__default_only_no_errors__2023_10_31__03_26_16.jsonl --output_path ./train_default_grid_no_errors__2023_10_31_ft__uint8 --vocab_path ./data/data_separated_grid/voc.txt --gridname_to_grid_path ./data/data_separated_grid/gridname_to_grid.json --n_workers 0
+
 # python ./src/save_fully_transformed_ds.py --jsonl_path ./data/data_separated_grid/train__extra_only_no_errors__2023_11_01__19_49_14.jsonl --output_path ./train_extra_no_errors_uint8_datalist.pt --vocab_path ./data/data_separated_grid/voc.txt --gridname_to_grid_path ./data/data_separated_grid/gridname_to_grid.json --n_workers 0
 
 
@@ -10,6 +11,7 @@ import pickle
 from abc import ABC, abstractmethod
 from math import ceil
 import os
+import sys
 
 import argparse
 import torch
@@ -20,21 +22,20 @@ from nearest_key_lookup import NearestKeyLookup
 from tokenizers import KeyboardTokenizerv1, CharLevelTokenizerv2
 from tokenizers import ALL_CYRILLIC_LETTERS_ALPHABET_ORD
 from predict import get_grid_name_to_grid
-# from transforms import InitTransform, GetItemTransform
-from transforms import FullTransform
+from transforms import FullTransform, TrajFeatsKbTokensTgtWord_InitTransform
 from dataset import _get_data_from_json_line
 
 
 class ListStorage(ABC):
     """
-    Saves and reads list from disk
+    Saves and loads list from disk
     """
     @abstractmethod
-    def read(self, path):
+    def load(self, path):
         raise NotImplementedError()
     
     @abstractmethod
-    def write(self, path, data):
+    def save(self, path, data):
         raise NotImplementedError()
     
 
@@ -47,7 +48,7 @@ class BinsListStorage(ListStorage):
         for i in range(n_bins):
             assert os.path.isfile(os.path.join(path, f'{i}.pkl'))
 
-    def read(self, path) -> list:
+    def load(self, path) -> list:
         assert os.path.isdir(path)
 
         with open(os.path.join(path, 'meta_info.pkl'), 'rb') as f:
@@ -66,7 +67,7 @@ class BinsListStorage(ListStorage):
 
         return data
 
-    def write(self, path, bin_size, data: list) -> None:
+    def save(self, path, bin_size, data: list) -> None:
         os.makedirs(path, exist_ok=False)
         n_bins = ceil(len(data) / bin_size)
         meta_info = {'data_len': len(data), 'bin_size': bin_size}
@@ -160,7 +161,7 @@ if __name__ == '__main__':
     word_tokenizer = CharLevelTokenizerv2(args.vocab_path)
 
 
-    full_transform = FullTransform(
+    transform = FullTransform(
         grid_name_to_nk_lookup=gridname_to_nkl,
         grid_name_to_wh=gname_to_wh,
         kb_tokenizer=kb_tokenizer,
@@ -172,21 +173,35 @@ if __name__ == '__main__':
         word_tokens_dtype=torch.uint8
     )
 
+
+    # transform = TrajFeatsKbTokensTgtWord_InitTransform(
+    #     grid_name_to_nk_lookup=gridname_to_nkl,
+    #     grid_name_to_wh=gname_to_wh,
+    #     kb_tokenizer=kb_tokenizer,
+    #     include_time=False,
+    #     include_velocities=True,
+    #     include_accelerations=True,
+    # )
+
     print("Calling CurveDatasetWithMultiProcInit.__init__ with full_transform...")
 
 
-    # jsonl_to_bins_on_disk(args.jsonl_path, 10_000, full_transform, args.output_path, total=5_237_584)
+    # jsonl_to_bins_on_disk(args.jsonl_path, 10_000, transform, args.output_path, total=5_237_584)
 
 
 
     ds = CurveDatasetWithMultiProcInit(
         data_path=args.jsonl_path,
         store_gnames=False,
-        init_transform=full_transform,
+        init_transform=transform,
         get_item_transform=None,
         n_workers=args.n_workers,
         total=5_237_584
     )
+
+    # This was a bad idea because it's size of list 
+    # and the list seems to store links, not values...
+    # print(f"{sys.getsizeof(ds.data_list) = }")
 
     print("saving")
 
