@@ -203,7 +203,7 @@ class TokensTypeCastTransform:
         return (traj_feats, kb_tokens, decoder_in), decoder_out
 
 
-class AddKbTokens_InitTransform:
+class KbTokens_InitTransform:
     """
     Converts (X, Y, T, grid_name, tgt_word) into
     (X, Y, T, grid_name, tgt_word, kb_tokens)
@@ -221,7 +221,7 @@ class AddKbTokens_InitTransform:
         return (X, Y, T, grid_name, tgt_word, kb_tokens)
     
 
-class RawPlusKbTokens_GetItemTransform:
+class KbTokens_GetItemTransform:
     """
     Converts (X, Y, T, grid_name, tgt_word, kb_tokens) into
     (traj_feats, kb_tokens, decoder_in), decoder_out
