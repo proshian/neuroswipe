@@ -1,3 +1,17 @@
+"""
+This script is used to save a dataset (its datalist) to disk.
+Currently we save the fully transformed dataset, but may switch to
+TrajFeatsKbTokensTgtWord_InitTransform.
+
+This script also has 
+* BinsListStorage class to store a list in a folder where each file is
+    a sub-list of the original list of size bin_size
+* move_list_to_disk_with_delete and jsonl_to_bins_on_disk functions to save
+    a list as if it was saved with BinsListStorage.save, but in a more memory
+    efficient way.
+"""
+
+
 # commands:
 # python ./src/save_fully_transformed_ds.py --jsonl_path ./data/data_separated_grid/train__default_only_no_errors__2023_10_31__03_26_16.jsonl --output_path ./train_default_grid_no_errors__2023_10_31_ft__uint8 --vocab_path ./data/data_separated_grid/voc.txt --gridname_to_grid_path ./data/data_separated_grid/gridname_to_grid.json --n_workers 0
 
@@ -78,7 +92,7 @@ class BinsListStorage(ListStorage):
                 pickle.dump(data[i * bin_size: (i + 1) * bin_size], f)
 
 
-def move_list_to_disk_with_delete(bin_size, path, data: list) -> None:
+def move_list_to_disk_with_delete(bin_size: int, path: str, data: list) -> None:
     """
     Similar to BinsListStorage.write, but deletes list.
     This function is used to not overflow memory. It calls 
@@ -186,9 +200,6 @@ if __name__ == '__main__':
     print("Calling CurveDatasetWithMultiProcInit.__init__ with full_transform...")
 
 
-    # jsonl_to_bins_on_disk(args.jsonl_path, 10_000, transform, args.output_path, total=5_237_584)
-
-
 
     ds = CurveDatasetWithMultiProcInit(
         data_path=args.jsonl_path,
@@ -199,24 +210,33 @@ if __name__ == '__main__':
         total=5_237_584
     )
 
-    # This was a bad idea because it's size of list 
-    # and the list seems to store links, not values...
-    # print(f"{sys.getsizeof(ds.data_list) = }")
+    # We could iterate over the dataset to get the size of the whole dataset:
+    # `whole_size = sum(sys.getsizeof(el) for sample in ds.data_list for el in get_sample_elements(sample)`
+    # `sys.getsizeof(ds.data_list)` wouldn't do the job. It seems that 
+    # list stores only references to the objects and doesn't store 
+    # the objects (values) themselves.
 
     print("saving")
 
 
-
-    # move_list_to_disk_with_delete(10_000, args.output_path, ds.data_list)
-
-
-
+    # If a dataset weights too much a possible solution is to save
+    # it as separate sequential sublists with a command like this:
+    # `move_list_to_disk_with_delete(10_000, args.output_path, ds.data_list)`
+    # or even more memory efficient:
+    # `jsonl_to_bins_on_disk(args.jsonl_path, 10_000, transform, args.output_path)`.
+    # Then we can load the whole dataset with BinsListStorage.load(`path`).
+    # This solution makes sence when the dataset fits in memory, but
+    # saving causes memory overflow (saving seems to require substantial
+    # additional memory).
+    
 
     torch.save(ds.data_list, args.output_path)
+    # An alternative is to pickle.dump:
     # with open(args.output_path, 'wb') as f:
     #     pickle.dump(ds.data_list, f)
     
-    # The script craches without error message sometimes and there's no way
-    # to know that it succeeded without this print
+    # The script craches without error message sometimes 
+    # (due to RAM overflow afaiu) and there's no way to know 
+    # that it succeeded without this print.
     print("saved")
     
