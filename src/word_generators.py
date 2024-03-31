@@ -18,14 +18,8 @@ def _prepare_encoder_input(xyt: Tensor, kb_tokens: Tensor,
         xyt, kb_tokens = (el.transpose(0, 1) for el in (xyt, kb_tokens))
     return xyt, kb_tokens
 
+
 class WordGenerator(ABC):
-    @abstractmethod
-    def __call__(self, xyt, kb_tokens, max_steps_n, 
-                 *args, **kwargs) -> List[Tuple[float, str]]:
-        pass
-
-
-class GreedyGenerator(WordGenerator):
     def __init__(self, model: torch.nn.Module, 
                  tokenizer: CharLevelTokenizerv2, device):
         self.model = model
@@ -34,6 +28,13 @@ class GreedyGenerator(WordGenerator):
         self.model.to(self.device)
         self.eos_token_id = tokenizer.char_to_idx['<eos>']
 
+    @abstractmethod
+    def __call__(self, xyt, kb_tokens, max_steps_n, 
+                 *args, **kwargs) -> List[Tuple[float, str]]:
+        pass
+
+
+class GreedyGenerator(WordGenerator):
     @torch.inference_mode()
     def _generate(self, xyt, kb_tokens, max_steps_n=35) -> List[Tuple[float, str]]:
         tokens = [self.tokenizer.char_to_idx['<sos>']]
@@ -69,13 +70,6 @@ class GreedyGenerator(WordGenerator):
 
 
 class BeamGenerator(WordGenerator):
-    def __init__(self, model, tokenizer, device):
-        self.model = model
-        self.tokenizer = tokenizer
-        self.device = torch.device(device)
-        self.model.to(self.device)
-        self.eos_token_id = tokenizer.char_to_idx['<eos>']
-
     @torch.inference_mode()
     def __call__(self,
                  xyt, kb_tokens,
@@ -146,7 +140,79 @@ class BeamGenerator(WordGenerator):
             print(result)
 
         return result[:return_hypotheses_n]
+    
 
+##################################################################
+# The sectoin below is for VocabEstimator.
+# It's unfinished
+
+from concurrent.futures import ProcessPoolExecutor
+from functools import partial
+
+from tqdm import tqdm
+
+
+
+@torch.inference_mode()
+def get_word_prob(model: torch.nn.Module, encoded_curve: Tensor, 
+                  tokenizer: CharLevelTokenizerv2, word: str) -> float:
+    device = encoded_curve.device
+    encoded_word_lst = tokenizer.encode(word)
+    decoder_in = torch.tensor(encoded_word_lst[:-1]).reshape(-1, 1).to(device)
+    decoder_target = torch.tensor(encoded_word_lst[1:])
+    word_pad_mask = None
+    logits = model.decode(encoded_curve, decoder_in, None, word_pad_mask).transpose_(0, 1)[0]
+    logproba = F.log_softmax(logits, dim=1)
+    logprob = sum(logproba[range(len(decoder_target)), decoder_target])
+    return logprob.item()
+
+
+
+@torch.inference_mode()
+def get_vocab_probs(model: torch.nn.Module, vocab: List[str], 
+                    xyt: Tensor, kb_tokens: Tensor, device: str,
+                    batch_first: bool, tokenizer: CharLevelTokenizerv2,
+                    num_workers: int = 4
+                    ) -> List[float]:
+    """
+    For each word from `vocab` predicts the likelihood of the word
+    given the curve represented by `xyt` and `kb_tokens`. 
+    The likelihood is calculated as a sum of log-probabilities of
+    each token in the word.
+    """
+    model.to(device)
+    xyt, kb_tokens = _prepare_encoder_input(
+        xyt, kb_tokens, device, batch_first)
+    encoded_curve = model.encode(xyt, kb_tokens, None)
+    logprobs = []
+    prob_getter = partial(get_word_prob, model, encoded_curve, tokenizer)
+    with ProcessPoolExecutor(num_workers) as executor:
+        for logprob in tqdm(executor.map(prob_getter, vocab), total=len(vocab)):
+            logprobs.append(logprob)
+
+
+
+class VocabEstimator(WordGenerator):
+    def __init__(self, model, tokenizer, device, vocab_path):
+        super().__init__(model, tokenizer, device)
+        self.vocab = self._get_vocab(vocab_path)
+    
+    def _get_vocab(vocab_path) -> List[str]:
+        with open(vocab_path, 'r', encoding = 'utf-8') as f:
+            return f.read().splitlines()
+    
+    @torch.inference_mode()
+    def __call__(self, xyt, kb_tokens, return_hypotheses_n=None) -> List[Tuple[float, str]]:
+        return_hypotheses_n = return_hypotheses_n or len(self.vocab)
+
+        xyt, kb_tokens = _prepare_encoder_input(xyt, kb_tokens,
+                                                self.device, False)
+        
+        encoded = self.model.encode(xyt, kb_tokens, None)
+
+
+
+##################################################################
 
 
 
@@ -154,14 +220,7 @@ class BeamGenerator(WordGenerator):
 # multiple curves simpultaniously. At each step we check 
 # if all batch out sequences have <eos> token. If true,
 # generation is finished 
-class GreedyGeneratorBatched:
-    def __init__(self, model, tokenizer, device):
-        self.model = model
-        self.tokenizer = tokenizer
-        self.device = torch.device(device)
-        self.model.to(self.device)
-        self.eos_token_id = tokenizer.char_to_idx['<eos>'] 
-    
+class GreedyGeneratorBatched(WordGenerator):    
     @torch.inference_mode()
     def __call__(self,
                  xyt,  # (batch_size, curves_seq_len, n_coord_feats)
