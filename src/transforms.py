@@ -203,6 +203,14 @@ class TokensTypeCastTransform:
         return (traj_feats, kb_tokens, decoder_in), decoder_out
 
 
+
+
+############################################################  
+# Transformes below were used to make training faster while avoiding RAM 
+# overflow. Probably won't be needed: multiprocessing in dataloader 
+# makes them useless.
+
+
 class KbTokens_InitTransform:
     """
     Converts (X, Y, T, grid_name, tgt_word) into

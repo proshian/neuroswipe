@@ -1,4 +1,17 @@
+25.03.24
+
+Важный факт: сегодняшний коммит валидный, технически можно пушить в мейн: predict + aggregate корректно работают
+
+Мысли перед ближайшим пул-реквестом:
+* Обновить и добавить train.ipynb
+* Возможно после пул реквеста есть смысл породить ветку: fullvocabestimator. Первым коммитом спрятать get_probs_for_voc.py в папку WIP и пушнуть в мейн. Дальше вернуть get_probs_for_voc на место и закоммитить word_generators.py и word_generation_demo.ipynb в  fullvocabestimator.
+* Дальше предлагается переключиться на написание trainer'а
+
+
+
 # Refactoring Plan
+
+* Возможно стоит переименовать `create_ds_on_disk.py` в `save_datalist_kwargs.py` и сохранять на диск не только data_list, но и `get_item_transform` и `grid_name_list`. Создание датасета из данной репрезентации будет таким `CurveDataset.from_datalist(**torch.load(path))`
 
 * Добавить пост-обработку предсказаний с помощью расстояния Левиштейна. Тут важно для всех слов с минимальным расстоянием Левинштейна к вероятным, но ненастоящим словам померить моделью вероятность и переранжировать.
 
@@ -170,6 +183,4 @@ predictions_dict будет поучаться с помощью функции 
 
 
 # Notes 
-* Датасет принимает на вход initial_transform и get_item_transform. Подробнее написано в классе датасета. Обучение производилось с initial_transform = InitTransform, get_item_transform = GetItemTransform из файла transforms
-
-* Все, что многопоточное (Predictor._predict_raw_mp и CurveDataset._get_data_mp) работает только в скриптах. В jupyter notebook'ах - нет
+* Все, что многопоточное (Predictor._predict_raw_mp и CurveDataset._get_data_mp) работает только в скриптах. В jupyter notebook'ах - нет. Кажется, проблема в использовани concurrent.futures. Возможно, все наладится, если исопльзовать модуль multiprocessing.

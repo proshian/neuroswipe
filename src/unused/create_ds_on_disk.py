@@ -14,7 +14,6 @@ This script also has
 
 # commands:
 # python ./src/save_fully_transformed_ds.py --jsonl_path ./data/data_separated_grid/train__default_only_no_errors__2023_10_31__03_26_16.jsonl --output_path ./train_default_grid_no_errors__2023_10_31_ft__uint8 --vocab_path ./data/data_separated_grid/voc.txt --gridname_to_grid_path ./data/data_separated_grid/gridname_to_grid.json --n_workers 0
-
 # python ./src/save_fully_transformed_ds.py --jsonl_path ./data/data_separated_grid/train__extra_only_no_errors__2023_11_01__19_49_14.jsonl --output_path ./train_extra_no_errors_uint8_datalist.pt --vocab_path ./data/data_separated_grid/voc.txt --gridname_to_grid_path ./data/data_separated_grid/gridname_to_grid.json --n_workers 0
 
 
