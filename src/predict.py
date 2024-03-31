@@ -51,25 +51,14 @@ from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor
 # import pandas as pd
 
-from model import get_m1_model, get_m1_bigger_model, get_m1_smaller_model
+from model import MODEL_GETTERS_DICT
 from tokenizers import CharLevelTokenizerv2, KeyboardTokenizerv1
 from dataset import CurveDataset, CurveDatasetSubset
 from tokenizers import ALL_CYRILLIC_LETTERS_ALPHABET_ORD
-from word_generators import BeamGenerator, GreedyGenerator
-from transforms import  InitTransform, GetItemTransform
+from word_generators import GENERATOR_CTORS_DICT
+from transforms import KbTokens_InitTransform, KbTokens_GetItemTransform
 from nearest_key_lookup import NearestKeyLookup
 
-
-MODEL_GETTERS_DICT = {
-    "m1": get_m1_model,
-    "m1_bigger": get_m1_bigger_model,
-    "m1_smaller": get_m1_smaller_model
-}
-
-GENERATOR_CTORS_DICT = {
-    "greedy": GreedyGenerator,
-    "beam": BeamGenerator
-}
 
 
 @dataclass
@@ -260,12 +249,12 @@ def get_gridname_to_dataset(config) -> Dict[str, Dataset]:
         for gname, grid in grid_name_to_grid.items()
     }
     
-    init_transform = InitTransform(
+    init_transform = KbTokens_InitTransform(
         grid_name_to_nk_lookup=gridname_to_nkl,
         kb_tokenizer=kb_tokenizer,
     )
 
-    get_item_transform = GetItemTransform(
+    get_item_transform = KbTokens_GetItemTransform(
         grid_name_to_wh=gname_to_wh,
         word_tokenizer=word_char_tokenizer,
         include_time=False,

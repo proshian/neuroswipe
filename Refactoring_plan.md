@@ -1,7 +1,32 @@
+25.03.24
+
+Важный факт: сегодняшний коммит валидный, технически можно пушить в мейн: predict + aggregate корректно работают
+
+Мысли перед ближайшим пул-реквестом:
+* Обновить и добавить train.ipynb
+* Возможно после пул реквеста есть смысл породить ветку: fullvocabestimator. Первым коммитом спрятать get_probs_for_voc.py в папку WIP и пушнуть в мейн. Дальше вернуть get_probs_for_voc на место и закоммитить word_generators.py и word_generation_demo.ipynb в  fullvocabestimator.
+* Дальше предлагается переключиться на написание trainer'а
+
+
+
 # Refactoring Plan
+
+* Возможно стоит переименовать `create_ds_on_disk.py` в `save_datalist_kwargs.py` и сохранять на диск не только data_list, но и `get_item_transform` и `grid_name_list`. Создание датасета из данной репрезентации будет таким `CurveDataset.from_datalist(**torch.load(path))`
+
+* Добавить пост-обработку предсказаний с помощью расстояния Левиштейна. Тут важно для всех слов с минимальным расстоянием Левинштейна к вероятным, но ненастоящим словам померить моделью вероятность и переранжировать.
+
+* Оценить, насколько beamsearch дешевле обхода всего словаря
+* Сделать совмещение beamsearch и обхода словаря: сначала несколько шагов beamsearch. Дальше оцениваем вероятности всех слов с префиксами, полученными c beamsearch
 
 * Написать новый trainer
 * Изучить torch_lightning trainer
+
+
+* Сделать jupyter notebook с оценкой времени создания и времени итерирования для CurveDataset с разными вариантами transform
+* Создать extra_train_ds, который сразу хранит все в должном виде
+* Попробовать создать default_train_ds, который сразу хранит все в должном виде
+      * Если не получится, пусть все токены хранятся как uint8 или int16 (подсмотреть в array версии, вспомнить почему такие ограничения), а в get_item_trainsform переделываются в int32
+* Проверить время одной эпохи после использования этих новых датасетов
 
 
 * перенести тестирвоание collate_fn из train.ipynb в unittest/test_collate_fn.py
@@ -50,6 +75,8 @@
       6. Рассчет mmr для аггрегированных предсказаний
 
 
+* перенести get_grid_name_to_grid из predict в dataset_utils
+
 # Notes about dataset
 
 Input_transform controls what would be stored in `dataset.data_list`. Tuples of `x, y, t, gridname, target` are stored if no input_transform is given.  
@@ -64,7 +91,7 @@ I tried:
 
 
 
-Выделение nearest_key_loookup в отдельную сущность хорошая идея, потому что:
+Выделение nearest_key_loookup в отдельную сущность хорошая идея, потому что:  
 * Во-первых, зечем тратить каждый раз 5-10 секунд на создание маппинга [координаты → лейбл ближайшей буквы], если можно одина раз создать, сохранить и всегда передавать.
 * Эта сущность нужна на инференсе
 
@@ -156,4 +183,4 @@ predictions_dict будет поучаться с помощью функции 
 
 
 # Notes 
-* Datasetv3, в отличие от Datasetv2, не возвращает traj_pad_mask и не производит padding траекторий. Padding будет производиться в collarte function. Padding выходной последовательности все еще производится в датасете.
+* Все, что многопоточное (Predictor._predict_raw_mp и CurveDataset._get_data_mp) работает только в скриптах. В jupyter notebook'ах - нет. Кажется, проблема в использовани concurrent.futures. Возможно, все наладится, если исопльзовать модуль multiprocessing.

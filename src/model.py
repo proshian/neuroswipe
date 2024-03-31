@@ -332,3 +332,11 @@ def get_m1_smaller_model(device, weights_path = None):
     model = model.eval()
 
     return model
+
+
+
+MODEL_GETTERS_DICT = {
+    "m1": get_m1_model,
+    "m1_bigger": get_m1_bigger_model,
+    "m1_smaller": get_m1_smaller_model
+}
