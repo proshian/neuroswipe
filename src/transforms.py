@@ -4,7 +4,7 @@ from torch import Tensor
 from typing import Tuple, Dict, Optional, Iterable, List
 from array import array
 from nearest_key_lookup import NearestKeyLookup
-from tokenizers import KeyboardTokenizerv1, CharLevelTokenizerv2
+from ns_tokenizers import KeyboardTokenizerv1, CharLevelTokenizerv2
 from dataset import RawDatasetEl 
 
 

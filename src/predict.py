@@ -52,9 +52,9 @@ from concurrent.futures import ProcessPoolExecutor
 # import pandas as pd
 
 from model import MODEL_GETTERS_DICT
-from tokenizers import CharLevelTokenizerv2, KeyboardTokenizerv1
+from ns_tokenizers import CharLevelTokenizerv2, KeyboardTokenizerv1
 from dataset import CurveDataset, CurveDatasetSubset
-from tokenizers import ALL_CYRILLIC_LETTERS_ALPHABET_ORD
+from ns_tokenizers import ALL_CYRILLIC_LETTERS_ALPHABET_ORD
 from word_generators import GENERATOR_CTORS_DICT
 from transforms import KbTokens_InitTransform, KbTokens_GetItemTransform
 from nearest_key_lookup import NearestKeyLookup

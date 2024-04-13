@@ -6,7 +6,7 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor
 
-from tokenizers import CharLevelTokenizerv2
+from ns_tokenizers import CharLevelTokenizerv2
 
 
 def _prepare_encoder_input(xyt: Tensor, kb_tokens: Tensor, 
