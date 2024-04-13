@@ -229,7 +229,7 @@ class SwipeCurveTransformer(nn.Module):
 
 
 
-def get_m1_model(device, weights_path = None):
+def get_m1_model(device = None, weights_path = None):
     CHAR_VOCAB_SIZE = 37  # = len(word_char_tokenizer.char_to_idx)
     MAX_CURVES_SEQ_LEN = 299
     MAX_OUT_SEQ_LEN = 35  # word_char_tokenizer.max_word_len - 1
@@ -264,7 +264,7 @@ def get_m1_model(device, weights_path = None):
     return model
 
 
-def get_m1_bigger_model(device, weights_path = None):
+def get_m1_bigger_model(device = None, weights_path = None):
     CHAR_VOCAB_SIZE = 37  # = len(word_char_tokenizer.char_to_idx)
     MAX_CURVES_SEQ_LEN = 299
     MAX_OUT_SEQ_LEN = 35  # word_char_tokenizer.max_word_len - 1
