@@ -9,6 +9,16 @@
 
 
 
+
+
+18.04.24
+
+* Replace SwipeCurveTransformerDecoderv1 with Transformer Decoder
+
+
+
+
+
 # Refactoring Plan
 
 * Возможно стоит переименовать `create_ds_on_disk.py` в `save_datalist_kwargs.py` и сохранять на диск не только data_list, но и `get_item_transform` и `grid_name_list`. Создание датасета из данной репрезентации будет таким `CurveDataset.from_datalist(**torch.load(path))`
