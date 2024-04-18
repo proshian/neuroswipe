@@ -414,7 +414,7 @@ def get_m1_smaller_model(device = None, weights_path = None):
 #     #     kb_k_emb = self.key_embedding_dropout(kb_k_emb)
 #     #     kb_k_emb = self.key_pos_encoder(kb_k_emb)
 #     #     x = torch.cat((x, kb_k_emb), dim = -1)
-#     #     x = self.encoder(x, x_pad_mask)
+#     #     x = self.encoder(x, src_key_padding_mask = x_pad_mask)
 #     #     return x
     
 #     # def decode(self, x_encoded, y, x_pad_mask, y_pad_mask):
@@ -448,7 +448,6 @@ class TransformerEncoderTransformerDecoderWithPos(nn.Module):
         mask = torch.triu(torch.ones(max_seq_len, max_seq_len), diagonal=1)
         mask = mask.masked_fill(mask == 1, float('-inf'))
         return mask
-    
     
     def __init__(self, 
                  n_coord_feats,  # 6
@@ -517,7 +516,7 @@ class TransformerEncoderTransformerDecoderWithPos(nn.Module):
         kb_k_emb = self.key_embedding_dropout(kb_k_emb)
         kb_k_emb = self.key_pos_encoder(kb_k_emb)
         x = torch.cat((x, kb_k_emb), dim = -1)
-        x = self.encoder(x, x_pad_mask)
+        x = self.encoder(x, src_key_padding_mask = x_pad_mask)
         return x
     
     def decode(self, x_encoded, y, x_pad_mask, y_pad_mask):
