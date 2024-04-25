@@ -611,6 +611,7 @@ MODEL_GETTERS_DICT = {
     "m1_smaller": get_m1_smaller_model,
 
     "transformer_m1_bigger": get_transformer_bigger_model,
+    "transformer_bb_model": get_transformer_bb_model,
 }
 
 
