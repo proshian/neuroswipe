@@ -570,6 +570,41 @@ def get_transformer_bigger_model(device = None, weights_path = None):
 
 
 
+def get_transformer_bb_model(device = None, weights_path = None):
+    CHAR_VOCAB_SIZE = 37  # = len(word_char_tokenizer.char_to_idx)
+    MAX_CURVES_SEQ_LEN = 299
+    MAX_OUT_SEQ_LEN = 35  # word_char_tokenizer.max_word_len - 1
+
+    model = TransformerEncoderTransformerDecoderWithPos(
+    n_coord_feats=6,
+    key_emb_size=506,
+    char_vocab_size=CHAR_VOCAB_SIZE,
+    num_encoder_layers=8,
+    num_decoder_layers=8,
+    dim_feedforward=2048,
+    num_heads_encoder=8,
+    num_heads_decoder=8,
+    dropout=0.1,
+    char_embedding_dropout=0.1,
+    key_embedding_dropout=0.1,
+    max_out_seq_len=MAX_OUT_SEQ_LEN,
+    max_curves_seq_len=MAX_CURVES_SEQ_LEN,
+    device = device)
+
+    if weights_path:
+        model.load_state_dict(
+            torch.load(weights_path,
+                    map_location = device))
+    
+    model = model.to(device)
+        
+    model = model.eval()
+
+    return model
+
+
+
+
 MODEL_GETTERS_DICT = {
     "m1": get_m1_model,
     "m1_bigger": get_m1_bigger_model,
