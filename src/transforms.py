@@ -92,9 +92,11 @@ class KbTokensGetter:
                  grid_name_to_nk_lookup: Dict[str, NearestKeyLookup],
                  kb_tokenizer: KeyboardTokenizerv1,
                  return_tensor: bool,
-                 dtype: torch.dtype = torch.int32
+                 dtype: torch.dtype = torch.int32,
+                 input_to_int: bool = True
                  ) -> None:
         self.dtype = dtype
+        self.input_to_int = input_to_int
         self.return_tensor = return_tensor
         self.grid_name_to_nk_lookup = grid_name_to_nk_lookup
         self.kb_tokenizer = kb_tokenizer
@@ -102,7 +104,9 @@ class KbTokensGetter:
     def __call__(self, X: Iterable, Y: Iterable, grid_name: str
                  ) -> Tensor:
         nearest_key_lookup = self.grid_name_to_nk_lookup[grid_name]
-        kb_labels = [nearest_key_lookup(x, y) for x, y in zip(X, Y)]
+        caster = int if self.input_to_int else lambda x: x
+        kb_labels = [nearest_key_lookup(caster(x), caster(y)) 
+                     for x, y in zip(X, Y)]
         kb_tokens = [self.kb_tokenizer.get_token(label) for label in kb_labels]
 
         if self.return_tensor:
@@ -159,7 +163,7 @@ class DecoderInputOutputGetter:
 
         decoder_in = tgt_token_seq[:-1]
         decoder_out = tgt_token_seq[1:]
-        return decoder_in, decoder_out       
+        return decoder_in, decoder_out
 
 
 class FullTransform:
