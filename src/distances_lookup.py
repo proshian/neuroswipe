@@ -29,24 +29,7 @@ def distance(dots: np.ndarray, centers: np.ndarray) -> np.ndarray:
     # (K, 2) -> (1, 1, ..., 1, K, 2), 
     centers = centers.reshape([1]*(dots.ndim - 1) + list(centers.shape))
     dots = np.expand_dims(dots, -2)  # (*DOT_DIMS, 1, 2)
-    d =  np.power((centers - dots), 2).sum(axis=-1)
-    return np.sqrt(d)
-
-# For unit tests:
-
-# N_KEYS = 30
-# WIDTH = MAX_COORD = 1080
-# HEIGHT = 667
-# dots = np.indices((WIDTH, HEIGHT)).transpose(1, 2, 0)  # (WIDTH, HEIGHT, 2)
-# centers = np.random.randint(0, MAX_COORD, (N_KEYS, 2))
-# result = distance(dots, centers)
-# assert result.shape == (WIDTH, HEIGHT, N_KEYS)
-
-# dots = np.random.randint(0, MAX_COORD, (100, 50, 90, 2))
-# centers = np.random.randint(0, MAX_COORD, (N_KEYS, 2))
-# result = distance(dots, centers)
-# assert result.shape == (100, 50, 90, N_KEYS)
-
+    return np.power((centers - dots), 2).sum(axis=-1)
 
 
 class DistancesLookup:
@@ -58,13 +41,27 @@ class DistancesLookup:
                  return_dict: bool = False, 
                  raise_on_key_not_in_grid: bool = False) -> None:
         """
-        Given a keyboard grid and optionally a allowed_keys list,
+        Arguments:
+        ----------
+        grid: dict
+        kb_key_list: Optional[List[str]]
+            An ordered list of keys. If None, all keys from the grid are used.
+            Distances will be returned in the same order as in kb_key_list.
+        return_dict: bool
+            If True, the distances will be returned as a dict.
+        raise_on_key_not_in_grid: bool
+            If True, raises an error if a key from kb_key_list 
+            is not present in the grid.
         """
         self.grid = grid
         self.return_dict = return_dict
-        self.KB_KEY_LIST = kb_key_list or self._get_all_key_labels(grid)
+        self.KB_KEY_LIST = kb_key_list or self._get_all_key_labels()
         self.i_to_kb_key = self.KB_KEY_LIST
         self.kb_key_to_i = {kb_key: i for i, kb_key in enumerate(self.KB_KEY_LIST)}
+
+        if raise_on_key_not_in_grid:
+            self._check_all_keys_in_grid()
+
         self.centers = self._get_centers()
 
         self.coord_to_distances = self._create_coord_to_distances()
@@ -90,6 +87,12 @@ class DistancesLookup:
         """
         return [self.get_distances(x, y) for x, y in zip(X, Y)]
     
+    def _check_all_keys_in_grid(self) -> None:
+        all_grid_kb_laybels = set(self._get_all_key_labels()) 
+        for kb_key in self.KB_KEY_LIST:
+            if kb_key not in all_grid_kb_laybels:
+                raise ValueError(f"Key {kb_key} is not present in the grid")
+
     def _get_kb_label(self, key: dict) -> str:
         if 'label' in key:
             return key['label']
@@ -97,15 +100,15 @@ class DistancesLookup:
             return key['action']
         raise ValueError("Key has no label or action property")
     
-    def _get_all_key_labels(self, grid: dict) -> List[str]:
-        return [self._get_kb_label(key) for key in grid['keys']]
+    def _get_all_key_labels(self) -> List[str]:
+        return [self._get_kb_label(key) for key in self.grid['keys']]
 
     def _get_key_center(self, hitbox: Dict[str, int]) -> Tuple[float, float]:
         x = hitbox['x'] + hitbox['w'] / 2
         y = hitbox['y'] + hitbox['h'] / 2
         return x, y
         
-    def _get_centers(self, fill_unpresent = np.nan) -> np.ndarray:
+    def _get_centers(self, fill_unpresent = 0) -> np.ndarray:
         centers = np.empty((len(self.i_to_kb_key), 2))
         centers.fill(fill_unpresent)
         
