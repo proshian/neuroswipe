@@ -39,7 +39,8 @@ class DistancesLookup:
 
     def __init__(self, grid: dict, kb_key_list: Optional[List[str]] = None, 
                  return_dict: bool = False, 
-                 raise_on_key_not_in_grid: bool = False) -> None:
+                 raise_on_key_not_in_grid: bool = False,
+                 fill_unpresent_val: float = np.nan) -> None:
         """
         Arguments:
         ----------
@@ -58,6 +59,7 @@ class DistancesLookup:
         self.KB_KEY_LIST = kb_key_list or self._get_all_key_labels()
         self.i_to_kb_key = self.KB_KEY_LIST
         self.kb_key_to_i = {kb_key: i for i, kb_key in enumerate(self.KB_KEY_LIST)}
+        self.fill_unpresent_val = fill_unpresent_val
 
         if raise_on_key_not_in_grid:
             self._check_all_keys_in_grid()
@@ -108,9 +110,10 @@ class DistancesLookup:
         y = hitbox['y'] + hitbox['h'] / 2
         return x, y
         
-    def _get_centers(self, fill_unpresent = 0) -> np.ndarray:
-        centers = np.empty((len(self.i_to_kb_key), 2))
-        centers.fill(fill_unpresent)
+    def _get_centers(self) -> np.ndarray:
+        centers = np.full(
+            (len(self.i_to_kb_key), 2), 
+            self.fill_unpresent_val)
         
         for key in self.grid['keys']:
             label = self._get_kb_label(key)
@@ -140,6 +143,7 @@ class DistancesLookup:
             'return_dict': self.return_dict,
             'coord_to_distances': self.coord_to_distances,
             'centers': self.centers,
+            'fill_unpresent_val': self.fill_unpresent_val
         }
 
     def save_state(self, path: str) -> None:
@@ -157,7 +161,9 @@ class DistancesLookup:
         obj.return_dict = state['return_dict']
         obj.coord_to_distances = state['coord_to_distances']
         obj.centers = state['centers']
+        obj.fill_unpresent_val = state['fill_unpresent_val']
         obj.i_to_kb_key = obj.KB_KEY_LIST
         obj.kb_key_to_i = {kb_key: i for i, kb_key in enumerate(obj.KB_KEY_LIST)}
 
         return obj
+    
