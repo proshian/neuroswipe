@@ -619,8 +619,22 @@ MODEL_GETTERS_DICT = {
 
 
 
+# Новые модели будут представлены так:
+# Функция - model_getter (значение в словаре MODEL_GETTERS_DICT_V2)
+# будет иметь среди прочих аргументы encoder_input_dim и embedding_model_ctor: Callable. 
+# Все наследники класса EmbeddingModel будут в __init__ иметь аргумент out_dim.
+# В __init__ model_getter'а будет создаваться embedding_model_ctor c аргументом...
 
 
+
+
+# class EmbeddingModel(nn.Module):
+#     def __init__(self, out_dim):
+#         super().__init__()
+#         self.out_dim = out_dim
+
+#     def forward(self, x):
+#         raise NotImplementedError("Method forward() is not implemented.")
 
 
 
