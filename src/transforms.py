@@ -1,9 +1,10 @@
 import torch
 from torch import Tensor
 
-from typing import Tuple, Dict, Optional, Iterable, List
+from typing import Tuple, Dict, Optional, Iterable, List, Callable
 from array import array
 from nearest_key_lookup import NearestKeyLookup
+from distances_lookup import DistancesLookup
 from ns_tokenizers import KeyboardTokenizerv1, CharLevelTokenizerv2
 from dataset import RawDatasetEl 
 
@@ -115,6 +116,50 @@ class KbTokensGetter:
             kb_tokens = array('B', kb_tokens)
 
         return kb_tokens
+    
+
+class DistancesGetter:
+    def __init__(self, 
+                 grid_name_to_dists_lookup: Dict[str, DistancesLookup],
+                 dtype: torch.dtype = torch.float32
+                 ) -> None:
+        self.grid_name_to_dists_lookup = grid_name_to_dists_lookup
+        self.dtype = dtype
+
+    def __call__(self, X: Iterable, Y: Iterable, grid_name: str
+                 ) -> Tensor:
+        dl_lookup = self.grid_name_to_dists_lookup[grid_name]
+        distances = dl_lookup.get_distances_for_full_swipe_v2(X, Y)
+        distances = torch.tensor(distances, dtype=self.dtype)
+        return distances
+
+
+def weights_function_v1(distances: Tensor) -> Tensor:
+    """$$f(x) = \frac{1}{1+e^{\frac{1.8x}{key\_radius} - 4}}$$"""
+
+    sigmoid_input = distances * (-1.8) + 4
+    return torch.nn.functional.sigmoid(sigmoid_input)
+    
+    # return 1 / (1 + torch.exp(1.8 * distances - 4))
+
+
+class KeyWeightsGetter:
+    def __init__(self, 
+                 grid_name_to_dists_lookup: Dict[str, DistancesLookup],
+                 weights_function: Callable,
+                 dtype: torch.dtype = torch.float32,
+                 ) -> None:
+        self.distances_getter = DistancesGetter(grid_name_to_dists_lookup, dtype)
+        self.weights_function = weights_function
+        self.dtype = dtype
+
+    def __call__(self, X: Iterable, Y: Iterable, grid_name: str
+                 ) -> Tensor:
+        distances = self.distances_getter(X, Y, grid_name)
+        mask = (distances >= 0).to(torch.int32)
+        weights = self.weights_function(distances) * mask
+        return weights
+        
 
 
 class EncoderFeaturesGetter:
@@ -145,6 +190,30 @@ class EncoderFeaturesGetter:
         traj_feats = self._get_traj_feats(X, Y, T, grid_name)
         
         return traj_feats, kb_tokens
+    
+
+class EncoderFeaturesGetter_Weighted:
+    def __init__(self,
+                 grid_name_to_dist_lookup: Dict[str, DistancesLookup],
+                 grid_name_to_wh: Dict[str, Tuple[int, int]],
+                 include_time: bool,
+                 include_velocities: bool,
+                 include_accelerations: bool,
+                 weights_func: Callable = weights_function_v1
+                 ) -> None:    
+        self._get_traj_feats = TrajFeatsGetter(
+            grid_name_to_wh, 
+            include_time, include_velocities, include_accelerations)
+        
+        self.get_weights = KeyWeightsGetter(
+            grid_name_to_dist_lookup, weights_func)
+
+    def __call__(self, X: array, Y: array,
+                    T: array, grid_name: str) -> Tuple[Tensor, Tensor]:
+            X, Y, T = (torch.tensor(arr, dtype=torch.float32) for arr in (X, Y, T))
+            traj_feats = self._get_traj_feats(X, Y, T, grid_name)
+            weights = self.get_weights(X, Y, grid_name)
+            return traj_feats, weights
 
 
 class DecoderInputOutputGetter:
@@ -196,6 +265,38 @@ class FullTransform:
         return (traj_feats, kb_tokens, decoder_in), decoder_out
 
 
+
+class TrajFeats_KbWeights_FullTransform:
+    def __init__(self,
+                 grid_name_to_wh: Dict[str, Tuple[int, int]],
+                 grid_name_to_dist_lookup: Dict[str, DistancesLookup],
+                 word_tokenizer: CharLevelTokenizerv2,
+                 include_time: bool,
+                 include_velocities: bool,
+                 include_accelerations: bool,
+                 weights_func: Callable = weights_function_v1,
+                 word_tokens_dtype: torch.dtype = torch.int32,
+                ) -> None:
+        self.get_encoder_feats = EncoderFeaturesGetter_Weighted(
+            grid_name_to_dist_lookup, grid_name_to_wh,
+            include_time, include_velocities, include_accelerations,
+            weights_func)
+        
+        self.get_decoder_in_out = DecoderInputOutputGetter(
+            word_tokenizer, dtype = word_tokens_dtype)
+
+    def __call__(self, data: RawDatasetEl
+                    ) -> FullTransformResultType:
+            X, Y, T, grid_name, tgt_word = data
+            traj_feats, weights = self.get_encoder_feats(X, Y, T, grid_name)
+    
+            decoder_in, decoder_out = None, None
+            if tgt_word is not None:
+                decoder_in, decoder_out = self.get_decoder_in_out(tgt_word)
+            return (traj_feats, weights, decoder_in), decoder_out
+
+
+
 class TokensTypeCastTransform:
     def __call__(self, data: FullTransformResultType) -> FullTransformResultType:
         (traj_feats, kb_tokens, decoder_in), decoder_out = data
@@ -205,6 +306,8 @@ class TokensTypeCastTransform:
         # CELoss accepts int64 only
         decoder_out = decoder_out.to(torch.int64)
         return (traj_feats, kb_tokens, decoder_in), decoder_out
+
+
 
 
 

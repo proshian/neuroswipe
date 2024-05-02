@@ -40,7 +40,7 @@ class DistancesLookup:
     def __init__(self, grid: dict, kb_key_list: Optional[List[str]] = None, 
                  return_dict: bool = False, 
                  raise_on_key_not_in_grid: bool = False,
-                 fill_unpresent_val: float = np.nan) -> None:
+                 fill_unpresent_val: float = -1) -> None:
         """
         Arguments:
         ----------
@@ -53,6 +53,9 @@ class DistancesLookup:
         raise_on_key_not_in_grid: bool
             If True, raises an error if a key from kb_key_list 
             is not present in the grid.
+        fill_unpresent_val: float
+            Value to fill for keys that are not present in the grid.
+            Defaults to -1 because it's easy to spot since all distances are positive.
         """
         self.grid = grid
         self.return_dict = return_dict
