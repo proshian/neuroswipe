@@ -1,3 +1,12 @@
+"""
+The dataset by default returns a tuple of 5 elements:
+(X, Y, T, grid_name, tgt_word)
+
+Transforms defined in this module are used 
+to convert this tuple a tuple (model_in, model_out)
+"""
+
+
 import torch
 from torch import Tensor
 
