@@ -208,11 +208,12 @@ def get_grid(grid_name: str, grids_path: str) -> dict:
         return json.load(f)[grid_name]
 
 
-def get_grid_name_to_grid(grid_name_to_grid__path: str) -> dict:
+def get_grid_name_to_grid(grid_name_to_grid__path: str, 
+                          allowed_gnames = ("default", "extra")) -> dict:
     # In case there will be more grids in "grid_name_to_grid.json"
     grid_name_to_grid = {
         grid_name: get_grid(grid_name, grid_name_to_grid__path)
-        for grid_name in ("default", "extra")
+        for grid_name in allowed_gnames
     }
     return grid_name_to_grid
 

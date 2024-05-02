@@ -143,13 +143,17 @@ class DistancesGetter:
         return distances
 
 
-def weights_function_v1(distances: Tensor) -> Tensor:
-    """$$f(x) = \frac{1}{1+e^{\frac{1.8x}{key\_radius} - 4}}$$"""
-
-    sigmoid_input = distances * (-1.8) + 4
-    return torch.nn.functional.sigmoid(sigmoid_input)
+def weights_function_v1(distances: Tensor, bias = 4, scale = 1.8) -> Tensor:
+    """
+    $$f(x) = \frac{1}{1+e^{\frac{s \cdot x}{key\_radius} - b}}$$
+    b = bias = 4
+    s = scale = 1.8
+    """
     
     # return 1 / (1 + torch.exp(1.8 * distances - 4))
+    sigmoid_input = distances * (-scale) + bias
+    return torch.nn.functional.sigmoid(sigmoid_input)
+
 
 
 class KeyWeightsGetter:
