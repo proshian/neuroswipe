@@ -138,6 +138,7 @@ class DistancesLookup:
         dist_arr = self.get_distances_arr(x, y)
         if self.return_dict:
             return {kb_key: dist for kb_key, dist in zip(self.KB_KEY_LIST, dist_arr)}
+        return dist_arr
     
     def _get_state(self) -> Dict[str, Any]:
         return {
