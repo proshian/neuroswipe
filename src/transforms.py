@@ -143,7 +143,7 @@ class DistancesGetter:
         return distances
 
 
-def weights_function_v1(distances: Tensor, bias = 4, scale = 1.8) -> Tensor:
+def weights_function_v1(distances: Tensor, half_key_diag, bias = 4, scale = 1.8) -> Tensor:
     """
     $$f(x) = \frac{1}{1+e^{\frac{s \cdot x}{key\_radius} - b}}$$
     b = bias = 4
@@ -151,7 +151,9 @@ def weights_function_v1(distances: Tensor, bias = 4, scale = 1.8) -> Tensor:
     """
     
     # return 1 / (1 + torch.exp(1.8 * distances - 4))
-    sigmoid_input = distances * (-scale) + bias
+
+    # Sqrt beacuse currently distances is squared euclidian distance
+    sigmoid_input = distances.sqrt() / half_key_diag * (-scale) + bias
     return torch.nn.functional.sigmoid(sigmoid_input)
 
 
@@ -159,18 +161,21 @@ def weights_function_v1(distances: Tensor, bias = 4, scale = 1.8) -> Tensor:
 class KeyWeightsGetter:
     def __init__(self, 
                  grid_name_to_dists_lookup: Dict[str, DistancesLookup],
+                 grid_name_to_half_key_diag: Dict[str, float],
                  weights_function: Callable,
                  dtype: torch.dtype = torch.float32,
                  ) -> None:
         self.distances_getter = DistancesGetter(grid_name_to_dists_lookup, dtype)
         self.weights_function = weights_function
+        self.grid_name_to_half_key_diag = grid_name_to_half_key_diag
         self.dtype = dtype
 
     def __call__(self, X: Iterable, Y: Iterable, grid_name: str
                  ) -> Tensor:
         distances = self.distances_getter(X, Y, grid_name)
         mask = (distances >= 0).to(torch.int32)
-        weights = self.weights_function(distances) * mask
+        half_key_diag = self.grid_name_to_half_key_diag[grid_name]
+        weights = self.weights_function(distances, half_key_diag) * mask
         return weights
         
 
@@ -203,29 +208,71 @@ class EncoderFeaturesGetter:
         traj_feats = self._get_traj_feats(X, Y, T, grid_name)
         
         return traj_feats, kb_tokens
+
+
+######### That's a hotfix !!!!!!!!
+
+def get_gname_to_wh(gname_to_grid: Dict[str, dict]):
+    return {gname: (grid['width'], grid['height']) 
+            for gname, grid in gname_to_grid.items()}
+
+
+def _get_kb_label(key: dict) -> str:
+    if 'label' in key:
+        return key['label']
+    if 'action' in key:
+        return key['action']
+    raise ValueError("Key has no label or action property")
     
+
+def get_gname_to_half_key_diag(gname_to_grid: Dict[str, dict]):
+    result = {gname: None for gname in gname_to_grid}
+    for gname, grid in gname_to_grid.items():
+        key_with_letter = None
+        for key in grid['keys']:
+            label = _get_kb_label(key)
+            if label == 'а':
+                key_with_letter = key
+                break
+        if key_with_letter is None:
+            raise ValueError("No key with letter 'а' found")
+        hitbox = key_with_letter['hitbox']
+        kw, kh = hitbox['w'], hitbox['h']    
+        result[gname] = (kw**2 + kh**2)**0.5 / 2    
+    return result
+
+
+######### End of a hotfix !!!!!!!!
+
 
 class EncoderFeaturesGetter_Weighted:
     def __init__(self,
                  grid_name_to_dist_lookup: Dict[str, DistancesLookup],
-                 grid_name_to_wh: Dict[str, Tuple[int, int]],
+                 grid_name_to_grid: Dict[str, dict],
                  include_time: bool,
                  include_velocities: bool,
                  include_accelerations: bool,
                  weights_func: Callable = weights_function_v1
                  ) -> None:    
+        gname_to_wh = get_gname_to_wh(grid_name_to_grid)
         self._get_traj_feats = TrajFeatsGetter(
-            grid_name_to_wh, 
+            gname_to_wh, 
             include_time, include_velocities, include_accelerations)
         
+        gname_to_hkd = get_gname_to_half_key_diag(grid_name_to_grid)
         self.get_weights = KeyWeightsGetter(
-            grid_name_to_dist_lookup, weights_func)
+            grid_name_to_dist_lookup, gname_to_hkd, weights_func)
 
     def __call__(self, X: array, Y: array,
                     T: array, grid_name: str) -> Tuple[Tensor, Tensor]:
+            # Conversion to tensor would lead to indexing error since 
+            # tensor(`index_val`) is not a proper index 
+            # even if `index_val` is an integer
+            weights = self.get_weights(X, Y, grid_name)
+
             X, Y, T = (torch.tensor(arr, dtype=torch.float32) for arr in (X, Y, T))
             traj_feats = self._get_traj_feats(X, Y, T, grid_name)
-            weights = self.get_weights(X, Y, grid_name)
+            
             return traj_feats, weights
 
 
@@ -281,7 +328,7 @@ class FullTransform:
 
 class TrajFeats_KbWeights_FullTransform:
     def __init__(self,
-                 grid_name_to_wh: Dict[str, Tuple[int, int]],
+                 grid_name_to_grid: Dict[str, dict],
                  grid_name_to_dist_lookup: Dict[str, DistancesLookup],
                  word_tokenizer: CharLevelTokenizerv2,
                  include_time: bool,
@@ -291,7 +338,7 @@ class TrajFeats_KbWeights_FullTransform:
                  word_tokens_dtype: torch.dtype = torch.int32,
                 ) -> None:
         self.get_encoder_feats = EncoderFeaturesGetter_Weighted(
-            grid_name_to_dist_lookup, grid_name_to_wh,
+            grid_name_to_dist_lookup, grid_name_to_grid,
             include_time, include_velocities, include_accelerations,
             weights_func)
         
