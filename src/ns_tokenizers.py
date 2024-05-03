@@ -66,6 +66,8 @@ class CharLevelTokenizerv2:
 
 class KeyboardTokenizerv1:
     
+    # '-' and '<unk>' symbol are in case of new keyboard layouts.
+    # <pad> is used for padding.
     i2t = ALL_CYRILLIC_LETTERS_ALPHABET_ORD + ['-', '<unk>', '<pad>']
     
     t2i = {t: i for i, t in enumerate(i2t)}
