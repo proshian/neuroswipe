@@ -124,7 +124,7 @@ class DistancesLookup:
                 centers[self.kb_key_to_i[label]] = self._get_key_center(key['hitbox'])
         return centers
         
-    def _create_coord_to_distances(self, w: int, h: int) -> np.ndarray:
+    def _create_coord_to_distances(self) -> np.ndarray:
         w, h = self.grid['width'], self.grid['height']
         dots = np.indices((w, h)).transpose(1, 2, 0)  # (w, h, 2)
         return self._distance(dots, self.centers)
