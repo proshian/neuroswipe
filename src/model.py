@@ -1,4 +1,4 @@
-from typing import Callable, Optional
+from typing import Callable, Optional, Tuple
 import math
 
 import torch
@@ -235,21 +235,21 @@ def get_m1_model(device = None, weights_path = None):
     MAX_OUT_SEQ_LEN = 35  # word_char_tokenizer.max_word_len - 1
 
     model = SwipeCurveTransformer(
-    n_coord_feats=6,
-    char_emb_size=128,
-    char_vocab_size=CHAR_VOCAB_SIZE,
-    key_emb_size=54,
-    num_encoder_layers=4,
-    num_decoder_layers=3,
-    dim_feedforward=128,
-    num_heads_encoder_1=4,
-    num_heads_encoder_2=4,
-    num_heads_decoder=4,
-    dropout=0.1,
-    char_embedding_dropout=0.1,
-    key_embedding_dropout=0.1,
-    max_out_seq_len=MAX_OUT_SEQ_LEN,
-    max_curves_seq_len=MAX_CURVES_SEQ_LEN,
+        n_coord_feats=6,
+        char_emb_size=128,
+        char_vocab_size=CHAR_VOCAB_SIZE,
+        key_emb_size=54,
+        num_encoder_layers=4,
+        num_decoder_layers=3,
+        dim_feedforward=128,
+        num_heads_encoder_1=4,
+        num_heads_encoder_2=4,
+        num_heads_decoder=4,
+        dropout=0.1,
+        char_embedding_dropout=0.1,
+        key_embedding_dropout=0.1,
+        max_out_seq_len=MAX_OUT_SEQ_LEN,
+        max_curves_seq_len=MAX_CURVES_SEQ_LEN,
     device = device)
 
     if weights_path:
@@ -270,22 +270,22 @@ def get_m1_bigger_model(device = None, weights_path = None):
     MAX_OUT_SEQ_LEN = 35  # word_char_tokenizer.max_word_len - 1
 
     model = SwipeCurveTransformer(
-    n_coord_feats=6,
-    char_emb_size=128,
-    char_vocab_size=CHAR_VOCAB_SIZE,
-    key_emb_size=66,
-    num_encoder_layers=4,
-    num_decoder_layers=4,
-    dim_feedforward=128,
-    num_heads_encoder_1=4,
-    num_heads_encoder_2=4,
-    num_heads_decoder=4,
-    dropout=0.1,
-    char_embedding_dropout=0.1,
-    key_embedding_dropout=0.1,
-    max_out_seq_len=MAX_OUT_SEQ_LEN,
-    max_curves_seq_len=MAX_CURVES_SEQ_LEN,
-    device = device)
+        n_coord_feats=6,
+        char_emb_size=128,
+        char_vocab_size=CHAR_VOCAB_SIZE,
+        key_emb_size=66,
+        num_encoder_layers=4,
+        num_decoder_layers=4,
+        dim_feedforward=128,
+        num_heads_encoder_1=4,
+        num_heads_encoder_2=4,
+        num_heads_decoder=4,
+        dropout=0.1,
+        char_embedding_dropout=0.1,
+        key_embedding_dropout=0.1,
+        max_out_seq_len=MAX_OUT_SEQ_LEN,
+        max_curves_seq_len=MAX_CURVES_SEQ_LEN,
+        device = device)
 
     if weights_path:
         model.load_state_dict(
@@ -305,22 +305,22 @@ def get_m1_smaller_model(device = None, weights_path = None):
     MAX_OUT_SEQ_LEN = 35  # word_char_tokenizer.max_word_len - 1
 
     model = SwipeCurveTransformer(
-    n_coord_feats=6,
-    char_emb_size=128,
-    char_vocab_size=CHAR_VOCAB_SIZE,
-    key_emb_size=54,
-    num_encoder_layers=3,
-    num_decoder_layers=3,
-    dim_feedforward=128,
-    num_heads_encoder_1=4,
-    num_heads_encoder_2=4,
-    num_heads_decoder=4,
-    dropout=0.1,
-    char_embedding_dropout=0.1,
-    key_embedding_dropout=0.1,
-    max_out_seq_len=MAX_OUT_SEQ_LEN,
-    max_curves_seq_len=MAX_CURVES_SEQ_LEN,
-    device = device)
+        n_coord_feats=6,
+        char_emb_size=128,
+        char_vocab_size=CHAR_VOCAB_SIZE,
+        key_emb_size=54,
+        num_encoder_layers=3,
+        num_decoder_layers=3,
+        dim_feedforward=128,
+        num_heads_encoder_1=4,
+        num_heads_encoder_2=4,
+        num_heads_decoder=4,
+        dropout=0.1,
+        char_embedding_dropout=0.1,
+        key_embedding_dropout=0.1,
+        max_out_seq_len=MAX_OUT_SEQ_LEN,
+        max_curves_seq_len=MAX_CURVES_SEQ_LEN,
+        device = device)
 
     if weights_path:
         model.load_state_dict(
@@ -332,6 +332,15 @@ def get_m1_smaller_model(device = None, weights_path = None):
     model = model.eval()
 
     return model
+
+
+
+
+
+
+
+
+
 
 
 
@@ -541,20 +550,20 @@ def get_transformer_bigger_model(device = None, weights_path = None):
     MAX_OUT_SEQ_LEN = 35  # word_char_tokenizer.max_word_len - 1
 
     model = TransformerEncoderTransformerDecoderWithPos(
-    n_coord_feats=6,
-    key_emb_size=122,
-    char_vocab_size=CHAR_VOCAB_SIZE,
-    num_encoder_layers=4,
-    num_decoder_layers=4,
-    dim_feedforward=128,
-    num_heads_encoder=4,
-    num_heads_decoder=4,
-    dropout=0.1,
-    char_embedding_dropout=0.1,
-    key_embedding_dropout=0.1,
-    max_out_seq_len=MAX_OUT_SEQ_LEN,
-    max_curves_seq_len=MAX_CURVES_SEQ_LEN,
-    device = device)
+        n_coord_feats=6,
+        key_emb_size=122,
+        char_vocab_size=CHAR_VOCAB_SIZE,
+        num_encoder_layers=4,
+        num_decoder_layers=4,
+        dim_feedforward=128,
+        num_heads_encoder=4,
+        num_heads_decoder=4,
+        dropout=0.1,
+        char_embedding_dropout=0.1,
+        key_embedding_dropout=0.1,
+        max_out_seq_len=MAX_OUT_SEQ_LEN,
+        max_curves_seq_len=MAX_CURVES_SEQ_LEN,
+        device = device)
 
     if weights_path:
         model.load_state_dict(
@@ -605,16 +614,9 @@ def get_transformer_bb_model(device = None, weights_path = None):
 
 
 
-MODEL_GETTERS_DICT = {
-    "m1": get_m1_model,
-    "m1_bigger": get_m1_bigger_model,
-    "m1_smaller": get_m1_smaller_model,
 
-    "transformer_m1_bigger": get_transformer_bigger_model,
-    "transformer_bb_model": get_transformer_bb_model,
-}
-
-
+###############################################################################
+###############################################################################
 
 
 
@@ -638,3 +640,177 @@ MODEL_GETTERS_DICT = {
 
 
 
+class WeightedSumEmbedding(nn.Module):
+    """
+    Computes embedding as a weighted sum of embeddings
+
+    Is used as a swipe dot embedding: the embedding is
+    a weighted sum of embeddings of all key on keyboard
+    """
+    def __init__(self, n_elements, dim) -> None:
+        """
+        Arguments:
+        ----------
+        
+        """
+        super().__init__()
+        # Using linear is same as using Linear(Embedding.get_matrix * weights)
+        # Embedding is same as Linear(one_hot)
+        # weights is generalization of one-hot
+        # Linear(weights) = Linear(Linear(one_hot) * weights) 
+        self.embeddings = nn.Linear(n_elements, dim)
+
+    def forward(self, weights):
+        return self.embeddings(weights)
+
+
+class WeightsSumEmbeddingWithPos(WeightedSumEmbedding):
+    def __init__(self, n_elements, dim, max_len, device) -> None:
+        super().__init__(n_elements, dim)
+        self.pos_encoder = PositionalEncoding(dim, max_len, device)
+
+    def forward(self, weights):
+        emb = super().forward(weights)
+        emb = self.pos_encoder(emb)
+        return emb
+
+
+
+class SeparateTrajAndWEightedEmbeddingWithPos(nn.Module):
+    def __init__(self, n_keys, key_emb_size, max_len, device, dropout = 0.1) -> None:
+        super().__init__()
+        self.weighted_sum_emb = WeightsSumEmbeddingWithPos(n_keys, key_emb_size, max_len, device)
+        self.dropout = nn.Dropout(dropout)
+    
+    def forward(self, input_tuple: Tuple[nn.Tensor, nn.Tensor]):
+        traj_feats, kb_key_weights = input_tuple
+        kb_k_emb = self.weighted_sum_emb(kb_key_weights)
+        kb_k_emb = self.dropout(kb_k_emb)
+        x = torch.cat((traj_feats, kb_k_emb), dim = -1)
+        return x
+    
+
+
+
+
+class EncoderDecoderAbstract(nn.Module):
+    def __init__(self, enc_in_emb_model, dec_in_emb_model, encoder, decoder, out):
+        super().__init__()
+        self.enc_in_emb_model = enc_in_emb_model
+        self.dec_in_emb_model = dec_in_emb_model
+        self.encoder = encoder
+        self.decoder = decoder
+        self.out = out  # linear
+
+    # x can be a tuple (ex. traj_feats, kb_tokens) or a single tensor
+    # (ex. just kb_tokens).
+    def encode(self, x, *encoder_args, **encoder_kwargs):
+        x = self.enc_in_emb_model(x)
+        return self.encoder(x, *encoder_args, **encoder_kwargs)
+    
+    def decode(self, x_encoded, y, *decoder_args, **decoder_kwargs):
+        y = self.dec_in_emb_model(y)
+        dec_out = self.decoder(x_encoded, y, *decoder_args, **decoder_kwargs)
+        return self.out(dec_out)
+    
+    def forward(self, x, kb_tokens, y, x_pad_mask, y_pad_mask):
+        x_encoded = self.encode(x, kb_tokens, x_pad_mask)
+        return self.decode(x_encoded, y, x_pad_mask, y_pad_mask)
+
+
+
+
+
+
+def get_transformer_bigger_weighted(device = None, weights_path = None):
+    CHAR_VOCAB_SIZE = 37  # = len(word_char_tokenizer.char_to_idx)
+    MAX_CURVES_SEQ_LEN = 299
+    MAX_OUT_SEQ_LEN = 35  # word_char_tokenizer.max_word_len - 1
+
+    device = torch.device(
+        device 
+        or 'cuda' if torch.cuda.is_available() else 'cpu')
+
+    n_coord_feats = 6
+    key_emb_size = 122
+    d_model = n_coord_feats + key_emb_size
+
+    input_embedding_dropout = 0.1
+
+    n_word_chars = CHAR_VOCAB_SIZE
+    
+    # Actually, n_keys != n_word_chars. n_keys = 36. 
+    # It's legacy. It should not affect the model though.
+    n_keys = CHAR_VOCAB_SIZE  
+
+    input_embedding = SeparateTrajAndWEightedEmbeddingWithPos(
+        n_keys=n_keys, key_emb_size=key_emb_size, 
+        max_len=MAX_CURVES_SEQ_LEN, device = device, dropout=input_embedding_dropout)
+
+
+    transformer_dropout = 0.1
+
+    transformer = nn.Transformer(
+        d_model,
+        nhead=4,
+        num_encoder_layers=4,
+        num_decoder_layers=4,
+        dim_feedforward=128,
+        dropout=transformer_dropout,
+        device = device
+    )
+    
+
+    word_char_embedding = nn.Embedding(n_word_chars, d_model)
+    word_char_emb_dropout_val = 0.1
+    word_char_emb_dropout = nn.Dropout(word_char_emb_dropout_val)
+    word_char_pos_encoder = PositionalEncoding(d_model, MAX_OUT_SEQ_LEN, device=device)
+
+    word_char_embedding_model = nn.Sequential(
+        word_char_embedding,
+        word_char_emb_dropout,
+        word_char_pos_encoder
+    )
+
+    n_classes = CHAR_VOCAB_SIZE - 2  # <sos> and <pad> are not predicted
+
+
+    out = nn.Linear(d_model, n_classes, device = device)
+
+    model = EncoderDecoderAbstract(
+        input_embedding, word_char_embedding_model, 
+        transformer.encoder, transformer.decoder, out)
+    
+    if weights_path:
+        model.load_state_dict(
+            torch.load(weights_path,
+                    map_location = device))
+        
+
+    model = model.to(device)
+
+    model = model.eval()
+
+    return model
+
+
+
+
+
+###############################################################################
+###############################################################################
+
+
+
+
+
+MODEL_GETTERS_DICT = {
+    "m1": get_m1_model,
+    "m1_bigger": get_m1_bigger_model,
+    "m1_smaller": get_m1_smaller_model,
+
+    "transformer_m1_bigger": get_transformer_bigger_model,
+    "transformer_bb_model": get_transformer_bb_model,
+
+    "weighted_transformer_bigger": get_transformer_bigger_weighted,
+}
