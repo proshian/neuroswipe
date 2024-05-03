@@ -690,7 +690,10 @@ class SeparateTrajAndWEightedEmbeddingWithPos(nn.Module):
         return x
     
 
-
+#############
+# !!!!!!!!!!!!!!! It may be a bad practice. This
+# usage of args and kwargs prevents contracts
+# and any checks on input validity.
 
 
 class EncoderDecoderAbstract(nn.Module):
@@ -713,16 +716,69 @@ class EncoderDecoderAbstract(nn.Module):
         dec_out = self.decoder(x_encoded, y, *decoder_args, **decoder_kwargs)
         return self.out(dec_out)
     
-    def forward(self, x, kb_tokens, y, x_pad_mask, y_pad_mask):
-        x_encoded = self.encode(x, kb_tokens, x_pad_mask)
-        return self.decode(x_encoded, y, x_pad_mask, y_pad_mask)
+    def forward(self, x, y, 
+                encoder_args: list = None, 
+                enkoder_kwargs: dict = None,
+                decoder_args: list = None,
+                decoder_kwargs: dict = None):
+        if encoder_args is None:
+            encoder_args = []
+        if decoder_args is None:
+            decoder_args = []
+        if encoder_kwargs is None:
+            encoder_kwargs = {}
+        if decoder_kwargs is None:
+            decoder_kwargs = {}
+
+        x_encoded = self.encode(x, *encoder_args, **encoder_kwargs)
+        return self.decode(x_encoded, y, *decoder_args, **decoder_kwargs)
+
+
+
+
+class EncoderDecoderAbstractLegacyDSFormat(nn.Module):
+    def __init__(self, enc_in_emb_model, dec_in_emb_model, encoder, decoder, out):
+        super().__init__()
+        self.enc_in_emb_model = enc_in_emb_model
+        self.dec_in_emb_model = dec_in_emb_model
+        self.encoder = encoder
+        self.decoder = decoder
+        self.out = out  # linear
+
+    # x can be a tuple (ex. traj_feats, kb_tokens) or a single tensor
+    # (ex. just kb_tokens).
+    def encode(self, traj_feats, kb_tokens, *encoder_args, **encoder_kwargs):
+        x = self.enc_in_emb_model((traj_feats, kb_tokens))
+        return self.encoder(x, *encoder_args, **encoder_kwargs)
+    
+    def decode(self, x_encoded, y, *decoder_args, **decoder_kwargs):
+        y = self.dec_in_emb_model(y)
+        dec_out = self.decoder(x_encoded, y, *decoder_args, **decoder_kwargs)
+        return self.out(dec_out)
+    
+    def forward(self, traj_feats, kb_tokens, y, 
+                encoder_args: list = None, 
+                enkoder_kwargs: dict = None,
+                decoder_args: list = None,
+                decoder_kwargs: dict = None):
+        if encoder_args is None:
+            encoder_args = []
+        if decoder_args is None:
+            decoder_args = []
+        if encoder_kwargs is None:
+            encoder_kwargs = {}
+        if decoder_kwargs is None:
+            decoder_kwargs = {}
+
+        x_encoded = self.encode(traj_feats, kb_tokens, *encoder_args, **encoder_kwargs)
+        return self.decode(x_encoded, y, *decoder_args, **decoder_kwargs)
 
 
 
 
 
 
-def get_transformer_bigger_weighted(device = None, weights_path = None):
+def get_transformer_bigger_weighted(device = None, weights_path = None, legacy_ds: bool = True):
     CHAR_VOCAB_SIZE = 37  # = len(word_char_tokenizer.char_to_idx)
     MAX_CURVES_SEQ_LEN = 299
     MAX_OUT_SEQ_LEN = 35  # word_char_tokenizer.max_word_len - 1
@@ -777,7 +833,13 @@ def get_transformer_bigger_weighted(device = None, weights_path = None):
 
     out = nn.Linear(d_model, n_classes, device = device)
 
-    model = EncoderDecoderAbstract(
+
+    encoder_decoder_ctor = (
+        EncoderDecoderAbstractLegacyDSFormat if legacy_ds 
+        else EncoderDecoderAbstract
+    )
+
+    model = encoder_decoder_ctor(
         input_embedding, word_char_embedding_model, 
         transformer.encoder, transformer.decoder, out)
     
