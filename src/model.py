@@ -718,7 +718,7 @@ class EncoderDecoderAbstract(nn.Module):
     
     def forward(self, x, y, 
                 encoder_args: list = None, 
-                enkoder_kwargs: dict = None,
+                encoder_kwargs: dict = None,
                 decoder_args: list = None,
                 decoder_kwargs: dict = None):
         if encoder_args is None:
@@ -758,7 +758,7 @@ class EncoderDecoderAbstractLegacyDSFormat(nn.Module):
     
     def forward(self, traj_feats, kb_tokens, y, 
                 encoder_args: list = None, 
-                enkoder_kwargs: dict = None,
+                encoder_kwargs: dict = None,
                 decoder_args: list = None,
                 decoder_kwargs: dict = None):
         if encoder_args is None:
