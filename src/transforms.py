@@ -15,9 +15,11 @@ from array import array
 from nearest_key_lookup import NearestKeyLookup
 from distances_lookup import DistancesLookup
 from ns_tokenizers import KeyboardTokenizerv1, CharLevelTokenizerv2
+from ns_tokenizers import ALL_CYRILLIC_LETTERS_ALPHABET_ORD
 from dataset import RawDatasetEl 
 
 
+DEFAULT_ALLOWED_KEYS = ALL_CYRILLIC_LETTERS_ALPHABET_ORD
 GetItemTransformInput = Tuple[array, array, array, str, Optional[str], array]
 FullTransformResultType = Tuple[Tuple[Tensor, Tensor, Tensor], Tensor]
 
@@ -138,7 +140,8 @@ class DistancesGetter:
     def __call__(self, X: Iterable, Y: Iterable, grid_name: str
                  ) -> Tensor:
         dl_lookup = self.grid_name_to_dists_lookup[grid_name]
-        distances = dl_lookup.get_distances_for_full_swipe_v2(X, Y)
+        # distances = dl_lookup.get_distances_for_full_swipe_without_map(X, Y)
+        distances = dl_lookup.get_distances_for_full_swipe_using_map(X, Y)
         distances = torch.tensor(distances, dtype=self.dtype)
         return distances
 
@@ -153,6 +156,10 @@ def weights_function_v1(distances: Tensor, half_key_diag, bias = 4, scale = 1.8)
     # return 1 / (1 + torch.exp(1.8 * distances - 4))
 
     # Sqrt beacuse currently distances is squared euclidian distance
+
+    #! It may be a good idea to move division by half_key_diag outside
+    # this function.  The division is just a scaling of distances
+    # so that they are not in pixels but use half_key_diag as a unit. 
     sigmoid_input = distances.sqrt() / half_key_diag * (-scale) + bias
     return torch.nn.functional.sigmoid(sigmoid_input)
 
@@ -173,9 +180,10 @@ class KeyWeightsGetter:
     def __call__(self, X: Iterable, Y: Iterable, grid_name: str
                  ) -> Tensor:
         distances = self.distances_getter(X, Y, grid_name)
-        mask = (distances >= 0).to(torch.int32)
+        mask = (distances < 0)
         half_key_diag = self.grid_name_to_half_key_diag[grid_name]
-        weights = self.weights_function(distances, half_key_diag) * mask
+        weights = self.weights_function(distances, half_key_diag)
+        weights = weights.masked_fill(mask=mask, value=0)
         return weights
         
 
@@ -210,7 +218,8 @@ class EncoderFeaturesGetter:
         return traj_feats, kb_tokens
 
 
-######### That's a hotfix !!!!!!!!
+#! Probably should move _get_kb_label and get_gname_to_wh
+# to grid_processing_utils.py.  The code is copied 3 times.
 
 def get_gname_to_wh(gname_to_grid: Dict[str, dict]):
     return {gname: (grid['width'], grid['height']) 
@@ -223,26 +232,31 @@ def _get_kb_label(key: dict) -> str:
     if 'action' in key:
         return key['action']
     raise ValueError("Key has no label or action property")
-    
 
-def get_gname_to_half_key_diag(gname_to_grid: Dict[str, dict]):
+
+def get_avg_half_key_diag(grid: dict, 
+                          allowed_keys: List[str] = tuple(DEFAULT_ALLOWED_KEYS)) -> float:
+    hkd_list = []
+    for key in grid['keys']:
+        label = _get_kb_label(key)
+        if label not in allowed_keys:
+            continue
+        hitbox = key['hitbox']
+        kw, kh = hitbox['w'], hitbox['h']
+        half_key_diag = (kw**2 + kh**2)**0.5 / 2
+        hkd_list.append(half_key_diag)
+    return sum(hkd_list) / len(hkd_list)
+
+    
+def get_gname_to_half_key_diag(gname_to_grid: Dict[str, dict], 
+                               allowed_keys: List[str] = tuple(DEFAULT_ALLOWED_KEYS)
+                               ) -> Dict[str, float]:
     result = {gname: None for gname in gname_to_grid}
     for gname, grid in gname_to_grid.items():
-        key_with_letter = None
-        for key in grid['keys']:
-            label = _get_kb_label(key)
-            if label == 'а':
-                key_with_letter = key
-                break
-        if key_with_letter is None:
-            raise ValueError("No key with letter 'а' found")
-        hitbox = key_with_letter['hitbox']
-        kw, kh = hitbox['w'], hitbox['h']    
-        result[gname] = (kw**2 + kh**2)**0.5 / 2    
+        result[gname] = get_avg_half_key_diag(grid, allowed_keys)
     return result
 
 
-######### End of a hotfix !!!!!!!!
 
 
 class EncoderFeaturesGetter_Weighted:
@@ -252,14 +266,16 @@ class EncoderFeaturesGetter_Weighted:
                  include_time: bool,
                  include_velocities: bool,
                  include_accelerations: bool,
-                 weights_func: Callable = weights_function_v1
+                 weights_func: Callable = weights_function_v1,
+                 allowed_keys = DEFAULT_ALLOWED_KEYS
                  ) -> None:    
         gname_to_wh = get_gname_to_wh(grid_name_to_grid)
         self._get_traj_feats = TrajFeatsGetter(
             gname_to_wh, 
             include_time, include_velocities, include_accelerations)
         
-        gname_to_hkd = get_gname_to_half_key_diag(grid_name_to_grid)
+        gname_to_hkd = get_gname_to_half_key_diag(grid_name_to_grid, 
+                                                  allowed_keys)
         self.get_weights = KeyWeightsGetter(
             grid_name_to_dist_lookup, gname_to_hkd, weights_func)
 
