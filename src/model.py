@@ -682,7 +682,7 @@ class SeparateTrajAndWEightedEmbeddingWithPos(nn.Module):
         self.weighted_sum_emb = WeightsSumEmbeddingWithPos(n_keys, key_emb_size, max_len, device)
         self.dropout = nn.Dropout(dropout)
     
-    def forward(self, input_tuple: Tuple[nn.Tensor, nn.Tensor]):
+    def forward(self, input_tuple: Tuple[torch.Tensor, torch.Tensor]):
         traj_feats, kb_key_weights = input_tuple
         kb_k_emb = self.weighted_sum_emb(kb_key_weights)
         kb_k_emb = self.dropout(kb_k_emb)
