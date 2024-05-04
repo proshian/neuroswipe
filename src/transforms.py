@@ -164,6 +164,14 @@ def weights_function_v1(distances: Tensor, half_key_diag, bias = 4, scale = 1.8)
     return torch.nn.functional.sigmoid(sigmoid_input)
 
 
+def weights_function_v1_softmax(distances: Tensor, half_key_diag, bias = 4, scale = 1.8) -> Tensor:
+    mask = torch.isinf(distances)
+    sigmoid_input = distances.sqrt() / half_key_diag * (-scale) + bias
+    weights = torch.nn.functional.sigmoid(sigmoid_input)
+    # -inf to zero out unpresent values and have a sum of one 
+    weights.masked_fill_(mask, float('-inf'))
+    return torch.nn.functional.softmax(weights, dim=1)
+
 
 class KeyWeightsGetter:
     def __init__(self, 
@@ -181,9 +189,10 @@ class KeyWeightsGetter:
                  ) -> Tensor:
         distances = self.distances_getter(X, Y, grid_name)
         mask = (distances < 0)
+        distances.masked_fill_(mask=mask, value = float('inf'))
         half_key_diag = self.grid_name_to_half_key_diag[grid_name]
         weights = self.weights_function(distances, half_key_diag)
-        weights = weights.masked_fill(mask=mask, value=0)
+        weights.masked_fill_(mask=mask, value=0)
         return weights
         
 
