@@ -658,6 +658,8 @@ class WeightedSumEmbedding(nn.Module):
         # Embedding is same as Linear(one_hot)
         # weights is generalization of one-hot
         # Linear(weights) = Linear(Linear(one_hot) * weights) 
+
+        # n_keys = n_elements
         self.embeddings = nn.Linear(n_elements, dim)
 
     def forward(self, weights):
