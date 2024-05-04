@@ -40,7 +40,8 @@ class DistancesLookup:
     def __init__(self, grid: dict, kb_key_list: Optional[List[str]] = None, 
                  return_dict: bool = False, 
                  raise_on_key_not_in_grid: bool = False,
-                 fill_unpresent_val: float = -1) -> None:
+                 fill_unpresent_centers_val: float = -1,
+                 fill_unpresent_dist_val: float = -1) -> None:
         """
         Arguments:
         ----------
@@ -53,8 +54,11 @@ class DistancesLookup:
         raise_on_key_not_in_grid: bool
             If True, raises an error if a key from kb_key_list 
             is not present in the grid.
-        fill_unpresent_val: float
-            Value to fill for keys that are not present in the grid.
+        fill_unpresent_centers_val: float
+            Value to fill for centers of keys that are not present in the grid.
+            Defaults to -1 since all centers have positive coordinates.
+        fill_unpresent_dist_val: float
+            Value to fill for distances to keys that are not present in the grid.
             Defaults to -1 because it's easy to spot since all distances are positive.
         """
         self.grid = grid
@@ -62,7 +66,8 @@ class DistancesLookup:
         self.KB_KEY_LIST = kb_key_list or self._get_all_key_labels()
         self.i_to_kb_key = self.KB_KEY_LIST
         self.kb_key_to_i = {kb_key: i for i, kb_key in enumerate(self.KB_KEY_LIST)}
-        self.fill_unpresent_val = fill_unpresent_val
+        self.fill_unpresent_centers_val = fill_unpresent_centers_val
+        self.fill_unpresent_dist_val = fill_unpresent_dist_val
 
         if raise_on_key_not_in_grid:
             self._check_all_keys_in_grid()
@@ -73,24 +78,44 @@ class DistancesLookup:
 
     def __call__(self, x, y):
         return self.get_distances(x, y)
+    
+
+    def mask_unpresent_distance(self, distances: np.ndarray) -> np.ndarray:
+        """
+        Given distances of shape (*DOT_DIMS, K) where K is the number of keys,
+        and DOT_DIMS is a tuple of arbitrary length,
+        returns a tensor where last dim is masked with fill_unpresent_dist_val.
+        """
+        mask = self.centers[:, 0] == self.fill_unpresent_centers_val
+        distances[..., mask] = self.fill_unpresent_dist_val
+        return distances
+    
 
 
     @staticmethod
-    def _distance(dots: np.ndarray, centers: np.ndarray) -> np.ndarray:
+    def _distance_raw(dots: np.ndarray, centers: np.ndarray) -> np.ndarray:
         return distance(dots, centers)
     
-    def get_distances_for_full_swipe_v1(self, X: list, Y: list) -> np.ndarray:
+    def _distance(self, dots: np.ndarray, centers: np.ndarray) -> np.ndarray:
+        dist = self._distance_raw(dots, centers)
+        return self.mask_unpresent_distance(dist)
+    
+    def get_distances_for_full_swipe_without_map(self, X: list, Y: list) -> np.ndarray:
         """
         Returns the distances for a full swipe.
         """
         dots = np.array([X, Y]).T
-        return self._distance(dots, self.centers)
+        swipe_distances = self._distance(dots, self.centers)
+        return swipe_distances
     
-    def get_distances_for_full_swipe_v2(self, X: list, Y: list) -> List[np.ndarray]:
+    def get_distances_for_full_swipe_using_map(self, X: list, Y: list) -> np.ndarray:
         """
         Returns the distances for a full swipe.
         """
-        return [self.get_distances(x, y) for x, y in zip(X, Y)]
+        swipe_distances = np.zeros((len(X), len(self.centers)))
+        for i, (x, y) in enumerate(zip(X, Y)):
+            swipe_distances[i, :] = self.get_distances(x, y)
+        return self.mask_unpresent_distance(swipe_distances)
     
     def _check_all_keys_in_grid(self) -> None:
         all_grid_kb_laybels = set(self._get_all_key_labels()) 
@@ -116,7 +141,7 @@ class DistancesLookup:
     def _get_centers(self) -> np.ndarray:
         centers = np.full(
             (len(self.i_to_kb_key), 2), 
-            self.fill_unpresent_val)
+            self.fill_unpresent_centers_val)
         
         for key in self.grid['keys']:
             label = self._get_kb_label(key)
@@ -147,7 +172,8 @@ class DistancesLookup:
             'return_dict': self.return_dict,
             'coord_to_distances': self.coord_to_distances,
             'centers': self.centers,
-            'fill_unpresent_val': self.fill_unpresent_val
+            'fill_unpresent_dist_val': self.fill_unpresent_dist_val,
+            'fill_unpresent_centers_val': self.fill_unpresent_centers_val
         }
 
     def save_state(self, path: str) -> None:
@@ -165,7 +191,8 @@ class DistancesLookup:
         obj.return_dict = state['return_dict']
         obj.coord_to_distances = state['coord_to_distances']
         obj.centers = state['centers']
-        obj.fill_unpresent_val = state['fill_unpresent_val']
+        obj.fill_unpresent_dist_val = state['fill_unpresent_dist_val']
+        obj.fill_unpresent_centers_val = state['fill_unpresent_centers_val']
         obj.i_to_kb_key = obj.KB_KEY_LIST
         obj.kb_key_to_i = {kb_key: i for i, kb_key in enumerate(obj.KB_KEY_LIST)}
 
