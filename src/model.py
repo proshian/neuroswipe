@@ -713,9 +713,9 @@ class EncoderDecoderAbstract(nn.Module):
         x = self.enc_in_emb_model(x)
         return self.encoder(x, *encoder_args, **encoder_kwargs)
     
-    def decode(self, x_encoded, y, *decoder_args, **decoder_kwargs):
+    def decode(self, y, x_encoded, *decoder_args, **decoder_kwargs):
         y = self.dec_in_emb_model(y)
-        dec_out = self.decoder(x_encoded, y, *decoder_args, **decoder_kwargs)
+        dec_out = self.decoder(y, x_encoded, *decoder_args, **decoder_kwargs)
         return self.out(dec_out)
     
     def forward(self, x, y, 
@@ -733,7 +733,7 @@ class EncoderDecoderAbstract(nn.Module):
             decoder_kwargs = {}
 
         x_encoded = self.encode(x, *encoder_args, **encoder_kwargs)
-        return self.decode(x_encoded, y, *decoder_args, **decoder_kwargs)
+        return self.decode(y, x_encoded, *decoder_args, **decoder_kwargs)
 
 
 
@@ -753,9 +753,9 @@ class EncoderDecoderAbstractLegacyDSFormat(nn.Module):
         x = self.enc_in_emb_model((traj_feats, kb_tokens))
         return self.encoder(x, *encoder_args, **encoder_kwargs)
     
-    def decode(self, x_encoded, y, *decoder_args, **decoder_kwargs):
+    def decode(self, y, x_encoded,  *decoder_args, **decoder_kwargs):
         y = self.dec_in_emb_model(y)
-        dec_out = self.decoder(x_encoded, y, *decoder_args, **decoder_kwargs)
+        dec_out = self.decoder(y, x_encoded,   *decoder_args, **decoder_kwargs)
         return self.out(dec_out)
     
     def forward(self, traj_feats, kb_tokens, y, 
@@ -773,7 +773,95 @@ class EncoderDecoderAbstractLegacyDSFormat(nn.Module):
             decoder_kwargs = {}
 
         x_encoded = self.encode(traj_feats, kb_tokens, *encoder_args, **encoder_kwargs)
-        return self.decode(x_encoded, y, *decoder_args, **decoder_kwargs)
+        return self.decode(y, x_encoded, *decoder_args, **decoder_kwargs)
+
+
+
+
+
+
+# def get_transformer_bigger_weighted(device = None, weights_path = None, legacy_ds: bool = True):
+#     CHAR_VOCAB_SIZE = 37  # = len(word_char_tokenizer.char_to_idx)
+#     MAX_CURVES_SEQ_LEN = 299
+#     MAX_OUT_SEQ_LEN = 35  # word_char_tokenizer.max_word_len - 1
+
+#     device = torch.device(
+#         device 
+#         or 'cuda' if torch.cuda.is_available() else 'cpu')
+
+#     n_coord_feats = 6
+#     key_emb_size = 122
+#     d_model = n_coord_feats + key_emb_size
+
+#     input_embedding_dropout = 0.1
+
+#     n_word_chars = CHAR_VOCAB_SIZE
+    
+#     # Actually, n_keys != n_word_chars. n_keys = 36. 
+#     # It's legacy. It should not affect the model though.
+#     n_keys = CHAR_VOCAB_SIZE  
+
+#     input_embedding = SeparateTrajAndWEightedEmbeddingWithPos(
+#         n_keys=n_keys, key_emb_size=key_emb_size, 
+#         max_len=MAX_CURVES_SEQ_LEN, device = device, dropout=input_embedding_dropout)
+
+
+#     transformer_dropout = 0.1
+
+#     transformer = nn.Transformer(
+#         d_model,
+#         nhead=4,
+#         num_encoder_layers=4,
+#         num_decoder_layers=4,
+#         dim_feedforward=128,
+#         dropout=transformer_dropout,
+#         device = device
+#     )
+    
+
+#     word_char_embedding = nn.Embedding(n_word_chars, d_model)
+#     word_char_emb_dropout_val = 0.1
+#     word_char_emb_dropout = nn.Dropout(word_char_emb_dropout_val)
+#     word_char_pos_encoder = PositionalEncoding(d_model, MAX_OUT_SEQ_LEN, device=device)
+
+#     word_char_embedding_model = nn.Sequential(
+#         word_char_embedding,
+#         word_char_emb_dropout,
+#         word_char_pos_encoder
+#     )
+
+#     n_classes = CHAR_VOCAB_SIZE - 2  # <sos> and <pad> are not predicted
+
+
+#     out = nn.Linear(d_model, n_classes, device = device)
+
+
+#     encoder_decoder_ctor = (
+#         EncoderDecoderAbstractLegacyDSFormat if legacy_ds 
+#         else EncoderDecoderAbstract
+#     )
+
+#     model = encoder_decoder_ctor(
+#         input_embedding, word_char_embedding_model, 
+#         transformer.encoder, transformer.decoder, out)
+    
+#     if weights_path:
+#         model.load_state_dict(
+#             torch.load(weights_path,
+#                     map_location = device))
+        
+
+#     model = model.to(device)
+
+#     model = model.eval()
+
+#     return model
+
+
+
+
+
+
 
 
 
@@ -856,6 +944,14 @@ def get_transformer_bigger_weighted(device = None, weights_path = None, legacy_d
     model = model.eval()
 
     return model
+
+
+
+
+
+
+
+
 
 
 
