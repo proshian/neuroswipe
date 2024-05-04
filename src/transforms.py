@@ -18,8 +18,8 @@ from ns_tokenizers import KeyboardTokenizerv1, CharLevelTokenizerv2
 from ns_tokenizers import ALL_CYRILLIC_LETTERS_ALPHABET_ORD
 from dataset import RawDatasetEl 
 
-# extra token is for legacy reasons
-DEFAULT_ALLOWED_KEYS = ALL_CYRILLIC_LETTERS_ALPHABET_ORD + '<extra-token>'
+
+DEFAULT_ALLOWED_KEYS = ALL_CYRILLIC_LETTERS_ALPHABET_ORD
 GetItemTransformInput = Tuple[array, array, array, str, Optional[str], array]
 FullTransformResultType = Tuple[Tuple[Tensor, Tensor, Tensor], Tensor]
 
