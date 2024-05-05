@@ -1107,7 +1107,6 @@ def get_transformer_bigger_weighted__v2(device = None,
 
 
 
-
     input_embedding = SeparateTrajAndWEightedEmbeddingWithPos(
         n_keys=n_keys, key_emb_size=key_emb_size, 
         max_len=MAX_CURVES_SEQ_LEN, device = device, 
@@ -1139,6 +1138,7 @@ def get_transformer_bigger_weighted__v2(device = None,
         num_heads_encoder=4,
         num_heads_decoder=4,
         activation= F.relu,
+
         device = device,)
     
     if weights_path:
