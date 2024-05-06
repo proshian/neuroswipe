@@ -1081,7 +1081,7 @@ class TransformerNS_LegacyDS(TransformerNS):
     
     def forward(self, traj_feats, kb_tokens, y, x_pad_mask, y_pad_mask):
         x_encoded = self.encode(traj_feats, kb_tokens, x_pad_mask)
-        return self.decode(y, x_encoded, x_pad_mask, y_pad_mask)
+        return self.decode(x_encoded, y, x_pad_mask, y_pad_mask)
 
 
 
