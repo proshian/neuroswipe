@@ -990,6 +990,16 @@ All v2 models:
 encode() and decode() methods are extremely useful in decoding algorithms
 like beamsearch where we do encoding once and decoding multimple times.
 Rhis reduces computations up to two times.
+
+
+
+Classes that have _LegacyDS suffix in their name
+are to be used with existing code that has a slightly worse interface.
+
+1) first two arguments of decode are swapped
+2) traj_feats and kb_tokens are separate arguments instead of a single tuple.
+   Having a single input for enc_in_embedding is a more flexible approach
+   that allowes, for example, kb_tokens only or traj_feats only. 
 """
 
 
@@ -1064,10 +1074,13 @@ class TransformerNS(nn.Module):
 
 class TransformerNS_LegacyDS(TransformerNS):
     def encode(self, traj_feats, kb_tokens, x_pad_mask):
-        super().encode((traj_feats, kb_tokens), x_pad_mask)
+        return super().encode((traj_feats, kb_tokens), x_pad_mask)
 
+    def decode(self, x_encoded, y, memory_key_padding_mask, tgt_key_padding_mask):
+        return super().decode(y, x_encoded, memory_key_padding_mask, tgt_key_padding_mask)
+    
     def forward(self, traj_feats, kb_tokens, y, x_pad_mask, y_pad_mask):
-        super().forward((traj_feats, kb_tokens), y, x_pad_mask, y_pad_mask)
+        return super().forward((traj_feats, kb_tokens), y, x_pad_mask, y_pad_mask)
 
 
 
@@ -1138,7 +1151,6 @@ def get_transformer_bigger_weighted__v2(device = None,
         num_heads_encoder=4,
         num_heads_decoder=4,
         activation= F.relu,
-
         device = device,)
     
     if weights_path:
