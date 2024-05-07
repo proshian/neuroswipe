@@ -1155,7 +1155,7 @@ class TransformerNS(nn.Module):
         self.dec_in_emb_model = dec_in_emb_model
         self.out = out
         
-        encoder_norm = torch.LayerNorm(d_model, eps=layer_norm_eps, bias=bias, device=device)
+        encoder_norm = nn.LayerNorm(d_model, eps=layer_norm_eps, bias=bias, device=device)
 
         encoder_layer = nn.TransformerEncoderLayer(
             d_model=d_model,
@@ -1170,7 +1170,7 @@ class TransformerNS(nn.Module):
             norm=encoder_norm,
         )
 
-        decoder_norm = torch.LayerNorm(d_model, eps=layer_norm_eps, bias=bias, device=device)
+        decoder_norm = nn.LayerNorm(d_model, eps=layer_norm_eps, bias=bias, device=device)
         decoder_layer = nn.TransformerDecoderLayer(
             d_model, num_heads_decoder, dim_feedforward, dropout, activation, device = device)
         self.decoder = nn.TransformerDecoder(decoder_layer, num_decoder_layers, norm=decoder_norm)
