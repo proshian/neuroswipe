@@ -743,8 +743,11 @@ class EncoderDecoderAbstract(nn.Module):
 
 
 
-
-class EncoderDecoderAbstractLegacyDSFormat(nn.Module):
+# Does not actually have the 'Legacy' interface:
+# decode should have x_encoded as the first argument.
+# Is saved just in case, because first experiments on 
+# weighted embeddings were done with this model.
+class EncoderDecoderAbstractLegacyDSFormat__OLD(nn.Module):
     def __init__(self, enc_in_emb_model, dec_in_emb_model, encoder, decoder, out):
         super().__init__()
         self.enc_in_emb_model = enc_in_emb_model
@@ -783,6 +786,35 @@ class EncoderDecoderAbstractLegacyDSFormat(nn.Module):
 
 
 
+class EncoderDecoderAbstractLegacyDSFormat(EncoderDecoderAbstract):
+    # x can be a tuple (ex. traj_feats, kb_tokens) or a single tensor
+    # (ex. just kb_tokens).
+    def encode(self, traj_feats, kb_tokens, *encoder_args, **encoder_kwargs):
+        x = self.enc_in_emb_model((traj_feats, kb_tokens))
+        return self.encoder(x, *encoder_args, **encoder_kwargs)
+    
+    def decode(self, x_encoded, y,  *decoder_args, **decoder_kwargs):
+        y = self.dec_in_emb_model(y)
+        dec_out = self.decoder(y, x_encoded, *decoder_args, **decoder_kwargs)
+        return self.out(dec_out)
+    
+    def forward(self, traj_feats, kb_tokens, y, 
+                encoder_args: list = None, 
+                encoder_kwargs: dict = None,
+                decoder_args: list = None,
+                decoder_kwargs: dict = None):
+        if encoder_args is None:
+            encoder_args = []
+        if decoder_args is None:
+            decoder_args = []
+        if encoder_kwargs is None:
+            encoder_kwargs = {}
+        if decoder_kwargs is None:
+            decoder_kwargs = {}
+
+        x_encoded = self.encode(traj_feats, kb_tokens, *encoder_args, **encoder_kwargs)
+        return self.decode(x_encoded, y, *decoder_args, **decoder_kwargs)
+    
 
 
 
@@ -1003,7 +1035,7 @@ are to be used with existing code that has a slightly worse interface.
 """
 
 
-class TransformerNS(nn.Module):
+class Transformer_No_Layer_Norm_NS(nn.Module):
     def _get_mask(self, max_seq_len: int):
         """
         Returns a mask for the decoder transformer.
@@ -1051,6 +1083,97 @@ class TransformerNS(nn.Module):
         decoder_layer = nn.TransformerDecoderLayer(
             d_model, num_heads_decoder, dim_feedforward, dropout, activation, device = device)
         self.decoder = nn.TransformerDecoder(decoder_layer, num_decoder_layers)
+        
+
+    def encode(self, x, x_pad_mask):
+        x = self.enc_in_emb_model(x)
+        return self.encoder(x, src_key_padding_mask = x_pad_mask)
+    
+    def decode(self, y, x_encoded, memory_key_padding_mask, tgt_key_padding_mask):
+        y = self.dec_in_emb_model(y)
+        tgt_mask = self._get_mask(len(y)).to(device=self.device)
+        dec_out = self.decoder(y, x_encoded, tgt_mask=tgt_mask, 
+                               memory_key_padding_mask=memory_key_padding_mask, 
+                               tgt_key_padding_mask=tgt_key_padding_mask)
+        return self.out(dec_out)
+
+    def forward(self, x, y, x_pad_mask, y_pad_mask):
+        x_encoded = self.encode(x, x_pad_mask)
+        return self.decode(y, x_encoded, x_pad_mask, y_pad_mask)
+
+
+
+
+class Transformer_No_Layer_Norm_NS_LegacyDS(Transformer_No_Layer_Norm_NS):
+    def encode(self, traj_feats, kb_tokens, x_pad_mask):
+        return super().encode((traj_feats, kb_tokens), x_pad_mask)
+
+    def decode(self, x_encoded, y, memory_key_padding_mask, tgt_key_padding_mask):
+        return super().decode(y, x_encoded, memory_key_padding_mask, tgt_key_padding_mask)
+    
+    def forward(self, traj_feats, kb_tokens, y, x_pad_mask, y_pad_mask):
+        x_encoded = self.encode(traj_feats, kb_tokens, x_pad_mask)
+        return self.decode(x_encoded, y, x_pad_mask, y_pad_mask)
+
+
+
+
+
+
+
+class TransformerNS(nn.Module):
+    def _get_mask(self, max_seq_len: int):
+        """
+        Returns a mask for the decoder transformer.
+        """
+        mask = torch.triu(torch.ones(max_seq_len, max_seq_len), diagonal=1)
+        mask = mask.masked_fill(mask == 1, float('-inf'))
+        return mask
+    
+    def __init__(self,
+                 enc_in_emb_model: nn.Module, 
+                 dec_in_emb_model: nn.Module,
+                 out: nn.Module,
+                 d_model,
+                 num_encoder_layers,
+                 num_decoder_layers,
+                 dim_feedforward,
+                 dropout:float,
+                 num_heads_encoder,
+                 num_heads_decoder,
+                 activation: Callable = F.relu,
+                 layer_norm_eps: float = 1e-5,
+                 bias: bool = True,
+                 device: Optional[str] = None,) -> None:
+        super().__init__()
+
+        self.device = torch.device(
+            device 
+            or 'cuda' if torch.cuda.is_available() else 'cpu')
+        
+        self.enc_in_emb_model = enc_in_emb_model
+        self.dec_in_emb_model = dec_in_emb_model
+        self.out = out
+        
+        encoder_norm = torch.LayerNorm(d_model, eps=layer_norm_eps, bias=bias, device=device)
+
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=d_model,
+            nhead=num_heads_encoder,
+            dim_feedforward=dim_feedforward,
+            dropout=dropout,
+            device=device)
+        
+        self.encoder = nn.TransformerEncoder(
+            encoder_layer,
+            num_layers=num_encoder_layers,
+            norm=encoder_norm,
+        )
+
+        decoder_norm = torch.LayerNorm(d_model, eps=layer_norm_eps, bias=bias, device=device)
+        decoder_layer = nn.TransformerDecoderLayer(
+            d_model, num_heads_decoder, dim_feedforward, dropout, activation, device = device)
+        self.decoder = nn.TransformerDecoder(decoder_layer, num_decoder_layers, norm=decoder_norm)
         
 
     def encode(self, x, x_pad_mask):
@@ -1174,13 +1297,16 @@ def get_transformer_bigger_weighted__v2(device = None,
 
 
 MODEL_GETTERS_DICT = {
-    "m1": get_m1_model,
-    "m1_bigger": get_m1_bigger_model,
-    "m1_smaller": get_m1_smaller_model,
+    "m1": get_m1_model,  # doesn't have layer norm
+    "m1_bigger": get_m1_bigger_model,  # doesn't have layer norm
+    "m1_smaller": get_m1_smaller_model,  # doesn't have layer norm
 
-    "transformer_m1_bigger": get_transformer_bigger_model,
-    "transformer_bb_model": get_transformer_bb_model,
+    "transformer_m1_bigger": get_transformer_bigger_model,  # doesn't have layer norm
+    "transformer_bb_model": get_transformer_bb_model,  # doesn't have layer norm
 
-    "weighted_transformer_bigger": get_transformer_bigger_weighted,
-    "v2_weighted_transformer_bigger": get_transformer_bigger_weighted__v2,
+    # has layer norm, requires 
+    "weighted_transformer_bigger": get_transformer_bigger_weighted,  
+
+
+    "v2_weighted_transformer_bigger": get_transformer_bigger_weighted__v2,  # has layer norm
 }
