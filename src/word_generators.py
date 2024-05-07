@@ -18,14 +18,8 @@ def _prepare_encoder_input(xyt: Tensor, kb_tokens: Tensor,
         xyt, kb_tokens = (el.transpose(0, 1) for el in (xyt, kb_tokens))
     return xyt, kb_tokens
 
+
 class WordGenerator(ABC):
-    @abstractmethod
-    def __call__(self, xyt, kb_tokens, max_steps_n, 
-                 *args, **kwargs) -> List[Tuple[float, str]]:
-        pass
-
-
-class GreedyGenerator(WordGenerator):
     def __init__(self, model: torch.nn.Module, 
                  tokenizer: CharLevelTokenizerv2, device):
         self.model = model
@@ -34,6 +28,13 @@ class GreedyGenerator(WordGenerator):
         self.model.to(self.device)
         self.eos_token_id = tokenizer.char_to_idx['<eos>']
 
+    @abstractmethod
+    def __call__(self, xyt, kb_tokens, max_steps_n, 
+                 *args, **kwargs) -> List[Tuple[float, str]]:
+        pass
+
+
+class GreedyGenerator(WordGenerator):
     @torch.inference_mode()
     def _generate(self, xyt, kb_tokens, max_steps_n=35) -> List[Tuple[float, str]]:
         tokens = [self.tokenizer.char_to_idx['<sos>']]
@@ -69,13 +70,6 @@ class GreedyGenerator(WordGenerator):
 
 
 class BeamGenerator(WordGenerator):
-    def __init__(self, model, tokenizer, device):
-        self.model = model
-        self.tokenizer = tokenizer
-        self.device = torch.device(device)
-        self.model.to(self.device)
-        self.eos_token_id = tokenizer.char_to_idx['<eos>']
-
     @torch.inference_mode()
     def __call__(self,
                  xyt, kb_tokens,
@@ -154,14 +148,7 @@ class BeamGenerator(WordGenerator):
 # multiple curves simpultaniously. At each step we check 
 # if all batch out sequences have <eos> token. If true,
 # generation is finished 
-class GreedyGeneratorBatched:
-    def __init__(self, model, tokenizer, device):
-        self.model = model
-        self.tokenizer = tokenizer
-        self.device = torch.device(device)
-        self.model.to(self.device)
-        self.eos_token_id = tokenizer.char_to_idx['<eos>'] 
-    
+class GreedyGeneratorBatched(WordGenerator):    
     @torch.inference_mode()
     def __call__(self,
                  xyt,  # (batch_size, curves_seq_len, n_coord_feats)
@@ -176,12 +163,10 @@ class GreedyGeneratorBatched:
 
         for _ in range(max_steps_n):
             word_pad_mask = None
-            # dummy_y is any tensor with n_dims = 2 (chars_seq_len - 1, batch_size).
-            dummy_y = torch.tensor([[1]])
             model_input = (xyt, kb_tokens, dec_in_char_seq, None, word_pad_mask)
-            # model_input, dummy_y = prepare_batch(model_input, dummy_y, self.device)
-            one_hot_token_logits = self.model.apply(*model_input).transpose_(0, 1)  # (batch_size, chars_seq_len, vocab_size)
-            best_next_tokens = one_hot_token_logits[:, -1].argmax(dim=1)  # (batch_size)
+            # model_input = prepare_batch(model_input, self.device)
+            logits = self.model.apply(*model_input).transpose_(0, 1)  # (batch_size, chars_seq_len, vocab_size)
+            best_next_tokens = logits[:, -1].argmax(dim=1)  # (batch_size)
 
             print(best_next_tokens.shape, dec_in_char_seq.shape)
 
@@ -200,3 +185,4 @@ GENERATOR_CTORS_DICT = {
     "greedy": GreedyGenerator,
     "beam": BeamGenerator
 }
+
