@@ -205,9 +205,11 @@ GENERATOR_CTORS_DICT = {
 
 
 from torch.utils.data import DataLoader  # for typing 
+from torch.utils.data import Dataset
 from torch.nn.utils.rnn import pad_sequence
 from tqdm.auto import tqdm
 
+from dataset import CurveDataset
 
 
 
@@ -269,8 +271,9 @@ def expand_word_ids(word_ids, batch_size, batch_first, device,
 
 
 @torch.inference_mode()
-def estimate_probs_of_words(model: torch.nn.Module, dataloader: DataLoader, 
-                            words: List[str], tokenizer: CharLevelTokenizerv2, 
+def estimate_probs_of_words(model: torch.nn.Module, curve_loader: DataLoader,
+                            word_lsts_loader: DataLoader,
+                            tokenizer: CharLevelTokenizerv2, 
                             batch_first, device: str) -> torch.Tensor:
     """
     For each curve in the dataloader estimates the probability of each word in the words list.
@@ -282,8 +285,8 @@ def estimate_probs_of_words(model: torch.nn.Module, dataloader: DataLoader,
     dataloader: DataLoader (uses datasets.CurveDataset)
         contains the curves for which we want to estimate 
         the probability of the words.
-    words:
-        The list of possible words.
+    words: List[List[str]]
+        words[i] is the list of all word candidates for dataloader.dataset[i].
     tokenizer: CharLevelTokenizerv2
         The tokenizer that encodes the words.
     batch_first: bool
@@ -297,42 +300,60 @@ def estimate_probs_of_words(model: torch.nn.Module, dataloader: DataLoader,
         The tensor of shape (batch_size, n_words) where
         probs[i, j] is the probability of the word j for the curve i.
 
-
     Algorithm:
     ----------
     0) Prepare the words: tokenize, pad, create mask and expand dims to (seq_len, batch_size*n_words)
     1) Encode batch of curves
     2) Expand encoded_curves' shape to (seq_len, batch_size*n_words, emb_size)
-
     """
-    n_words = len(words)
+
+    # ! Would be more elegant to create a single dataset thet
+    #   encapsulates curve data and word candidates.
+
+    # ! May be a good idea to create a tensor of all possible words 
+    # ! ( not vocabulary; rather list(set(flatten_list(words))) ).
+    # ! For rach curve possible words would be views (slices) of this tensor.
+
+    assert len(curve_loader.dataset) == len(word_lsts_loader.dataset), (
+        "The number of curves and the number of word candidate lists must be the same.")
+    
+    assert curve_loader.batch_size == word_lsts_loader.batch_size, (
+        "The batch sizes of curve_loader and word_lsts_loader must be the same.")
 
 
     model.eval()
     model.to(device)
 
-    batch_size = dataloader.batch_size
-
-    word_ids_in, word_ids_out, word_pad_mask = prepare_words(
-        words, tokenizer, batch_first)
+    batch_size = curve_loader.batch_size
     
-    if not batch_first:
-        word_ids_out = word_ids_out.transpose(0, 1)  # (batch_size, seq_len)
     
-    word_ids_in = expand_word_ids(
-        word_ids_in, batch_size, batch_first, device)
     
-    # word_pad_mask = word_pad_mask.expand(n_words * batch_size, -1)
-    word_pad_mask = word_pad_mask.repeat(batch_size, 1)
-
-    word_ids_in, word_ids_out, word_pad_mask = (
-        el.to(device) for el in (word_ids_in, word_ids_out, word_pad_mask))
     
     batch_results = []
 
-    for batch in tqdm(dataloader):
-        batch_x, _ = batch
+    for curve_data, word_candidates in tqdm(zip(curve_loader, word_lsts_loader), total=len(curve_loader)):
+        batch_x, _ = curve_data
         traj_feats, kb_embs, _, curve_pad_mask, _ = batch_x
+
+        n_words = len(word_candidates)
+
+        word_ids_in, word_ids_out, word_pad_mask = prepare_words(
+            word_candidates, tokenizer, batch_first)
+        
+        word_ids_in = expand_word_ids(
+            word_ids_in, batch_size, batch_first, device)
+    
+        if not batch_first:
+            word_ids_out = word_ids_out.transpose(0, 1)  # (batch_size, seq_len)
+        
+        # word_pad_mask = word_pad_mask.expand(n_words * batch_size, -1)
+        word_pad_mask = word_pad_mask.repeat(batch_size, 1)
+
+        word_ids_in, word_ids_out, word_pad_mask = (
+            el.to(device) for el in (word_ids_in, word_ids_out, word_pad_mask))
+
+
+
 
         traj_feats, kb_embs, curve_pad_mask = (
             el.to(device) for el in (traj_feats, kb_embs, curve_pad_mask))
