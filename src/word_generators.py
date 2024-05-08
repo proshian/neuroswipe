@@ -212,7 +212,7 @@ from tqdm.auto import tqdm
 
 
 def prepare_words(words: List[str], tokenizer: CharLevelTokenizerv2,
-                  batch_first: bool, batch_size: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+                  batch_first: bool) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     word_pad_idx = tokenizer.char_to_idx['<pad>']
     
     word_ids = [torch.tensor(tokenizer.encode(word), dtype=torch.int) for word in words]
@@ -314,7 +314,7 @@ def estimate_probs_of_words(model: torch.nn.Module, dataloader: DataLoader,
     batch_size = dataloader.batch_size
 
     word_ids_in, word_ids_out, word_pad_mask = prepare_words(
-        words, tokenizer, batch_first, batch_size)
+        words, tokenizer, batch_first)
     
     if not batch_first:
         word_ids_out = word_ids_out.transpose(0, 1)  # (batch_size, seq_len)
@@ -324,6 +324,9 @@ def estimate_probs_of_words(model: torch.nn.Module, dataloader: DataLoader,
     
     # word_pad_mask = word_pad_mask.expand(n_words * batch_size, -1)
     word_pad_mask = word_pad_mask.repeat(batch_size, 1)
+
+    word_ids_in, word_ids_out, word_pad_mask = (
+        el.to(device) for el in (word_ids_in, word_ids_out, word_pad_mask))
     
     batch_results = []
 
@@ -420,7 +423,6 @@ def estimate_probs_of_words(model: torch.nn.Module, dataloader: DataLoader,
 
         # assert log_probs_of_words.shape == (batch_size, n_words)
 
-        batch_results.append(log_probs_of_words)
+        batch_results.append(log_probs_of_words.to('cpu'))
 
     return torch.cat(batch_results, dim=0)
-
