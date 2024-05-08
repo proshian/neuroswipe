@@ -39,7 +39,8 @@ def get_word_level_accuracy(y_true_batch: torch.Tensor,
     return float(equality_results.sum() / len(equality_results))
 
 
-decode_batch = lambda seq_batch, tokenizer: [tokenizer.decode(seq) for seq in seq_batch]
+def decode_batch(seq_batch, tokenizer):
+    return [tokenizer.decode(seq) for seq in seq_batch]
 
 
 def get_word_level_metric(metric_fn,
