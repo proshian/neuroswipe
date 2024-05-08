@@ -504,3 +504,240 @@ class SequentialTransform:
         for transform in self.transforms:
             data = transform(data)
         return data
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+###################    Full transforms aquiring    ###################
+
+
+from typing import Callable, Tuple, Optional, List, Dict, Set, Iterable
+import json
+
+import numpy as np
+from tqdm.auto import tqdm
+
+from predict import get_grid
+from nearest_key_lookup import ExtendedNearestKeyLookup
+
+
+
+class RandIntToTrajTransform:
+    def __init__(self, min_ = -3, max_ = 3) -> None:
+        self.min = min_
+        self.max = max_
+        
+    def __call__(self, data):
+        X, Y, T, grid_name, tgt_word = data
+        X = np.array(X, dtype = int) + np.random.randint(self.min, self.max, (len(X),))
+        Y = np.array(Y, dtype = int) + np.random.randint(self.min, self.max, (len(Y),))
+        return X, Y, T, grid_name, tgt_word
+    
+
+
+
+def get_grid(grid_name: str, grids_path: str) -> dict:
+    with open(grids_path, "r", encoding="utf-8") as f:
+        return json.load(f)[grid_name]
+
+
+
+def get_gridname_to_out_of_bounds_coords_dict(
+        data_paths: List[str], gridname_to_wh: dict,
+        totals: Iterable[Optional[int]] = None
+        ) -> Dict[str, Set[Tuple[int, int]]]:
+    """
+    Returns a dictionary with grid names as keys and lists of out of bounds coordinates as values.
+    """
+    totals = totals or [None] * len(data_paths)
+    
+    gname_to_out_of_bounds = {gname: set() for gname in gridname_to_wh.keys()}
+
+    for data_path, total in zip(data_paths, totals):
+        with open(data_path, "r", encoding="utf-8") as json_file:
+            for line in tqdm(json_file, total=total):
+                json_data = json.loads(line)
+                curve = json_data['curve']
+                grid_name = curve['grid_name']
+                w, h = gridname_to_wh[grid_name]
+                X, Y = curve['x'], curve['y']
+                out_of_bounds = set((x, y) for x, y in zip(X, Y) 
+                                    if x < 0 or x >= w or y < 0 or y >= h)
+                gname_to_out_of_bounds[grid_name].update(out_of_bounds)
+    return gname_to_out_of_bounds
+
+
+
+def update_out_of_bounds_with_noise(
+    noise_min, noise_max,
+    gname_to_out_of_bounds, gridname_to_wh: dict,
+    )-> Dict[str, Set[Tuple[int, int]]]:
+    
+    assert noise_min <= 0
+    assert noise_max >= 0
+    
+    additional_out_of_bounds = {gname: set() for gname in gridname_to_wh.keys()}
+    
+    for gname in gname_to_out_of_bounds.keys():
+        w, h = gridname_to_wh[gname]
+        
+        for x, y in gname_to_out_of_bounds[gname]:
+            for i in range(noise_min, noise_max+1):
+                for j in range(noise_min, noise_max+1):
+                    if x+i < 0 or x+i >= w or y+j < 0 or y+j >=h: 
+                        additional_out_of_bounds[gname].add((x+i, y+j))
+        
+        for x in range(noise_min, w+noise_max+1):
+            for y in range(noise_min, 0):
+                additional_out_of_bounds[gname].add((x, y))
+        
+        for x in range(noise_min, w+noise_max+1):
+            for y in range(h+1, h+noise_max+1):
+                additional_out_of_bounds[gname].add((x, y))
+        
+        for x in range(w, w+noise_max+1):
+            for y in range(0, h+1):
+                additional_out_of_bounds[gname].add((x, y))
+        
+        for x in range(noise_min, 0):
+            for y in range(0, h+1):
+                additional_out_of_bounds[gname].add((x, y))
+                
+        gname_to_out_of_bounds[gname].update(additional_out_of_bounds[gname])
+        
+    return gname_to_out_of_bounds
+        
+
+
+def get_traj_and_nearest_key_transform(grid_name: str,
+                                       grid: dict,
+                                       char_tokenizer: CharLevelTokenizerv2,
+                                       kb_tokenizer: KeyboardTokenizerv1,
+                                       gname_to_wh: Dict[str, Tuple[int, int]],
+                                       uniform_noise_range: int = 0,
+                                       ds_paths_list: Optional[List[str]] = None,
+                                       totals: Tuple[Optional[int], Optional[int]] = (None, None),
+                                       ) -> Callable:
+    if ds_paths_list is not None:
+        print("Accumulating out-of-bounds coordinates...")
+        gname_to_out_of_bounds = get_gridname_to_out_of_bounds_coords_dict(
+            ds_paths_list, 
+            gridname_to_wh = gname_to_wh,
+            totals=totals
+        )
+
+        print("augmenting gname_to_out_of_bounds")
+        gname_to_out_of_bounds = update_out_of_bounds_with_noise(
+            noise_min = -uniform_noise_range, noise_max=uniform_noise_range+1,
+            gname_to_out_of_bounds = gname_to_out_of_bounds, gridname_to_wh = gname_to_wh,
+        )
+    else:
+        print("Warning: no ds_paths_list provided. gname_to_out_of_bounds will be empty.")
+        gname_to_out_of_bounds = {gname: set() for gname in gname_to_wh.keys()}
+
+
+    print("Creating ExtendedNearestKeyLookups...")
+    gridname_to_nkl = {
+        grid_name: ExtendedNearestKeyLookup(
+            grid, ALL_CYRILLIC_LETTERS_ALPHABET_ORD,
+            gname_to_out_of_bounds[grid_name]
+        )
+    }
+
+    full_transform = FullTransform(
+        grid_name_to_nk_lookup=gridname_to_nkl,
+        grid_name_to_wh=gname_to_wh,
+        kb_tokenizer=kb_tokenizer,
+        word_tokenizer=char_tokenizer,
+        include_time=False,
+        include_velocities=True,
+        include_accelerations=True,
+        kb_tokens_dtype=torch.int32,
+        word_tokens_dtype=torch.int64
+    )
+
+    return full_transform
+
+
+
+def get_traj_feats_and_distances_transform(grid_name: str, 
+                                           grid: dict,
+                                           char_tokenizer: CharLevelTokenizerv2,
+                                           kb_tokenizer: KeyboardTokenizerv1,
+                                           weights_func: Callable):
+    assert isinstance(kb_tokenizer.i2t, list)
+    grid_name_to_dist_lookup = {
+        # Extra token is for legacy reasons
+        grid_name: DistancesLookup(grid, kb_tokenizer.i2t + ['<extra_token>'])
+    }
+
+    full_transform = TrajFeats_KbWeights_FullTransform(
+        grid_name_to_grid={grid_name: grid},
+        grid_name_to_dist_lookup=grid_name_to_dist_lookup,
+        word_tokenizer=char_tokenizer,
+        include_time=False,
+        include_velocities=True,
+        include_accelerations=True,
+        weights_func=weights_func,
+        word_tokens_dtype=torch.int64,
+    )
+
+    return full_transform
+
+
+
+def get_transforms(gridname_to_grid_path: str,
+                   grid_name: str,
+                   transform_name: str,
+                   char_tokenizer: KeyboardTokenizerv1,
+                   uniform_noise_range: int = 0,
+                   dist_weights_func: Optional[Callable] = None,
+                   ds_paths_list: Optional[List[str]] = None,
+                   totals: Tuple[Optional[int], Optional[int]] = (None, None)
+                   ) -> Tuple[Callable, Callable]:
+    """Returns train and validation transforms."""
+    
+    grid = get_grid(grid_name, gridname_to_grid_path)
+    w, h = grid['width'], grid['height']
+    gname_to_wh = {grid_name: (w, h)}
+    kb_tokenizer = KeyboardTokenizerv1()
+    
+    if transform_name == "traj_feats_and_nearest_key":
+
+        full_transform = get_traj_and_nearest_key_transform(
+            grid_name, grid, char_tokenizer, kb_tokenizer, gname_to_wh,
+            uniform_noise_range, ds_paths_list, totals)
+                
+        
+    elif transform_name == "traj_feats_and_distances":
+
+        assert dist_weights_func is not None, "dist_weights_func must be provided"
+
+        full_transform = get_traj_feats_and_distances_transform(
+            grid_name, grid, char_tokenizer, kb_tokenizer)        
+
+    else:
+        raise ValueError(f"Unknown transform name: '{transform_name}'")
+    
+
+    val_transform = full_transform
+
+    train_transform = None
+    if uniform_noise_range != 0:
+        augmentation_transform = RandIntToTrajTransform(-uniform_noise_range, uniform_noise_range + 1)
+        train_transform = SequentialTransform([augmentation_transform, full_transform])
+    else:
+        train_transform = full_transform
+
+    return train_transform, val_transform
+                
