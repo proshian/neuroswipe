@@ -491,3 +491,16 @@ class TrajFeatsKbTokensTgtWord_GetItemTransform:
         if tgt_word is not None:
             decoder_in, decoder_out = self.get_decoder_in_out(tgt_word)
         return (traj_feats, kb_tokens, decoder_in), decoder_out
+
+
+
+###################    util transforms    ###################
+
+class SequentialTransform:
+    def __init__(self, transforms) -> None:
+        self.transforms = transforms
+    
+    def __call__(self, data):
+        for transform in self.transforms:
+            data = transform(data)
+        return data
