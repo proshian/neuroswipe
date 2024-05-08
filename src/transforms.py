@@ -514,10 +514,6 @@ class SequentialTransform:
 
 
 
-
-
-
-
 ###################    Full transforms aquiring    ###################
 
 
@@ -724,7 +720,7 @@ def get_transforms(gridname_to_grid_path: str,
         assert dist_weights_func is not None, "dist_weights_func must be provided"
 
         full_transform = get_traj_feats_and_distances_transform(
-            grid_name, grid, char_tokenizer, kb_tokenizer)        
+            grid_name, grid, char_tokenizer, kb_tokenizer, dist_weights_func)
 
     else:
         raise ValueError(f"Unknown transform name: '{transform_name}'")
