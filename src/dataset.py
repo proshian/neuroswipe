@@ -217,8 +217,10 @@ class CollateFn:
     
     def __call__(self, batch: list):
         """
-        batch - list of tuples:
-        ((traj_feats, kb_tokens, dec_in_char_seq), dec_out_char_seq)
+        Arguments:
+        ----------
+        batch: list of tuples:
+            ((traj_feats, kb_tokens, dec_in_char_seq), dec_out_char_seq)
         """
         x, dec_out_no_pad = zip(*batch)
         (traj_feats_no_pad, kb_tokens_no_pad, dec_in_no_pad) = zip(*x)
