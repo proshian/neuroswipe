@@ -206,7 +206,7 @@ GENERATOR_CTORS_DICT = {
 
 from torch.utils.data import DataLoader  # for typing 
 from torch.nn.utils.rnn import pad_sequence
-
+from tqdm.auto import tqdm
 
 
 
@@ -254,11 +254,13 @@ def prepare_words(words: List[str], tokenizer: CharLevelTokenizerv2,
 def expand_word_ids(word_ids, batch_size, batch_first, device,
                     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     if batch_first:
-        n_words = word_ids.shape[0]
-        word_ids = word_ids.expand(n_words * batch_size, -1)
+        # n_words, seq_len = word_ids.shape
+        # word_ids = word_ids.expand(n_words * batch_size, seq_len)
+        word_ids = word_ids.repeat(batch_size, 1)
     else:
-        n_words = word_ids.shape[1]
-        word_ids = word_ids.expand(-1, n_words * batch_size)
+        # seq_len, n_words = word_ids.shape
+        # word_ids = word_ids.expand(seq_len, n_words * batch_size)  
+        word_ids = word_ids.repeat(1, batch_size)  
     
     word_ids = word_ids.to(device)
 
@@ -303,7 +305,6 @@ def estimate_probs_of_words(model: torch.nn.Module, dataloader: DataLoader,
     2) Expand encoded_curves' shape to (seq_len, batch_size*n_words, emb_size)
 
     """
-
     n_words = len(words)
 
 
@@ -315,14 +316,18 @@ def estimate_probs_of_words(model: torch.nn.Module, dataloader: DataLoader,
     word_ids_in, word_ids_out, word_pad_mask = prepare_words(
         words, tokenizer, batch_first, batch_size)
     
-    word_ids_in, expand_word_ids(
+    if not batch_first:
+        word_ids_out = word_ids_out.transpose(0, 1)  # (batch_size, seq_len)
+    
+    word_ids_in = expand_word_ids(
         word_ids_in, batch_size, batch_first, device)
     
-    word_pad_mask = word_pad_mask.expand(n_words * batch_size, -1)
+    # word_pad_mask = word_pad_mask.expand(n_words * batch_size, -1)
+    word_pad_mask = word_pad_mask.repeat(batch_size, 1)
     
     batch_results = []
 
-    for batch in dataloader:
+    for batch in tqdm(dataloader):
         batch_x, _ = batch
         traj_feats, kb_embs, _, curve_pad_mask, _ = batch_x
 
@@ -333,37 +338,87 @@ def estimate_probs_of_words(model: torch.nn.Module, dataloader: DataLoader,
 
 
         # need to expand x_encoded for each word in the batch
-        x_encoded = x_encoded.expand(-1, batch_size * n_words, -1)
+        
+        if batch_first:
+            # x_encoded = x_encoded.expand(batch_size * n_words, -1, -1)
+            x_encoded = x_encoded.repeat(n_words, 1, 1)
+        else:
+            # x_encoded = x_encoded.expand(-1, batch_size * n_words, -1)
+            x_encoded = x_encoded.repeat(1, n_words, 1)
+            
         x_encoded = x_encoded.to(device)
-        curve_pad_mask.expand(batch_size * n_words, -1)
+        # curve_pad_mask = curve_pad_mask.expand(batch_size * n_words, -1)
+        curve_pad_mask = curve_pad_mask.repeat(n_words, 1)
 
+        # print(f"x_encoded.shape = {x_encoded.shape}")
+        # print(f"word_ids_in.shape = {word_ids_in.shape}")
+        # print(f"curve_pad_mask.shape = {curve_pad_mask.shape}")
+        # print(f"word_pad_mask.shape = {word_pad_mask.shape}")
         logits = model.decode(x_encoded, word_ids_in, curve_pad_mask, word_pad_mask)
 
-        if batch_first:
+
+        if not batch_first:
             logits = logits.transpose(0, 1)
         
+        _, char_seq_len, vocab_size = logits.shape 
+        
+
         # logits.shape = (batch_size*n_words, seq_len, vocab_size)
         
-        _, char_seq_len, vocab_size = logits.shape 
+        # print(f"{char_seq_len = }")
 
+        # log_probs.shape = (char_seq_len, batch_size*n_words, vocab_size)
+        # word_pad_mask.shape = (batch_size*n_words, char_seq_len)
         log_probs = F.log_softmax(logits, dim=-1)  # ! check dim
-        log_probs_zeroed_pad = log_probs.masked_fill(word_pad_mask.unsqueeze(-1), 0)  
+        log_probs_zeroed_pad = log_probs.masked_fill(word_pad_mask.unsqueeze(-1), 0)
         log_probs_zeroed_pad = log_probs_zeroed_pad.reshape(batch_size, n_words, char_seq_len, vocab_size)
+
         # log_probs_zeroed_pad.shape = (batch_size, n_words, max_seq_len, vocab_size)
 
         # let's for each curve i and word j let's collect the probability of the word j
 
         # thus will get a tensor of size (batch_size, n_words, max_seq_len)
 
+        # print(f"{log_probs_zeroed_pad.shape = }")
+        # print(f"{word_ids_out.shape = }")
 
+        word_ids_out_expanded = word_ids_out.unsqueeze(0).unsqueeze(-1).expand(batch_size, -1, -1, 1)
 
-        log_probs_of_words = log_probs_zeroed_pad.gather(3, word_ids_out.unsqueeze(-1)).squeeze(-1)
-        # log_probs_of_words.shape = (batch_size, n_words, max_seq_len)
+        # print(word_ids_out_expanded.shape)
+
+        # One problem is that neural network never generates <pad> token.
+        # I see two solutions:
+        # 1) replace each <pad> id occurace in word_ids_out with anything 
+        #    else (since we zeroed all log_probs where true label is <pad>).
+        # 2) concatenate a tensor of zeros so that 
+        #    log_probs_zeroed_pad.shape = (batch_size, n_words, max_seq_len, vocab_size+1)
+        #    and log_probs_zeroed_pad[:, :, :, -1] = 0. 
+        #    PS. It's supposed that tokenizer.t2i['<pad>'] == vocab_size.
+        #
+        # Both solutions are not elegant and may be confusing.
+        # I will choose the first one. 
+        # Maybe it's better to make the token_id swapping before the loop 
+        # in the very beginning of this function.
+
+        
+
+        token_to_replace_pad_with = tokenizer.char_to_idx['а']
+        word_ids_out_expanded.masked_fill_(
+            word_ids_out_expanded == tokenizer.char_to_idx['<pad>'], token_to_replace_pad_with)
+
+        word_ids_out_expanded = word_ids_out_expanded.to(dtype=torch.int64)
+
+        log_probs_of_words = log_probs_zeroed_pad.gather(3, word_ids_out_expanded).squeeze(-1)
+        
+        # assert log_probs_of_words.shape == (batch_size, n_words, char_seq_len)
+
 
         # let's sum the log_probs_of_words over the last dimention
         # to get the probability of the word
 
         log_probs_of_words = log_probs_of_words.sum(dim=-1)  # (batch_size, n_words)
+
+        # assert log_probs_of_words.shape == (batch_size, n_words)
 
         batch_results.append(log_probs_of_words)
 
