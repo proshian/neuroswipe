@@ -31,11 +31,12 @@ def convert_and_save_dir(ckpt_root: str, out_root: str,
             ckpt_path = os.path.join(root, file)
             orig_path_no_ext, orig_ext = os.path.splitext(ckpt_path)
             assert orig_ext == '.ckpt'
-
-            out_path = os.path.join(out_root, orig_path_no_ext + '.pt')
+            orig_path_no_ext_no_root = os.path.relpath(orig_path_no_ext, ckpt_root)
+            out_path = os.path.join(out_root, orig_path_no_ext_no_root + '.pt')
             out_parent = os.path.dirname(out_path)
             if not os.path.exists(out_parent):
                 os.makedirs(out_parent)
+            # print(f"Converting {ckpt_path} to {out_path}")
             convert_and_save_file(ckpt_path, out_path, device)
 
 
@@ -65,7 +66,7 @@ if __name__ == '__main__':
     if os.path.isfile(args.ckpt_path):
         convert_and_save_file(args.ckpt_path, args.out_path, device)
     else:
-        convert_and_save_dir()
+        convert_and_save_dir(args.ckpt_path, args.out_path, device)
 
 
 
