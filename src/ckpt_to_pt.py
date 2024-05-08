@@ -1,4 +1,5 @@
 import argparse
+import os
 
 import torch
 
@@ -13,6 +14,38 @@ def ckpt_to_torch_state(ckpt):
     return {remove_prefix(k, 'model.'): v for k, v in ckpt['state_dict'].items()}
 
 
+######################################################################################
+
+
+def convert_and_save_dir(ckpt_root: str, out_root: str, 
+                         device: torch.device) -> None:
+    """
+    Given a nested directory of .ckpt files, converts each to .pt 
+    and saves them to out_root preserving the directory structure.
+    """
+    for root, dirs, files in os.walk(ckpt_root):
+        for file in files:
+            if not file.endswith('.ckpt'):
+                continue
+
+            ckpt_path = os.path.join(root, file)
+            orig_path_no_ext, orig_ext = os.path.splitext(ckpt_path)
+            assert orig_ext == '.ckpt'
+
+            out_path = os.path.join(out_root, orig_path_no_ext + '.pt')
+            out_parent = os.path.dirname(out_path)
+            if not os.path.exists(out_parent):
+                os.makedirs(out_parent)
+            convert_and_save_file(ckpt_path, out_path, device)
+
+
+def convert_and_save_file(ckpt_path: str, out_path: str, 
+                          device: torch.device) -> None:
+    ckpt = torch.load(ckpt_path, map_location=device)
+    state_dict = ckpt_to_torch_state(ckpt)
+    torch.save(state_dict, out_path)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument('--ckpt-path', type=str, required=True)
@@ -20,11 +53,19 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--device', type=str, default='cpu')
     return parser.parse_args()
 
+
 if __name__ == '__main__':
     args = parse_args()
-    ckpt = torch.load(args.ckpt_path, map_location=args.device)
-    state_dict = ckpt_to_torch_state(ckpt)
-    torch.save(state_dict, args.out_path)
+
+    assert os.path.exists(args.ckpt_path), f"ckpt_path does not exist: {args.ckpt_path}"
+    assert not os.path.exists(args.out_path), f"out_path already exists: {args.out_path}"
+
+    device = torch.device(args.device)
+
+    if os.path.isfile(args.ckpt_path):
+        convert_and_save_file(args.ckpt_path, args.out_path, device)
+    else:
+        convert_and_save_dir()
 
 
 
