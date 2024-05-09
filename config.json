@@ -25,7 +25,7 @@
         "models_root": "./data/trained_models_for_final_submit",
         "voc_path": "./data/data_separated_grid/voc.txt",
         "generator": "beam",
-        "generator_kwargs":
+        "generator_call_kwargs":
         {
             "max_steps_n": 35,
             "return_hypotheses_n": 7,

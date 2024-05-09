@@ -30,7 +30,7 @@
 # * состояние аггрегатора
 # * название раскладки
 # В качестве pred_id может выступать
-# f"{weights_path}__{generator_type}__{generator_kwargs}__{grid_name}".
+# f"{weights_path}__{generator_type}__{generator_call_kwargs}__{grid_name}".
 # Лучше это будет буквально id, сохраненный где-то
 # в отдельном файле / базе данных.
 
@@ -67,7 +67,7 @@ class Prediction:
     model_name: str
     model_weights: str
     generator_name: str
-    generator_kwargs: dict
+    generator_call_kwargs: dict
     grid_name: str
     dataset_split: str
 
@@ -84,7 +84,7 @@ class Predictor:
                  model_architecture_name: str,
                  model_weights_path: str,
                  word_generator_type: str,
-                 generator_kwargs: Optional[dict]=None,
+                 generator_call_kwargs: Optional[dict]=None,
                  ) -> None:
         DEVICE = torch.device('cpu')
 
@@ -97,7 +97,7 @@ class Predictor:
         self.word_char_tokenizer = CharLevelTokenizerv2(config['voc_path'])
         self.word_generator = word_generator_ctor(
             model, self.word_char_tokenizer, DEVICE)
-        self.generator_kwargs = generator_kwargs
+        self.generator_call_kwargs = generator_call_kwargs
 
     def _predict_example(self,
                          data: Tuple[int, Tuple[Tensor, Tensor]]
@@ -122,7 +122,7 @@ class Predictor:
             char_sequence: str
         """
         i, gen_in = data
-        pred = self.word_generator(*gen_in, **self.generator_kwargs)
+        pred = self.word_generator(*gen_in, **self.generator_call_kwargs)
         return i, pred
     
     def _predict_raw_mp(self, dataset: CurveDataset,
@@ -176,7 +176,7 @@ class Predictor:
         preds_with_meta = Prediction(
             preds, self.model_architecture_name,
             self.model_weights_path, self.word_generator_type,
-            self.generator_kwargs, grid_name, dataset_split)
+            self.generator_call_kwargs, grid_name, dataset_split)
         
         return preds_with_meta
 
@@ -316,7 +316,7 @@ if __name__ == '__main__':
             model_getter_name,
             os.path.join(config['models_root'], weights_f_name),
             config['generator'],
-            generator_kwargs=config['generator_kwargs']
+            generator_call_kwargs=config['generator_call_kwargs']
         )
 
         preds_and_meta = predictor.predict(
