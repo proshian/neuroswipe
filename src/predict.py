@@ -58,6 +58,7 @@ from ns_tokenizers import ALL_CYRILLIC_LETTERS_ALPHABET_ORD
 from word_generators import GENERATOR_CTORS_DICT
 from transforms import KbTokens_InitTransform, KbTokens_GetItemTransform
 from nearest_key_lookup import NearestKeyLookup
+from grid_processing_utils import get_grid
 
 
 
@@ -201,11 +202,6 @@ def save_predictions(preds_wtih_meta: Prediction,
 #     # df = load_df(preds_csv_path)
 #     # update_database(df, preds_wtih_meta)
 #     # df.to_csv(preds_csv_path, index=False)
-
-
-def get_grid(grid_name: str, grids_path: str) -> dict:
-    with open(grids_path, "r", encoding="utf-8") as f:
-        return json.load(f)[grid_name]
 
 
 def get_grid_name_to_grid(grid_name_to_grid__path: str, 

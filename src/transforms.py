@@ -510,7 +510,7 @@ import json
 import numpy as np
 from tqdm.auto import tqdm
 
-from predict import get_grid
+from grid_processing_utils import get_grid
 from nearest_key_lookup import ExtendedNearestKeyLookup
 
 
