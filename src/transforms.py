@@ -6,17 +6,18 @@ Transforms defined in this module are used
 to convert this tuple a tuple (model_in, model_out)
 """
 
+from typing import Tuple, Dict, Optional, Iterable, List, Callable
+from array import array
 
 import torch
 from torch import Tensor
 
-from typing import Tuple, Dict, Optional, Iterable, List, Callable
-from array import array
 from nearest_key_lookup import NearestKeyLookup
 from distances_lookup import DistancesLookup
 from ns_tokenizers import KeyboardTokenizerv1, CharLevelTokenizerv2
 from ns_tokenizers import ALL_CYRILLIC_LETTERS_ALPHABET_ORD
 from dataset import RawDatasetEl 
+from grid_processing_utils import get_gname_to_wh, get_kb_label
 
 
 DEFAULT_ALLOWED_KEYS = ALL_CYRILLIC_LETTERS_ALPHABET_ORD
@@ -227,27 +228,13 @@ class EncoderFeaturesGetter:
         return traj_feats, kb_tokens
 
 
-#! Probably should move _get_kb_label and get_gname_to_wh
-# to grid_processing_utils.py.  The code is copied 3 times.
-
-def get_gname_to_wh(gname_to_grid: Dict[str, dict]):
-    return {gname: (grid['width'], grid['height']) 
-            for gname, grid in gname_to_grid.items()}
-
-
-def _get_kb_label(key: dict) -> str:
-    if 'label' in key:
-        return key['label']
-    if 'action' in key:
-        return key['action']
-    raise ValueError("Key has no label or action property")
 
 
 def get_avg_half_key_diag(grid: dict, 
                           allowed_keys: List[str] = tuple(DEFAULT_ALLOWED_KEYS)) -> float:
     hkd_list = []
     for key in grid['keys']:
-        label = _get_kb_label(key)
+        label = get_kb_label(key)
         if label not in allowed_keys:
             continue
         hitbox = key['hitbox']

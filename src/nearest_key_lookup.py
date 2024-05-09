@@ -3,6 +3,8 @@ from typing import Dict, Tuple, Iterable
 
 import numpy as np
 
+from grid_processing_utils import get_kb_label
+
 
 class NearestKeyLookup:
     """
@@ -26,11 +28,7 @@ class NearestKeyLookup:
         return label in self._nearest_key_candidates
 
     def _get_kb_label(self, key: dict) -> str:
-        if 'label' in key:
-            return key['label']
-        if 'action' in key:
-            return key['action']
-        raise ValueError("Key has no label or action property")
+        return get_kb_label(key)
 
     def _get_key_center(self, hitbox: Dict[str, int]) -> Tuple[float, float]:
         x = hitbox['x'] + hitbox['w'] / 2

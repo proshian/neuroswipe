@@ -3,6 +3,8 @@ import pickle
 
 import numpy as np
 
+from grid_processing_utils import get_kb_label
+
 
 
 def distance(dots: np.ndarray, centers: np.ndarray) -> np.ndarray:
@@ -124,11 +126,7 @@ class DistancesLookup:
                 raise ValueError(f"Key {kb_key} is not present in the grid")
 
     def _get_kb_label(self, key: dict) -> str:
-        if 'label' in key:
-            return key['label']
-        if 'action' in key:
-            return key['action']
-        raise ValueError("Key has no label or action property")
+        return get_kb_label(key)
     
     def _get_all_key_labels(self) -> List[str]:
         return [self._get_kb_label(key) for key in self.grid['keys']]
