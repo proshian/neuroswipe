@@ -1,6 +1,7 @@
-from typing import List, Tuple
+from typing import List, Tuple, Set, Dict, Optional
 from abc import ABC, abstractmethod
 import heapq
+from collections import defaultdict
 
 import torch
 import torch.nn.functional as F
@@ -34,7 +35,77 @@ class WordGenerator(ABC):
         pass
 
 
-class GreedyGenerator(WordGenerator):
+
+class WordGeneratorWithVocab(WordGenerator):
+    def __init__(self, model: torch.nn.Module, 
+                 tokenizer: CharLevelTokenizerv2, device,
+                 vocab: Optional[List[str]] = None,
+                 max_token_id = None) -> None:
+        """
+        Arguments:
+        ----------
+        vocab: Optional[List[str]]
+            List of all possible words.
+            It's used to mask out the tokens that can't follow
+            generated prefix.
+            If vocab is provided, max_token_id must be provided too.
+        max_token_id: Optional[int]
+            The maximum token id that can be generated.
+            A model might never generate some tokens. For example,
+            we never need to generate <pad> or <sos> tokens.
+            max_token_id == n_out_neurons - 1 == n_classes - 1.
+            It's supposed that if model doesn't generate some tokens,
+            the unallowed tokens correspond to the last n_tokens - n_out_neurons
+            tokens in the tokenizer.
+        """
+
+        if max_token_id is None and vocab is not None:
+            raise ValueError(
+                "If vocab is provided max_token_id must be provided too")
+        
+        super().__init__(model, tokenizer, device)
+
+        self.max_token_id = max_token_id
+        self.vocab = vocab
+        self.prefix_to_allowed_chars = None
+        if vocab is not None:
+            self.prefix_to_allowed_chars = self._create_prefix_to_allowed_tokens(vocab)
+
+    
+    def _create_prefix_to_allowed_tokens(self, vocab: List[str]) -> Dict[str, Set[str]]:
+        # ! When switching to another type of tokenizer where tokens are not just characters
+        # but can be a sequence of characters, we need to change the implementation of this method. 
+        prefix_to_allowed_chars = defaultdict(set)
+        prefix_to_allowed_chars[''] = set(self.tokenizer.char_to_idx.keys())
+        for word in vocab:
+            for i in range(1, len(word)):
+                prefix = word[:i]
+                prefix_to_allowed_chars[prefix].add(word[i])
+            prefix_to_allowed_chars[word].add('<eos>')
+        return prefix_to_allowed_chars
+    
+    def _get_unallowed_token_ids(self, prefix: List[str]) -> Set[int]:
+        if self.prefix_to_allowed_chars is None:
+            return set()
+        allowed_chars = self.prefix_to_allowed_chars[prefix]
+        all_chars = set(self.tokenizer.char_to_idx.keys())
+        impossible_ids = set(range(self.max_token_id + 1, len(self.tokenizer.char_to_idx)))
+        impossible_chars = {self.tokenizer.idx_to_char[idx] for idx in impossible_ids}
+        unallowed_chars = all_chars - allowed_chars - impossible_chars
+        return {self.tokenizer.char_to_idx[char] for char in unallowed_chars}
+    
+    def _mask_out_unallowed_ids(self, prefix_ids: List[int], logits: Tensor
+                                ) -> Tensor:
+        if self.prefix_to_allowed_chars is None:
+            return logits
+        str_prefix__no_sos = self.tokenizer.decode(prefix_ids[1:])
+        unallowed_ids = self._get_unallowed_token_ids(str_prefix__no_sos)
+        logits[torch.tensor(list(unallowed_ids), dtype = torch.int)] = float('-inf')
+        return logits
+
+
+
+class GreedyGenerator(WordGeneratorWithVocab):
     @torch.inference_mode()
     def _generate(self, xyt, kb_tokens, max_steps_n=35) -> List[Tuple[float, str]]:
         tokens = [self.tokenizer.char_to_idx['<sos>']]
@@ -50,15 +121,18 @@ class GreedyGenerator(WordGenerator):
             dec_in_char_seq = torch.tensor(tokens).reshape(-1, 1).to(self.device)  # (chars_seq_len, batch_size)
             # word_pad_mask = torch.zeros_like(dec_in_char_seq, dtype=torch.bool, device=self.device).transpose_(0,1)
             word_pad_mask = None
+            curve_pad_mask = None
 
-            next_tokens_logits = self.model.decode(encoded, dec_in_char_seq, None, word_pad_mask).transpose_(0, 1)[0, -1]
-            best_next_token = int(next_tokens_logits.argmax())  # batch_i = 0, decoder_out_onehot_vector_seq_i = -1 
-            log_prob += float(F.log_softmax(next_tokens_logits, dim=0)[best_next_token])
+            next_tokens_logits = self.model.decode(
+                encoded, dec_in_char_seq, curve_pad_mask, word_pad_mask).transpose_(0, 1)[0, -1]
+            next_tokens_logits = self._mask_out_unallowed_ids(tokens, next_tokens_logits)
+            next_tokens_logproba = F.log_softmax(next_tokens_logits)
+            best_next_token = int(next_tokens_logproba.argmax())  # batch_i = 0, decoder_out_onehot_vector_seq_i = -1 
+            log_prob += float(next_tokens_logproba[best_next_token])
+            tokens.append(best_next_token)
             if best_next_token == self.eos_token_id:
                 break
 
-            tokens.append(int(best_next_token))
-    
         return [(log_prob, self.tokenizer.decode(tokens[1:]))]
 
     def __call__(self, xyt, kb_tokens, max_steps_n=35) -> List[Tuple[float, str]]:
@@ -69,7 +143,7 @@ class GreedyGenerator(WordGenerator):
 
 
 
-class BeamGenerator(WordGenerator):
+class BeamGenerator(WordGeneratorWithVocab):
     @torch.inference_mode()
     def __call__(self,
                  xyt, kb_tokens,
@@ -82,8 +156,8 @@ class BeamGenerator(WordGenerator):
         tokens = [self.tokenizer.char_to_idx['<sos>']]
         initial_length = len(tokens)
 
-        # Partial hypothesis is a heap (stored as a list) of tuples.
-        # Each tuple consists of a partial (unfinishedaka intermidiate)
+        # Partial hypotheses is a heap (stored as a list) of tuples.
+        # Each tuple consists of a partial (unfinished aka intermidiate)
         # hypothesis and it's weight.
         # Weight is a measure of likelihood of the hypothesis.
         # [(w1, hypothesis1), (w2, hypothesis2), ...] 
@@ -103,9 +177,12 @@ class BeamGenerator(WordGenerator):
             dec_in_char_seq = torch.tensor(cur_partial_hypothesis).reshape(-1, 1).to(self.device)  # (chars_seq_len, batch_size)
             # word_pad_mask = torch.zeros_like(dec_in_char_seq, dtype=torch.bool, device=self.device).transpose_(0,1)
             word_pad_mask = None
+            curve_pad_mask = None
 
             
-            next_tokens_logits = self.model.decode(encoded, dec_in_char_seq, None, word_pad_mask).transpose_(0, 1)[0, -1]
+            next_tokens_logits = self.model.decode(
+                encoded, dec_in_char_seq, curve_pad_mask, word_pad_mask).transpose_(0, 1)[0, -1]
+            next_tokens_logits = self._mask_out_unallowed_ids(cur_partial_hypothesis, next_tokens_logits)
             next_tokens_logproba = F.log_softmax(next_tokens_logits)
             topk_continuations = next_tokens_logproba.topk(beamsize)
 

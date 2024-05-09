@@ -33,8 +33,10 @@
             "normalization_factor": 0.5,
             "verbose": false
         },
-
-        
+        "additional_generator_init_kwargs":
+        {
+            
+        },
         "data_split__to__path": {
             "test": "./data/data_separated_grid/test.jsonl",
             "val": "./data/data_separated_grid/valid.jsonl"
