@@ -61,10 +61,12 @@ from nearest_key_lookup import NearestKeyLookup
 from grid_processing_utils import get_grid
 
 
+RawPredictionType = List[List[Tuple[float, str]]]
+
 
 @dataclass
 class Prediction:
-    prediction: List[List[Tuple[float, str]]]
+    prediction: RawPredictionType
     model_name: str
     model_weights: str
     generator_name: str
