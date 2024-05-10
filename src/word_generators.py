@@ -148,11 +148,18 @@ class BeamGenerator(WordGeneratorWithVocab):
     def __call__(self,
                  xyt, kb_tokens,
                  max_steps_n=35,  # max tokens in a seq
-                 return_hypotheses_n=4,  # n best hypothesis to return
+                 return_hypotheses_n: Optional[int] = None,  # n best hypothesis to return
                  beamsize=6,  # n best solutions we store in intermidiate comuptations
                  normalization_factor=0.5,
                  verbose=False
                  ) -> List[Tuple[float, str]]:
+        """
+        Arguments:
+        ----------
+        return_hypotheses_n: Optional[int]
+            Число возвращаемых гипотез. Если None, возвращаются все,
+            иначе возвращается `return_hypotheses_n` наиболее вероятных.
+        """
         tokens = [self.tokenizer.char_to_idx['<sos>']]
         initial_length = len(tokens)
 
@@ -227,7 +234,7 @@ class BeamGenerator(WordGeneratorWithVocab):
         if verbose:
             print(result)
 
-        return result[:return_hypotheses_n]
+        return result if return_hypotheses_n is None else result[:return_hypotheses_n]
 
 
 
