@@ -191,6 +191,17 @@ class BeamGenerator(WordGeneratorWithVocab):
                 token_score = float(token_score)
                 token_idx = int(token_idx)
 
+                # Skipping tokens with prob = 0 (log_prob = -inf).
+                # Theese tokens apper because even if there's less 
+                # then `beamsize` tokens with non-zero probs
+                # topk()  will still return exactly `beamsize` tokens. 
+                # There are two sourses of zero prob: 
+                # 1. Model is extremely confident (maybe overconfident) 
+                #    that a certain token is impossible with a given prefix.
+                # 2. Masking out unallowed tokens makes their prob = 0.
+                if token_score == float('-inf'):
+                    continue
+
                 # score - нормализованная разность log_softmax всех токенов.
                 # Разность, а не сумма, потому что heapq - мин-куча. 
                 old_denorm_score = cur_partial_score * len(cur_partial_hypothesis)**normalization_factor
@@ -282,12 +293,8 @@ GENERATOR_CTORS_DICT = {
 
 
 from torch.utils.data import DataLoader  # for typing 
-from torch.utils.data import Dataset
 from torch.nn.utils.rnn import pad_sequence
 from tqdm.auto import tqdm
-
-from dataset import CurveDataset
-
 
 
 def prepare_words(words: List[str], tokenizer: CharLevelTokenizerv2,
