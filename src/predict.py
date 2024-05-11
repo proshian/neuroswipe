@@ -36,7 +36,7 @@
 
 
 
-from typing import Iterable, List, Tuple, Dict, Optional
+from typing import Iterable, List, Tuple, Dict, Optional, Any
 import os
 import json
 import pickle
@@ -54,10 +54,8 @@ from concurrent.futures import ProcessPoolExecutor
 from model import MODEL_GETTERS_DICT
 from ns_tokenizers import CharLevelTokenizerv2, KeyboardTokenizerv1
 from dataset import CurveDataset, CurveDatasetSubset
-from ns_tokenizers import ALL_CYRILLIC_LETTERS_ALPHABET_ORD
 from word_generators import GENERATOR_CTORS_DICT
-from transforms import KbTokens_InitTransform, KbTokens_GetItemTransform
-from nearest_key_lookup import NearestKeyLookup
+from transforms import get_val_transform, weights_function_v1
 from grid_processing_utils import get_grid
 
 
@@ -71,8 +69,10 @@ class Prediction:
     model_weights: str
     generator_name: str
     generator_call_kwargs: dict
+    use_vocab_for_generation: bool
     grid_name: str
     dataset_split: str
+    transform_name: str
 
 
 class Predictor:
@@ -87,6 +87,8 @@ class Predictor:
                  model_architecture_name: str,
                  model_weights_path: str,
                  word_generator_type: str,
+                 n_classes: int = 35,
+                 vocab: Optional[List[str]] = None,
                  generator_call_kwargs: Optional[dict]=None,
                  ) -> None:
         DEVICE = torch.device('cpu')
@@ -98,9 +100,21 @@ class Predictor:
         model_getter = MODEL_GETTERS_DICT[model_architecture_name]
         model = model_getter(DEVICE, model_weights_path)
         self.word_char_tokenizer = CharLevelTokenizerv2(config['voc_path'])
+
+        self.use_vocab_for_generation = vocab is not None 
+
+        word_generator_init_kwargs = {
+            'vocab': vocab,
+            'max_token_id': n_classes - 1
+        }
+
         self.word_generator = word_generator_ctor(
-            model, self.word_char_tokenizer, DEVICE)
+            model, self.word_char_tokenizer, DEVICE, 
+            **word_generator_init_kwargs)
+        
         self.generator_call_kwargs = generator_call_kwargs
+
+        
 
     def _predict_example(self,
                          data: Tuple[int, Tuple[Tensor, Tensor]]
@@ -161,7 +175,7 @@ class Predictor:
 
     def predict(self, dataset: CurveDataset, 
                 grid_name: str, dataset_split: str,
-                num_workers: int=3) -> Prediction:
+                transform_name: str, num_workers: int=3) -> Prediction:
         """
         Creates predictions given a word generator
         
@@ -179,7 +193,8 @@ class Predictor:
         preds_with_meta = Prediction(
             preds, self.model_architecture_name,
             self.model_weights_path, self.word_generator_type,
-            self.generator_call_kwargs, grid_name, dataset_split)
+            self.generator_call_kwargs, self.use_vocab_for_generation,
+            grid_name, dataset_split, transform_name)
         
         return preds_with_meta
 
@@ -199,7 +214,7 @@ def save_predictions(preds_wtih_meta: Prediction,
                      preds_csv_path: str) -> None:
     with open(out_path, 'wb') as f:
         pickle.dump(
-            preds_wtih_meta.prediction, f, protocol=pickle.HIGHEST_PROTOCOL)
+            preds_wtih_meta, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 #     # df = load_df(preds_csv_path)
 #     # update_database(df, preds_wtih_meta)
@@ -229,44 +244,25 @@ def get_config(config_path: str) -> dict:
 
 
 def get_gridname_to_dataset(config) -> Dict[str, Dataset]:
-    word_char_tokenizer = CharLevelTokenizerv2(config['voc_path'])
+    char_tokenizer = CharLevelTokenizerv2(config['voc_path'])
 
-    kb_tokenizer = KeyboardTokenizerv1()
-                                 
-    grid_name_to_grid = get_grid_name_to_grid(
-        config['grid_name_to_grid__path'])
-    
-
-    gname_to_wh = {
-        gname: (grid['width'], grid['height']) 
-        for gname, grid in grid_name_to_grid.items()
-    }
-    
-    print("Creating NearestKeyLookups...")
-    gridname_to_nkl = {
-        gname: NearestKeyLookup(grid, ALL_CYRILLIC_LETTERS_ALPHABET_ORD)
-        for gname, grid in grid_name_to_grid.items()
-    }
-    
-    init_transform = KbTokens_InitTransform(
-        grid_name_to_nk_lookup=gridname_to_nkl,
-        kb_tokenizer=kb_tokenizer,
-    )
-
-    get_item_transform = KbTokens_GetItemTransform(
-        grid_name_to_wh=gname_to_wh,
-        word_tokenizer=word_char_tokenizer,
-        include_time=False,
-        include_velocities=True,
-        include_accelerations=True,
+    transform = get_val_transform(
+        gridname_to_grid_path=config['grid_name_to_grid__path'],
+        grid_names=('default', 'extra'),
+        transform_name=config['transform_name'],
+        char_tokenizer=char_tokenizer,
+        uniform_noise_range=0,
+        ds_paths_list=[config['data_path']],
+        dist_weights_func=weights_function_v1,
+        totals = [10_000]
     )
 
     print("Creating dataset...")
     dataset = CurveDataset(
         data_path=config['data_path'],
         store_gnames = True,
-        init_transform=init_transform,
-        get_item_transform=get_item_transform,
+        init_transform=transform,
+        get_item_transform=None,
         total = 10_000,
     )
 
@@ -276,6 +272,17 @@ def get_gridname_to_dataset(config) -> Dict[str, Dataset]:
     }
 
     return gridname_to_dataset
+
+
+def get_vocab(vocab_path: str):
+    with open(vocab_path, 'r', encoding = "utf-8") as f:
+        return f.read().splitlines()
+
+
+def get_predictor_kwargs(config) -> Dict[str, Any]:
+    predictor_kwargs = {}
+    if config['use_vocab_for_generation']:
+        predictor_kwargs['vocab'] = get_vocab(config['voc_path'])
 
 
 def check_all_weights_exist(model_params: Iterable, models_root: str) -> None:
@@ -314,7 +321,8 @@ if __name__ == '__main__':
             model_getter_name,
             os.path.join(config['models_root'], weights_f_name),
             config['generator'],
-            generator_call_kwargs=config['generator_call_kwargs']
+            generator_call_kwargs=config['generator_call_kwargs'],
+            **get_predictor_kwargs(config)
         )
 
         preds_and_meta = predictor.predict(
