@@ -142,7 +142,7 @@ class GreedyGenerator(WordGeneratorWithVocab):
             if best_next_token == self.eos_token_id:
                 break
 
-        return [(log_prob, self.tokenizer.decode(tokens[1:]))]
+        return [(log_prob, self.tokenizer.decode(tokens[1:-1]))]
 
     def __call__(self, xyt, kb_tokens, max_steps_n=35) -> List[Tuple[float, str]]:
         return self._generate(xyt, kb_tokens, max_steps_n)
