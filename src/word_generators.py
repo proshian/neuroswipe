@@ -66,13 +66,13 @@ class WordGeneratorWithVocab(WordGenerator):
 
         self.max_token_id = max_token_id
         self.vocab = vocab
-        self.prefix_ids_to_allowed_token_ids = None
+        self.prefix_to_allowed_ids = None
         if vocab is not None:
-            self.prefix_to_allowed_ids = self._create_prefix_ids_to_allowed_token_ids(vocab)
+            self.prefix_to_allowed_ids = self._create_prefix_to_allowed_ids(vocab)
 
     
-    def _create_prefix_ids_to_allowed_token_ids(self, vocab: List[str]
-                                                ) -> Dict[Tuple[int, ...], Set[int]]:
+    def _create_prefix_to_allowed_ids(self, vocab: List[str]
+                                      ) -> Dict[Tuple[int, ...], Set[int]]:
         # ! When switching to another type of tokenizer where tokens are not just characters
         # but can be a sequence of characters, we need to change the implementation of this method. 
         prefix_to_allowed_ids = defaultdict(set)
