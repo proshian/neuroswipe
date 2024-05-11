@@ -28,6 +28,9 @@ class WordGenerator(ABC):
         self.device = torch.device(device)
         self.model.to(self.device)
         self.eos_token_id = tokenizer.char_to_idx['<eos>']
+    
+    def switch_model(self, model: torch.nn.Module):
+        self.model = model
 
     @abstractmethod
     def __call__(self, xyt, kb_tokens, max_steps_n, 
