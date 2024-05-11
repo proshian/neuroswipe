@@ -27,7 +27,7 @@
         "generator": "beam",
         "generator_call_kwargs":
         {
-            "max_steps_n": 35,
+            "max_steps_n": 23,
             "return_hypotheses_n": null,
             "beamsize": 6,
             "normalization_factor": 0.5,
@@ -37,6 +37,6 @@
             "test": "./data/data_separated_grid/test.jsonl",
             "val": "./data/data_separated_grid/valid.jsonl"
         },
-        "use_vocab_for_generation": true
+        "use_vocab_for_generation": false
     }
 } 
