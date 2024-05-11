@@ -963,7 +963,7 @@ def get_transformer_bigger_weighted(device = None, weights_path = None, legacy_d
 
 
     encoder_decoder_ctor = (
-        EncoderDecoderAbstractLegacyDSFormat__OLD if legacy_ds 
+        EncoderDecoderAbstractLegacyDSFormat if legacy_ds 
         else EncoderDecoderAbstract
     )
 
