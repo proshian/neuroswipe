@@ -602,8 +602,7 @@ def update_out_of_bounds_with_noise(
         
 
 
-def get_traj_and_nearest_key_transform(grid_name: str,
-                                       grid: dict,
+def get_traj_and_nearest_key_transform(gname_to_grid: Dict[str, dict],
                                        char_tokenizer: CharLevelTokenizerv2,
                                        kb_tokenizer: KeyboardTokenizerv1,
                                        gname_to_wh: Dict[str, Tuple[int, int]],
@@ -631,10 +630,10 @@ def get_traj_and_nearest_key_transform(grid_name: str,
 
     print("Creating ExtendedNearestKeyLookups...")
     gridname_to_nkl = {
-        grid_name: ExtendedNearestKeyLookup(
+        gname: ExtendedNearestKeyLookup(
             grid, ALL_CYRILLIC_LETTERS_ALPHABET_ORD,
-            gname_to_out_of_bounds[grid_name]
-        )
+            gname_to_out_of_bounds[gname]
+        ) for gname, grid in gname_to_grid.items()
     }
 
     full_transform = FullTransform(
@@ -653,19 +652,19 @@ def get_traj_and_nearest_key_transform(grid_name: str,
 
 
 
-def get_traj_feats_and_distances_transform(grid_name: str, 
-                                           grid: dict,
+def get_traj_feats_and_distances_transform(gname_to_grid: Dict[str, dict],
                                            char_tokenizer: CharLevelTokenizerv2,
                                            kb_tokenizer: KeyboardTokenizerv1,
                                            weights_func: Callable):
     assert isinstance(kb_tokenizer.i2t, list)
     grid_name_to_dist_lookup = {
         # Extra token is for legacy reasons
-        grid_name: DistancesLookup(grid, kb_tokenizer.i2t + ['<extra_token>'])
+        gname: DistancesLookup(grid, kb_tokenizer.i2t + ['<extra_token>'])
+        for gname, grid in gname_to_grid.items()
     }
 
     full_transform = TrajFeats_KbWeights_FullTransform(
-        grid_name_to_grid={grid_name: grid},
+        grid_name_to_grid=gname_to_grid,
         grid_name_to_dist_lookup=grid_name_to_dist_lookup,
         word_tokenizer=char_tokenizer,
         include_time=False,
@@ -675,6 +674,44 @@ def get_traj_feats_and_distances_transform(grid_name: str,
         word_tokens_dtype=torch.int64,
     )
 
+    return full_transform
+
+
+
+
+def get_val_transform(gridname_to_grid_path: str,
+                      grid_names: List[str],
+                      transform_name: str,
+                      char_tokenizer: KeyboardTokenizerv1,
+                      uniform_noise_range: int = 0,
+                      dist_weights_func: Optional[Callable] = None,
+                      ds_paths_list: Optional[List[str]] = None,
+                      totals: Tuple[Optional[int], Optional[int]] = (None, None)
+                   ) -> Tuple[Callable, Callable]:
+    """Returns validation transform"""
+    
+    gname_to_grid = {gname: get_grid(gname, gridname_to_grid_path) 
+                     for gname in grid_names}
+
+    gname_to_wh = {gname: (grid['width'], grid['height']) for gname, grid in gname_to_grid.items()}
+
+    kb_tokenizer = KeyboardTokenizerv1()
+    
+
+    if transform_name == "traj_feats_and_nearest_key":
+        full_transform = get_traj_and_nearest_key_transform(
+            gname_to_grid, char_tokenizer, kb_tokenizer, gname_to_wh,
+            uniform_noise_range, ds_paths_list, totals)
+                
+    elif transform_name == "traj_feats_and_distances":
+        assert dist_weights_func is not None, "dist_weights_func must be provided"
+
+        full_transform = get_traj_feats_and_distances_transform(
+            gname_to_grid, char_tokenizer, kb_tokenizer, dist_weights_func)
+
+    else:
+        raise ValueError(f"Unknown transform name: '{transform_name}'")
+    
     return full_transform
 
 
@@ -690,37 +727,16 @@ def get_transforms(gridname_to_grid_path: str,
                    ) -> Tuple[Callable, Callable]:
     """Returns train and validation transforms."""
     
-    grid = get_grid(grid_name, gridname_to_grid_path)
-    w, h = grid['width'], grid['height']
-    gname_to_wh = {grid_name: (w, h)}
-    kb_tokenizer = KeyboardTokenizerv1()
-    
-    if transform_name == "traj_feats_and_nearest_key":
-
-        full_transform = get_traj_and_nearest_key_transform(
-            grid_name, grid, char_tokenizer, kb_tokenizer, gname_to_wh,
-            uniform_noise_range, ds_paths_list, totals)
-                
-        
-    elif transform_name == "traj_feats_and_distances":
-
-        assert dist_weights_func is not None, "dist_weights_func must be provided"
-
-        full_transform = get_traj_feats_and_distances_transform(
-            grid_name, grid, char_tokenizer, kb_tokenizer, dist_weights_func)
-
-    else:
-        raise ValueError(f"Unknown transform name: '{transform_name}'")
-    
-
-    val_transform = full_transform
+    val_transform = get_val_transform(
+        gridname_to_grid_path, grid_name, transform_name, char_tokenizer,
+        uniform_noise_range, dist_weights_func, ds_paths_list, totals)
 
     train_transform = None
     if uniform_noise_range != 0:
         augmentation_transform = RandIntToTrajTransform(-uniform_noise_range, uniform_noise_range + 1)
-        train_transform = SequentialTransform([augmentation_transform, full_transform])
+        train_transform = SequentialTransform([augmentation_transform, val_transform])
     else:
-        train_transform = full_transform
+        train_transform = val_transform
 
     return train_transform, val_transform
                 
