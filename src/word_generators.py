@@ -157,7 +157,6 @@ class BeamGenerator(WordGeneratorWithVocab):
                  return_hypotheses_n: Optional[int] = None,  # n best hypothesis to return
                  beamsize=6,  # n best solutions we store in intermidiate comuptations
                  normalization_factor=0.5,
-                 verbose=False
                  ) -> List[Tuple[float, str]]:
         """
         Arguments:
@@ -236,9 +235,6 @@ class BeamGenerator(WordGeneratorWithVocab):
         final_texts = [self.tokenizer.decode(final_token_list[1:-1]) for final_token_list in final_token_lists]
         result = list(zip(final_scores, final_texts))
         result.sort()
-
-        if verbose:
-            print(result)
 
         return result if return_hypotheses_n is None else result[:return_hypotheses_n]
 

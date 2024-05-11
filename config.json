@@ -30,8 +30,7 @@
             "max_steps_n": 35,
             "return_hypotheses_n": null,
             "beamsize": 6,
-            "normalization_factor": 0.5,
-            "verbose": false
+            "normalization_factor": 0.5
         },
         "data_split__to__path": {
             "test": "./data/data_separated_grid/test.jsonl",
