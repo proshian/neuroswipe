@@ -58,7 +58,6 @@ class WordGeneratorWithVocab(WordGenerator):
             the unallowed tokens correspond to the last n_tokens - n_out_neurons
             tokens in the tokenizer.
         """
-
         if max_token_id is None and vocab is not None:
             raise ValueError(
                 "If vocab is provided max_token_id must be provided too")
@@ -67,39 +66,46 @@ class WordGeneratorWithVocab(WordGenerator):
 
         self.max_token_id = max_token_id
         self.vocab = vocab
-        self.prefix_to_allowed_chars = None
+        self.prefix_ids_to_allowed_token_ids = None
         if vocab is not None:
-            self.prefix_to_allowed_chars = self._create_prefix_to_allowed_tokens(vocab)
+            self.prefix_to_allowed_ids = self._create_prefix_ids_to_allowed_token_ids(vocab)
 
     
-    def _create_prefix_to_allowed_tokens(self, vocab: List[str]) -> Dict[str, Set[str]]:
+    def _create_prefix_ids_to_allowed_token_ids(self, vocab: List[str]
+                                                ) -> Dict[Tuple[int, ...], Set[int]]:
         # ! When switching to another type of tokenizer where tokens are not just characters
         # but can be a sequence of characters, we need to change the implementation of this method. 
-        prefix_to_allowed_chars = defaultdict(set)
-        prefix_to_allowed_chars[''] = set(self.tokenizer.char_to_idx.keys())
+        prefix_to_allowed_ids = defaultdict(set)
+
         for word in vocab:
-            for i in range(1, len(word)):
-                prefix = word[:i]
-                prefix_to_allowed_chars[prefix].add(word[i])
-            prefix_to_allowed_chars[word].add('<eos>')
-        return prefix_to_allowed_chars
+            tokenized_word = self.tokenizer.encode(word)
+            for i in range(1, len(tokenized_word)):
+                prefix = tuple(tokenized_word[:i])
+                prefix_to_allowed_ids[prefix].add(tokenized_word[i])
+        return prefix_to_allowed_ids
     
-    def _get_unallowed_token_ids(self, prefix: List[str]) -> Set[int]:
-        if self.prefix_to_allowed_chars is None:
-            return set()
-        allowed_chars = self.prefix_to_allowed_chars[prefix]
-        all_chars = set(self.tokenizer.char_to_idx.keys())
+    def _get_unallowed_token_ids(self, prefix_ids: List[int]) -> Set[int]:
+        if self.prefix_to_allowed_ids is None:
+            return set()        
+        
+        allowed_ids = self.prefix_to_allowed_ids[tuple(prefix_ids)]
+        all_ids = set(self.tokenizer.idx_to_char.keys())
         impossible_ids = set(range(self.max_token_id + 1, len(self.tokenizer.char_to_idx)))
-        impossible_chars = {self.tokenizer.idx_to_char[idx] for idx in impossible_ids}
-        unallowed_chars = all_chars - allowed_chars - impossible_chars
-        return {self.tokenizer.char_to_idx[char] for char in unallowed_chars}
+        unallowed_ids = all_ids - allowed_ids - impossible_ids
+
+        # print([self.tokenizer.idx_to_char[idx] for idx in prefix_ids])
+        # print([self.tokenizer.idx_to_char[idx] for idx in allowed_ids])
+        # print([self.tokenizer.idx_to_char[idx] for idx in all_ids])
+        # print([self.tokenizer.idx_to_char[idx] for idx in impossible_ids])
+        # print([self.tokenizer.idx_to_char[idx] for idx in unallowed_ids])
+
+        return unallowed_ids
     
     def _mask_out_unallowed_ids(self, prefix_ids: List[int], logits: Tensor
                                 ) -> Tensor:
-        if self.prefix_to_allowed_chars is None:
+        if self.prefix_to_allowed_ids is None:
             return logits
-        str_prefix__no_sos = self.tokenizer.decode(prefix_ids[1:])
-        unallowed_ids = self._get_unallowed_token_ids(str_prefix__no_sos)
+        unallowed_ids = self._get_unallowed_token_ids(prefix_ids)
         logits[torch.tensor(list(unallowed_ids), dtype = torch.int)] = float('-inf')
         return logits
 
