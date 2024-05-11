@@ -717,7 +717,7 @@ def get_val_transform(gridname_to_grid_path: str,
 
 
 def get_transforms(gridname_to_grid_path: str,
-                   grid_name: str,
+                   grid_names: List[str],
                    transform_name: str,
                    char_tokenizer: KeyboardTokenizerv1,
                    uniform_noise_range: int = 0,
@@ -728,7 +728,7 @@ def get_transforms(gridname_to_grid_path: str,
     """Returns train and validation transforms."""
     
     val_transform = get_val_transform(
-        gridname_to_grid_path, grid_name, transform_name, char_tokenizer,
+        gridname_to_grid_path, grid_names, transform_name, char_tokenizer,
         uniform_noise_range, dist_weights_func, ds_paths_list, totals)
 
     train_transform = None
