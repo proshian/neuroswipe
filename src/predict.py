@@ -178,7 +178,7 @@ class Predictor:
             for i, pred in tqdm(map(self._predict_example, data), total=len(dataset)):
                 preds[i] = pred
             return preds
-        
+
         with ProcessPoolExecutor(num_workers) as executor:
             for i, pred in tqdm(executor.map(self._predict_example, data), total=len(dataset)):
                 preds[i] = pred
@@ -312,8 +312,8 @@ if __name__ == '__main__':
             model_getter_name,
             os.path.join(config['models_root'], weights_f_name),
             config['generator'],
-            config['n_classes'],
             use_vocab_for_generation = config['use_vocab_for_generation'],
+            n_classes = config['n_classes'],
             generator_call_kwargs=config['generator_call_kwargs'],
         )
 

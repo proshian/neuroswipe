@@ -8,15 +8,7 @@
     {
         "model_params": 
         [
-            ["default", "m1_bigger", "m1_bigger/m1_bigger_v2__2023_11_12__14_51_49__0.13115__greed_acc_0.86034__default_l2_0_ls0_switch_2.pt"],
-            ["default", "m1_bigger", "m1_bigger/m1_bigger_v2__2023_11_12__12_30_29__0.13121__greed_acc_0.86098__default_l2_0_ls0_switch_2.pt"],
-            ["default", "m1_bigger", "m1_bigger/m1_bigger_v2__2023_11_11__22_18_35__0.13542_default_l2_0_ls0_switch_1.pt"],
-            ["default", "m1", "m1_v2/m1_v2__2023_11_09__10_36_02__0.14229_default_switch_0.pt"],
-            ["default", "m1_bigger", "m1_bigger/m1_bigger_v2__2023_11_12__00_39_33__0.13297_default_l2_0_ls0_switch_1.pt"],
-            ["default", "m1_bigger", "m1_bigger/m1_bigger_v2__2023_11_11__14_29_37__0.13679_default_l2_0_ls0_switch_0.pt"],
-
-            ["extra", "m1", "m1_v2/m1_v2__2023_11_09__17_47_40__0.14301_extra_l2_1e-05_switch_0.pt"],
-            ["extra", "m1_bigger", "m1_bigger/m1_bigger_v2__2023_11_12__02_27_14__0.13413_extra_l2_0_ls0_switch_1.pt"]
+            ["default", "v2_weighted_transformer_bigger", "./weighted_transformer_bigger-default--epoch=26-val_loss=0.443-val_word_level_accuracy=0.869.pt"]
         ],
         "out_path": "./data/saved_beamsearch_results",
         "csv_path": "./data/saved_beamsearch_results/results.csv",
@@ -37,6 +29,7 @@
             "test": "./data/data_separated_grid/test.jsonl",
             "val": "./data/data_separated_grid/valid.jsonl"
         },
-        "use_vocab_for_generation": true
+        "use_vocab_for_generation": true,
+        "n_classes": 35
     }
 } 
