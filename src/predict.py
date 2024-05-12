@@ -305,7 +305,6 @@ def create_generator_and_hyper(config) -> GeneratorAndHyperparams:
         model, char_tokenizer, DEVICE, 
         **word_generator_init_kwargs)
     
-    generator_call_kwargs = generator_call_kwargs
 
     
 
