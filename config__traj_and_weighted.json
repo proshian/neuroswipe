@@ -14,7 +14,7 @@
         "csv_path": "",
         "data_split": "val",
         "grid_name_to_grid__path": "./data/data_separated_grid/gridname_to_grid.json",
-        "models_root": "./data/models_for_debug",
+        "models_root": "./results/models_for_debug",
         "voc_path": "./data/data_separated_grid/voc.txt",
         "transform_name": "traj_feats_and_distances",
         "generator": "beam",
