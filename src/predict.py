@@ -54,7 +54,7 @@ from concurrent.futures import ProcessPoolExecutor
 from model import MODEL_GETTERS_DICT
 from ns_tokenizers import CharLevelTokenizerv2, KeyboardTokenizerv1
 from dataset import CurveDataset, CurveDatasetSubset
-from word_generators import GENERATOR_CTORS_DICT
+from word_generators import GENERATOR_CTORS_DICT, WordGenerator
 from transforms import get_val_transform, weights_function_v1
 from grid_processing_utils import get_grid
 
@@ -75,6 +75,19 @@ class Prediction:
     transform_name: str
 
 
+@dataclass
+class GeneratorHyperparams:
+    generator_name: str
+    generator_call_kwargs: dict
+    use_vocab_for_generation: bool
+
+
+@dataclass
+class GeneratorAndHyperparams:
+    generaor: WordGenerator
+    hyperparams: GeneratorHyperparams
+
+
 class Predictor:
     """
     Creates a prediction for a whole dataset.
@@ -93,8 +106,7 @@ class Predictor:
                  ) -> None:
         DEVICE = torch.device('cpu')
 
-        self.word_generator_type = word_generator_type
-        word_generator_ctor = GENERATOR_CTORS_DICT[word_generator_type]
+        
         self.model_architecture_name = model_architecture_name
         self.model_weights_path = model_weights_path
         model_getter = MODEL_GETTERS_DICT[model_architecture_name]
@@ -103,16 +115,7 @@ class Predictor:
 
         self.use_vocab_for_generation = vocab is not None 
 
-        word_generator_init_kwargs = {
-            'vocab': vocab,
-            'max_token_id': n_classes - 1
-        }
-
-        self.word_generator = word_generator_ctor(
-            model, self.word_char_tokenizer, DEVICE, 
-            **word_generator_init_kwargs)
         
-        self.generator_call_kwargs = generator_call_kwargs
 
         
 
@@ -283,6 +286,28 @@ def get_predictor_kwargs(config) -> Dict[str, Any]:
     predictor_kwargs = {}
     if config['use_vocab_for_generation']:
         predictor_kwargs['vocab'] = get_vocab(config['voc_path'])
+    return predictor_kwargs
+
+
+def create_generator_and_hyper(config) -> GeneratorAndHyperparams:
+    
+    word_generator_init_kwargs = {}
+    if config['use_vocab_for_generation']:
+        vocab = get_vocab(config['voc_path'])
+        word_generator_init_kwargs = {
+            'vocab': vocab,
+            'max_token_id': config['n_classes'] - 1
+        }
+
+    word_generator_ctor = GENERATOR_CTORS_DICT[config['generator']]
+    
+    word_generator = word_generator_ctor(
+        model, char_tokenizer, DEVICE, 
+        **word_generator_init_kwargs)
+    
+    generator_call_kwargs = generator_call_kwargs
+
+    
 
 
 def check_all_weights_exist(model_params: Iterable, models_root: str) -> None:
@@ -308,6 +333,8 @@ if __name__ == '__main__':
 
     gridname_to_dataset = get_gridname_to_dataset(config)
 
+    generator_and_hyper = create_generator_and_hyper(config)
+
     for grid_name, model_getter_name, weights_f_name in config['model_params']:
 
         out_path = os.path.join(config['out_path'],
@@ -320,9 +347,7 @@ if __name__ == '__main__':
         predictor = Predictor(
             model_getter_name,
             os.path.join(config['models_root'], weights_f_name),
-            config['generator'],
-            generator_call_kwargs=config['generator_call_kwargs'],
-            **get_predictor_kwargs(config)
+            generator_and_hyper
         )
 
         preds_and_meta = predictor.predict(
