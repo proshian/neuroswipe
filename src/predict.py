@@ -150,7 +150,7 @@ class Predictor:
         return i, pred
     
     def _predict_raw_mp(self, dataset: CurveDataset,
-                        num_workers: int=3) -> List[List[Tuple[float, str]]]:
+                        num_workers: int) -> List[List[Tuple[float, str]]]:
         """
         Creates predictions given a word generator
         
@@ -175,10 +175,11 @@ class Predictor:
                 for i, ((traj_feats, kb_tokens, _), _) in enumerate(dataset)]     
         
         if num_workers <= 1:
+
             for i, pred in tqdm(map(self._predict_example, data), total=len(dataset)):
                 preds[i] = pred
             return preds
-
+        
         with ProcessPoolExecutor(num_workers) as executor:
             for i, pred in tqdm(executor.map(self._predict_example, data), total=len(dataset)):
                 preds[i] = pred
@@ -187,7 +188,7 @@ class Predictor:
 
     def predict(self, dataset: CurveDataset, 
                 grid_name: str, dataset_split: str,
-                transform_name: str, num_workers: int=3) -> Prediction:
+                transform_name: str, num_workers: int) -> Prediction:
         """
         Creates predictions given a word generator
         
@@ -319,6 +320,7 @@ if __name__ == '__main__':
 
         preds_and_meta = predictor.predict(
             gridname_to_dataset[grid_name],
-            grid_name, config['data_split'], args.num_workers)
+            grid_name, config['data_split'], 
+            config['transform_name'], args.num_workers)
 
         save_predictions(preds_and_meta, out_path, config["csv_path"])
