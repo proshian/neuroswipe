@@ -56,7 +56,6 @@ from ns_tokenizers import CharLevelTokenizerv2, KeyboardTokenizerv1
 from dataset import CurveDataset, CurveDatasetSubset
 from word_generators import GENERATOR_CTORS_DICT
 from transforms import get_val_transform, weights_function_v1
-from grid_processing_utils import get_grid
 
 
 RawPredictionType = List[List[Tuple[float, str]]]
@@ -75,6 +74,12 @@ class Prediction:
     transform_name: str
 
 
+
+def get_vocab(vocab_path: str) -> List[str]:
+    with open(vocab_path, 'r', encoding = "utf-8") as f:
+        return f.read().splitlines()
+
+
 class Predictor:
     """
     Creates a prediction for a whole dataset.
@@ -87,9 +92,9 @@ class Predictor:
                  model_architecture_name: str,
                  model_weights_path: str,
                  word_generator_type: str,
-                 n_classes: int = 35,
-                 vocab: Optional[List[str]] = None,
-                 generator_call_kwargs: Optional[dict]=None,
+                 use_vocab_for_generation: bool,
+                 n_classes: int,
+                 generator_call_kwargs,
                  ) -> None:
         DEVICE = torch.device('cpu')
 
@@ -101,12 +106,14 @@ class Predictor:
         model = model_getter(DEVICE, model_weights_path)
         self.word_char_tokenizer = CharLevelTokenizerv2(config['voc_path'])
 
-        self.use_vocab_for_generation = vocab is not None 
+        self.use_vocab_for_generation = use_vocab_for_generation
 
-        word_generator_init_kwargs = {
-            'vocab': vocab,
-            'max_token_id': n_classes - 1
-        }
+        word_generator_init_kwargs = {}
+        if use_vocab_for_generation:
+            word_generator_init_kwargs = {
+                'vocab': get_vocab(config['voc_path']),
+                'max_token_id': n_classes - 1
+            }
 
         self.word_generator = word_generator_ctor(
             model, self.word_char_tokenizer, DEVICE, 
@@ -167,6 +174,11 @@ class Predictor:
         data = [(i, (traj_feats, kb_tokens))
                 for i, ((traj_feats, kb_tokens, _), _) in enumerate(dataset)]     
         
+        if num_workers <= 1:
+            for i, pred in tqdm(map(self._predict_example, data), total=len(dataset)):
+                preds[i] = pred
+            return preds
+        
         with ProcessPoolExecutor(num_workers) as executor:
             for i, pred in tqdm(executor.map(self._predict_example, data), total=len(dataset)):
                 preds[i] = pred
@@ -221,16 +233,6 @@ def save_predictions(preds_wtih_meta: Prediction,
 #     # df.to_csv(preds_csv_path, index=False)
 
 
-def get_grid_name_to_grid(grid_name_to_grid__path: str, 
-                          allowed_gnames = ("default", "extra")) -> dict:
-    # In case there will be more grids in "grid_name_to_grid.json"
-    grid_name_to_grid = {
-        grid_name: get_grid(grid_name, grid_name_to_grid__path)
-        for grid_name in allowed_gnames
-    }
-    return grid_name_to_grid
-
-
 def get_config(config_path: str) -> dict:
     with open(config_path, 'r') as f:
         full_config = json.load(f)
@@ -274,17 +276,6 @@ def get_gridname_to_dataset(config) -> Dict[str, Dataset]:
     return gridname_to_dataset
 
 
-def get_vocab(vocab_path: str):
-    with open(vocab_path, 'r', encoding = "utf-8") as f:
-        return f.read().splitlines()
-
-
-def get_predictor_kwargs(config) -> Dict[str, Any]:
-    predictor_kwargs = {}
-    if config['use_vocab_for_generation']:
-        predictor_kwargs['vocab'] = get_vocab(config['voc_path'])
-
-
 def check_all_weights_exist(model_params: Iterable, models_root: str) -> None:
     for _, _, w_fname in model_params:
         if not os.path.exists(os.path.join(models_root, w_fname)):
@@ -321,8 +312,9 @@ if __name__ == '__main__':
             model_getter_name,
             os.path.join(config['models_root'], weights_f_name),
             config['generator'],
+            config['n_classes'],
+            use_vocab_for_generation = config['use_vocab_for_generation'],
             generator_call_kwargs=config['generator_call_kwargs'],
-            **get_predictor_kwargs(config)
         )
 
         preds_and_meta = predictor.predict(
