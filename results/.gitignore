@@ -1,3 +1,4 @@
 /predictions/*
 /trained_models
 /checkpoints
+evaluation_results.csv

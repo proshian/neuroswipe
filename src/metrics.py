@@ -1,4 +1,4 @@
-from typing import Collection
+from typing import Collection, List
 
 import torch
 from aggregate_predictions import delete_duplicates_stable
@@ -22,7 +22,9 @@ def get_mmr(preds_list: Collection[Collection[str]], ref: Collection[str]) -> fl
     return MMR
 
 
-
+def get_accuracy(preds_list: List[str], ref: List[str]) -> float:
+    n_equal = sum([int(pred==target) for pred, target in zip(preds_list, ref)])
+    return n_equal / len(preds_list)
 
 
 def get_word_level_accuracy(y_true_batch: torch.Tensor, 
