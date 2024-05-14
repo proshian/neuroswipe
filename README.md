@@ -7,6 +7,9 @@
 You can try out one of the models trained as part of the competition in a [web app](https://proshiang.pythonanywhere.com/)
 
 
+![demo](https://github.com/proshian/yandex-cup-2023-ml-neuroswipe/assets/98213116/63481fc7-4ea9-418d-bb9f-961d9755ddea)
+
+
 ## Method
 
 The model is encoder-decoder transformer.
