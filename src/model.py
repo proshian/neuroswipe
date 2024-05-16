@@ -1527,5 +1527,6 @@ MODEL_GETTERS_DICT = {
 
 
     "v2_weighted_transformer_bigger": get_transformer_bigger_weighted__v2,  # has layer norm
-    "v2_nearest_transformer_bigger": get_transformer_bigger_nearest__v2  # has layer norm
+    "v2_nearest_transformer_bigger": get_transformer_bigger_nearest__v2,  # has layer norm
+    "v2_weighted_normalized_transformer_bigger": get_transformer_bigger_weighted_normalized__v2,
 }
