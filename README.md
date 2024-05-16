@@ -7,7 +7,7 @@
 You can try out one of the models trained as part of the competition in a [web app](https://proshiang.pythonanywhere.com/)
 
 
-![demo](https://github.com/proshian/yandex-cup-2023-ml-neuroswipe/assets/98213116/02a5c230-7eac-486e-b848-911adb1b4c2b)
+![demo](https://github.com/proshian/yandex-cup-2023-ml-neuroswipe/assets/98213116/1c7210ab-f347-4f50-9105-c6eb74884827)
 
 
 ## Method
