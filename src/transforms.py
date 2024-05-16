@@ -165,6 +165,11 @@ def weights_function_v1(distances: Tensor, half_key_diag, bias = 4, scale = 1.8)
     return torch.nn.functional.sigmoid(sigmoid_input)
 
 
+def weights_function_v1_normalized(distances: Tensor, half_key_diag, bias = 4, scale = 1.8) -> Tensor:
+    weights = weights_function_v1(distances, half_key_diag, bias, scale)  # swipe_len x n_keys
+    return weights / weights.sum(dim=1, keepdim=True)
+
+
 def weights_function_v1_softmax(distances: Tensor, half_key_diag, bias = 4, scale = 1.8) -> Tensor:
     mask = torch.isinf(distances)
     sigmoid_input = distances.sqrt() / half_key_diag * (-scale) + bias
