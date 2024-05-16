@@ -677,6 +677,30 @@ class WeightsSumEmbeddingWithPos(WeightedSumEmbedding):
         return emb
 
 
+class WeightedSumEnbeddingNormalized(WeightedSumEmbedding):
+    def forward(self, weights):
+        weighted_emb = self.embeddings(weights)  # shape = swipe_len, batch_size, emb_dim
+        norm = weighted_emb.square().sum(dim = -1).sqrt().unsqueeze(-1)
+        return weighted_emb / norm
+    
+
+class SeparateTrajAndWEightedEmbeddingNormalizedWithPos(nn.Module):
+    # Separate in a sence that we don't apply a linear layer to mix the layers
+    def __init__(self, n_keys, key_emb_size, max_len, device, dropout = 0.1) -> None:
+        super().__init__()
+        self.weighted_sum_emb = WeightedSumEnbeddingNormalized(n_keys, key_emb_size)
+        self.dropout = nn.Dropout(dropout)
+        self.pos_encoder = PositionalEncoding(key_emb_size, max_len, device)
+    
+    def forward(self, input_tuple: Tuple[torch.Tensor, torch.Tensor]):
+        traj_feats, kb_key_weights = input_tuple
+        kb_k_emb = self.weighted_sum_emb(kb_key_weights)
+        kb_k_emb = self.pos_encoder(kb_k_emb)
+        kb_k_emb = self.dropout(kb_k_emb)
+        x = torch.cat((traj_feats, kb_k_emb), dim = -1)
+        return x
+
+
 
 class SeparateTrajAndWEightedEmbeddingWithPos(nn.Module):
     # Separate in a sence that we don't apply a linear layer to mix the layers
