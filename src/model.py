@@ -1255,6 +1255,101 @@ class TransformerNS_LegacyDS(TransformerNS):
 
 
 
+
+def get_transformer_bigger_weighted_normalized__v2(device = None, 
+                                        weights_path = None, 
+                                        legacy_ds: bool = True):
+    CHAR_VOCAB_SIZE = 37  # = len(word_char_tokenizer.char_to_idx)
+    MAX_CURVES_SEQ_LEN = 299
+    MAX_OUT_SEQ_LEN = 35  # word_char_tokenizer.max_word_len - 1
+
+    n_word_chars = CHAR_VOCAB_SIZE
+
+    # Actually, n_keys != n_word_chars. n_keys = 36. 
+    # It's legacy. It should not affect the model performace though.
+    n_keys = CHAR_VOCAB_SIZE  
+
+    n_classes = CHAR_VOCAB_SIZE - 2  # <sos> and <pad> are not predicted
+
+    n_coord_feats = 6
+    key_emb_size = 122
+    d_model = n_coord_feats + key_emb_size
+
+    input_embedding_dropout = 0.1
+    word_char_emb_dropout_val = 0.1
+    transformer_dropout = 0.1
+
+    transformer_ctor = TransformerNS_LegacyDS if legacy_ds else TransformerNS
+
+    device = torch.device(
+        device 
+        or 'cuda' if torch.cuda.is_available() else 'cpu')
+
+
+
+    input_embedding = SeparateTrajAndWEightedEmbeddingNormalizedWithPos(
+        n_keys=n_keys, key_emb_size=key_emb_size, 
+        max_len=MAX_CURVES_SEQ_LEN, device = device, 
+        dropout=input_embedding_dropout)
+
+
+    word_char_embedding = nn.Embedding(n_word_chars, d_model)
+    word_char_emb_dropout = nn.Dropout(word_char_emb_dropout_val)
+    word_char_pos_encoder = PositionalEncoding(d_model, MAX_OUT_SEQ_LEN, device=device)
+
+    word_char_embedding_model = nn.Sequential(
+        word_char_embedding,
+        word_char_emb_dropout,
+        word_char_pos_encoder
+    )
+
+
+    out = nn.Linear(d_model, n_classes, device = device)
+    
+
+
+    model = transformer_ctor(
+        input_embedding, word_char_embedding_model, out,
+        d_model, 
+        num_encoder_layers=4, 
+        num_decoder_layers=4,
+        dim_feedforward=128,
+        dropout=transformer_dropout,
+        num_heads_encoder=4,
+        num_heads_decoder=4,
+        activation= F.relu,
+        device = device,)
+    
+    if weights_path:
+        model.load_state_dict(
+            torch.load(weights_path, map_location = device))
+        
+
+    model = model.to(device)
+
+    model = model.eval()
+
+    return model
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 def get_transformer_bigger_weighted__v2(device = None, 
                                         weights_path = None, 
                                         legacy_ds: bool = True):
