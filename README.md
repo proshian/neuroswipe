@@ -61,7 +61,7 @@ cp ./data/data/voc.txt ./data/data_separated_grid/voc.txt
 python ./src/downloaders/download_dataset_separated_grid.py
 ```
 
-5. Загрузить чекпойнты весов моделей, используемых в последней посылке из [гугл диска](https://drive.google.com/drive/folders/1-iFPYCcRYy-tEu14Ry6xU6SMMf3eCjn6?usp=sharing) в папку [./data/trained_models_for_final_submit/](./data/trained_models_for_final_submit/). Это можно сделать, запустив скрипт ниже:
+5. Загрузить веса моделей, используемых в последней посылке из [гугл диска](https://drive.google.com/drive/folders/1-iFPYCcRYy-tEu14Ry6xU6SMMf3eCjn6?usp=sharing) в папку [./data/trained_models_for_final_submit/](./data/trained_models_for_final_submit/). Это можно сделать, запустив скрипт ниже:
 
 ```shell
 python ./src/downloaders/download_weights.py

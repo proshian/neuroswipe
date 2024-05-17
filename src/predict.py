@@ -1,3 +1,10 @@
+# ! Если use_vocab_for_generation == True 
+# многопоточность почему-то сильно медленнее, чем выполнение в главном потоке.
+# Поэтому num_workers должно быть равно 0 (это запуск без многопоточности).
+# Предполагаю, что замедление связано с переносом из одного потока в другой
+# очень большого словаря, хранящегося в генераторе слов
+
+
 # Сейчас предсказания отдельных моделей сохраняются как список списков
 # кортежей (-log(prob), pred_word).  Пусть модель заточена под раскладку
 # клавиатуры grid_name.  Пусть dataset[grid_name] – это датасет,
@@ -174,7 +181,7 @@ class Predictor:
         data = [(i, (traj_feats, kb_tokens))
                 for i, ((traj_feats, kb_tokens, _), _) in enumerate(dataset)]     
         
-        if num_workers <= 1:
+        if num_workers <= 0:
 
             for i, pred in tqdm(map(self._predict_example, data), total=len(dataset)):
                 preds[i] = pred
