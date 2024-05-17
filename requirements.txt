@@ -1,5 +1,5 @@
 requests==2.31.0  # for ./src/downloaders scripts only
-gdown==4.7.1  # for ./src/downloaders scripts only
+gdown==5.2.0  # for ./src/downloaders scripts only
 torch==2.0.1
 tqdm==4.66.3
 numpy==1.24.3

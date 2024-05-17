@@ -36,7 +36,7 @@ More info in [solution_description.md](solution_description.md) file (in Russian
 python -m pip install -r requirements.txt
 ```
 
-2. Основные наборы данных распаковать в `./data`. То есть, например, путь до train.json: `.data/data/train.jsonl`. Скачать и распаковать основной датасет можно скрипта ниже (арихив сохранен не будет):
+2. Скачать и распаковать Основные наборы данных в `./data`. То есть, например, путь до train.json: `.data/data/train.jsonl`. Скачать и распаковать основной датасет можно скрипта ниже (арихив сохранен не будет):
 
 ```shell
 python ./src/downloaders/download_original_data.py
