@@ -73,7 +73,7 @@ python ./src/downloaders/download_weights.py
 python ./src/predict.py --num-workers 4 --config ./config-yandex-cup.json
 ```
 
-В результате директория ./data/saved_beamsearch_results наполнится pickle файлами с предсказаниями
+В результате директория ./results/final_submission_predictions/test наполнится pickle файлами с предсказаниями
 
 7. Агрегировать предсказания:
 
@@ -81,7 +81,7 @@ python ./src/predict.py --num-workers 4 --config ./config-yandex-cup.json
 python ./src/aggregate_predictions.py
 ```
 
-В результате в директории ./data/submissions будет создан файл id3_with_baseline_without_old_preds.csv, который был моим финальным посылом.
+В результате в директории ./results/submissions будет создан файл my_last_submission.csv, который был моим финальным посылом.
 
 
 ## Обучение

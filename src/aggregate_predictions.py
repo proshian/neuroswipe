@@ -420,7 +420,7 @@ if __name__ == "__main__":
 
     for grid_name in ('default', 'extra'):
         f_names = grid_name_to_ranged_preds_names[grid_name]
-        f_paths = [os.path.join("data/saved_beamsearch_results/", f_name)
+        f_paths = [os.path.join("results/final_submission_predictions/test/", f_name)
                    for f_name in f_names]
         
         preds_to_aggregate = load_preds_to_aggregate(f_paths)
@@ -440,9 +440,9 @@ if __name__ == "__main__":
         extra_idxs)
     
 
-    baseline_preds = load_baseline_preds(r"data\submissions\baseline.csv")
+    baseline_preds = load_baseline_preds(r"results\submissions\baseline.csv")
     full_preds = append_preds(full_preds, baseline_preds, limit = 4)
 
     create_submission(full_preds,
-        f"data/submissions/id3_with_baseline_without_old_preds.csv")
+        f"results/submissions/my_last_submission.csv")
     
