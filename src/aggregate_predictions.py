@@ -5,6 +5,8 @@ import pickle
 import copy
 import json
 
+from predict import Prediction
+
 
 def remove_probs(dataset_preds: List[List[Tuple[float, str]]]
                  ) -> List[List[str]]:
