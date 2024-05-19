@@ -5,6 +5,7 @@ import pickle
 import copy
 import json
 
+# Without this import pickle.load won't be able to load predictions.
 from predict import Prediction
 
 
