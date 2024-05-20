@@ -2,8 +2,11 @@ from typing import Dict
 import json
 
 
+def get_wh(grid: dict) -> tuple:
+    return grid['width'], grid['height']
+
 def get_gname_to_wh(gname_to_grid: Dict[str, dict]):
-    return {gname: (grid['width'], grid['height']) 
+    return {gname: get_wh(grid)
             for gname, grid in gname_to_grid.items()}
 
 def get_kb_label(key: dict) -> str:
