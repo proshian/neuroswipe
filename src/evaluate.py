@@ -81,10 +81,8 @@ def save_results(prediction_with_meta: Prediction,
     if not os.path.exists(out_path):
         df_line.to_csv(out_path, index=False)
     else:
-        # append to existing csv, avoiding duplicate lines
         df = pd.read_csv(out_path)
         if not is_result_in_df(df, prediction_with_meta_dict):
-        # if not is_result_in_df(df_line, df):
             df_line.to_csv(out_path, mode='a', header=False, index=False)
 
 
