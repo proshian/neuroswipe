@@ -57,19 +57,36 @@ def cut_inner_lists_to_four(preds):
 def leave_one_pred_per_curve(preds):
     return [preds_for_curve[0] for preds_for_curve in preds]
 
+
+def is_result_in_df(df: pd.DataFrame, result: dict) -> bool:
+    for _, row in df.iterrows():
+        for key, value in result.items():
+            assert type(row[key]) == type(value), f'{key}: dtype in result is {type(value)}, in df is {type(row[key])}'
+
+    for _, row in df.iterrows():
+        if row.to_dict() == result:
+            return True
+    return False          
+
+
 def save_results(prediction_with_meta: Prediction, 
                  metrics: Dict[str, float], out_path: str) -> None:
     prediction_with_meta_dict = asdict(prediction_with_meta)
     prediction_with_meta_dict.update(metrics)
+    prediction_with_meta_dict['generator_call_kwargs'] = json.dumps(
+        prediction_with_meta_dict['generator_call_kwargs'])
     del prediction_with_meta_dict['prediction']
+
     df_line = pd.DataFrame([prediction_with_meta_dict])
     if not os.path.exists(out_path):
         df_line.to_csv(out_path, index=False)
     else:
         # append to existing csv, avoiding duplicate lines
         df = pd.read_csv(out_path)
-        if not df.isin([prediction_with_meta_dict]).all().all():
-            df_line.to_csv(out_path, mode='a', header=False, index=False) 
+        if not is_result_in_df(df, prediction_with_meta_dict):
+        # if not is_result_in_df(df_line, df):
+            df_line.to_csv(out_path, mode='a', header=False, index=False)
+
 
 
 if __name__ == "__main__":
