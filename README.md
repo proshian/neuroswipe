@@ -1,6 +1,8 @@
-# Yandex Cup 2023 ML. NeuroSwipe task
+# NeuroSwipe
 
-Распознавание слов по&nbsp;нарисованным кривым на&nbsp;экране смартфона (Яндекс Клавиатура)
+Transformer model that is used for a gesture keyboard (performs recognition of curves that are swiped across a keyboard on a smartphone display)
+
+The repository is my yandex cup 2023 solution (7-th place) with improvements
 
 ## Demo
 
@@ -30,8 +32,8 @@ More info in [solution_description.md](solution_description.md) file (in Russian
 ## Competition submission reprodction instructions
 Competition submission reprodction instructions are [here: submission_reproduciton_instrucitons.md](submission_reproduciton_instrucitons.md)
 
-## Обучение
-Обучение производилось в блокноте src/train.ipynb
+## Training
+The training is in [src/train.ipynb notebook](src/train.ipynb)
 
 <!-- Перед побучением необходимо очистить тренировочный датасет -->
 
