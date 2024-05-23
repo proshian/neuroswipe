@@ -27,7 +27,8 @@ Keyboard key embeddings used in encoder and charracter embeddings used in decode
 
 More info in [solution_description.md](solution_description.md) file (in Russian).
 
-## [Competition submission reprodction instructions are here: submit_reproduciton_instrucitons.md](submit_reproduciton_instrucitons.md)
+## Competition submission reprodction instructions
+Competition submission reprodction instructions are [here: submission_reproduciton_instrucitons.md](submission_reproduciton_instrucitons.md)
 
 ## Обучение
 Обучение производилось в блокноте src/train.ipynb
