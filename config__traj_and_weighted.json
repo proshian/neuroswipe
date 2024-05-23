@@ -8,9 +8,13 @@
     {
         "model_params": 
         [
-            ["default", "v2_weighted_transformer_bigger", "weighted_transformer_bigger-default--epoch=30-val_loss=0.444-val_word_level_accuracy=0.870.pt"],
-            ["default", "v2_weighted_transformer_bigger", "weighted_transformer_bigger-default--epoch=26-val_loss=0.443-val_word_level_accuracy=0.869.pt"],
-            ["default", "v2_weighted_transformer_bigger", "weighted_transformer_bigger-default--epoch=34-val_loss=0.444-val_word_level_accuracy=0.868.pt"]
+            ["default", "v2_weighted_transformer_bigger", "weighted_transformer_bigger-default--epoch=38-val_loss=0.444-val_word_level_accuracy=0.871.pt"],
+            ["default", "v2_weighted_transformer_bigger", "weighted_transformer_bigger-default--epoch=46-val_loss=0.442-val_word_level_accuracy=0.871.pt"],
+            ["default", "v2_weighted_transformer_bigger", "weighted_transformer_bigger-default--epoch=55-val_loss=0.440-val_word_level_accuracy=0.876.pt"],
+            ["default", "v2_weighted_transformer_bigger", "weighted_transformer_bigger-default--epoch=60-val_loss=0.442-val_word_level_accuracy=0.875.pt"],
+            ["default", "v2_weighted_transformer_bigger", "weighted_transformer_bigger-default--epoch=14-val_loss=0.45-val_word_level_accuracy=0.86.pt"],
+            ["default", "v2_weighted_transformer_bigger", "weighted_transformer_bigger-default--epoch=20-val_loss=0.44-val_word_level_accuracy=0.87.pt"],
+            ["default", "v2_weighted_transformer_bigger", "weighted_transformer_bigger-default--epoch=7-val_loss=0.46-val_word_level_accuracy=0.85.pt"]
         ],
         "out_path": ".\\results\\predictions\\val",
         "csv_path": "",
