@@ -7,12 +7,6 @@
     },
 
     "prediction_paths": [
-        "./results/predictions/val/transformer_m1_bigger-default--epoch=30-val_loss=0.443-val_word_level_accuracy=0.865.pt.pkl",
-        "./results/predictions/val/transformer_m1_bigger-default--epoch=34-val_loss=0.442-val_word_level_accuracy=0.867.pt.pkl",
-        "./results/predictions/val/transformer_m1_bigger-default--epoch=38-val_loss=0.443-val_word_level_accuracy=0.867.pt.pkl",
-        "./results/predictions/val/transformer_m1_bigger-default--epoch=46-val_loss=0.441-val_word_level_accuracy=0.869.pt.pkl",
-        "./results/predictions/val/weighted_transformer_bigger-default--epoch=26-val_loss=0.443-val_word_level_accuracy=0.869.pt.pkl",
-        "./results/predictions/val/weighted_transformer_bigger-default--epoch=30-val_loss=0.444-val_word_level_accuracy=0.870.pt.pkl",
-        "./results/predictions/val/weighted_transformer_bigger-default--epoch=34-val_loss=0.444-val_word_level_accuracy=0.868.pt.pkl"
+        "./results/predictions/val/"
     ]
 }

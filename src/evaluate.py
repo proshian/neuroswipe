@@ -86,23 +86,53 @@ def save_results(prediction_with_meta: Prediction,
             df_line.to_csv(out_path, mode='a', header=False, index=False)
 
 
+def list_files_recursive(dir_path: str, f_paths: List[str]):
+    for entry in os.listdir(dir_path):
+        full_path = os.path.join(dir_path, entry)
+        if os.path.isdir(full_path):
+            list_files_recursive(full_path, f_paths)
+        else:
+            f_paths.append(full_path)
+
+
+def list_files_recursive_for_list(all_paths: str, f_paths: List[str]):
+    for path in all_paths:
+        if os.path.isdir(path):
+            all_paths_in_this_dir = []
+            list_files_recursive(path, all_paths_in_this_dir)
+            f_paths.extend(all_paths_in_this_dir)
+        else:
+            f_paths.append(path)
+    
+
+def get_prediction_paths(config) -> List[str]:
+    paths = []
+    list_files_recursive_for_list(config['prediction_paths'], paths)
+    return paths
+
+
+
+def evaluate_path(prediction_path, config) -> None:
+    prediction_with_meta = read_prediction(prediction_path)
+    preds = scored_preds_to_raw_preds(prediction_with_meta.prediction)
+    data_split = prediction_with_meta.dataset_split
+    dataset_path = config['data_split__to__path'][data_split]
+    labels = get_labels_from_ds_path(dataset_path, 
+                                        prediction_with_meta.grid_name)
+    mmr = get_mmr(cut_inner_lists_to_four(preds), 
+                    labels)
+    accuracy = get_accuracy(leave_one_pred_per_curve(preds),
+                            labels)
+    metrics = {
+        'mmr': mmr,
+        'accuracy': accuracy
+    }
+
+    save_results(prediction_with_meta, metrics, config['out_csv_path'])
+
 
 if __name__ == "__main__":
     config = get_config()
-    for prediction_path in tqdm(config['prediction_paths']):
-        prediction_with_meta = read_prediction(prediction_path)
-        preds = scored_preds_to_raw_preds(prediction_with_meta.prediction)
-        data_split = prediction_with_meta.dataset_split
-        dataset_path = config['data_split__to__path'][data_split]
-        labels = get_labels_from_ds_path(dataset_path, 
-                                         prediction_with_meta.grid_name)
-        mmr = get_mmr(cut_inner_lists_to_four(preds), 
-                      labels)
-        accuracy = get_accuracy(leave_one_pred_per_curve(preds),
-                                labels)
-        metrics = {
-            'mmr': mmr,
-            'accuracy': accuracy
-        }
-
-        save_results(prediction_with_meta, metrics, config['out_csv_path'])
+    prediction_paths = get_prediction_paths(config)
+    for prediction_path in tqdm(prediction_paths):
+        evaluate_path(prediction_path, config)
