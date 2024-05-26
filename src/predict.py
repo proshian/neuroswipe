@@ -102,15 +102,14 @@ class Predictor:
                  use_vocab_for_generation: bool,
                  n_classes: int,
                  generator_call_kwargs,
+                 device: torch.device = torch.device('cpu')
                  ) -> None:
-        DEVICE = torch.device('cpu')
-
         self.word_generator_type = word_generator_type
         word_generator_ctor = GENERATOR_CTORS_DICT[word_generator_type]
         self.model_architecture_name = model_architecture_name
         self.model_weights_path = model_weights_path
         model_getter = MODEL_GETTERS_DICT[model_architecture_name]
-        model = model_getter(DEVICE, model_weights_path)
+        model = model_getter(device, model_weights_path)
         self.word_char_tokenizer = CharLevelTokenizerv2(config['voc_path'])
 
         self.use_vocab_for_generation = use_vocab_for_generation
@@ -123,7 +122,7 @@ class Predictor:
             }
 
         self.word_generator = word_generator_ctor(
-            model, self.word_char_tokenizer, DEVICE, 
+            model, self.word_char_tokenizer, device, 
             **word_generator_init_kwargs)
         
         self.generator_call_kwargs = generator_call_kwargs
@@ -292,7 +291,8 @@ def check_all_weights_exist(model_params: Iterable, models_root: str) -> None:
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser()
-    p.add_argument('--num-workers', type=int, default=1)
+    p.add_argument('--num-workers', type=int, default=0)
+    p.add_argument('--device', type=str, default="cpu")
     p.add_argument('--config', type=str)
     args = p.parse_args()
     return args 
@@ -323,6 +323,7 @@ if __name__ == '__main__':
             use_vocab_for_generation = config['use_vocab_for_generation'],
             n_classes = config['n_classes'],
             generator_call_kwargs=config['generator_call_kwargs'],
+            device = torch.device(args.device)
         )
 
         preds_and_meta = predictor.predict(
