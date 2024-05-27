@@ -214,8 +214,8 @@ class BeamGenerator(WordGeneratorWithVocab):
                 # 1. Model is extremely confident (maybe overconfident) 
                 #    that a certain token is impossible with a given prefix.
                 # 2. Masking out unallowed tokens makes their prob = 0.
-                # if token_score == float('-inf'):
-                #     continue
+                if token_score == float('-inf'):
+                    continue
 
                 # score - нормализованная разность log_softmax всех токенов.
                 # Разность, а не сумма, потому что heapq - мин-куча. 
