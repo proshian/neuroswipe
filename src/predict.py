@@ -1,3 +1,10 @@
+# ! Если use_vocab_for_generation == True 
+# многопоточность почему-то сильно медленнее, чем выполнение в главном потоке.
+# Поэтому num_workers должно быть равно 0 (это запуск без многопоточности).
+# Предполагаю, что замедление связано с переносом из одного потока в другой
+# очень большого словаря, хранящегося в генераторе слов
+
+
 # Сейчас предсказания отдельных моделей сохраняются как список списков
 # кортежей (-log(prob), pred_word).  Пусть модель заточена под раскладку
 # клавиатуры grid_name.  Пусть dataset[grid_name] – это датасет,
@@ -30,13 +37,13 @@
 # * состояние аггрегатора
 # * название раскладки
 # В качестве pred_id может выступать
-# f"{weights_path}__{generator_type}__{generator_kwargs}__{grid_name}".
+# f"{weights_path}__{generator_type}__{generator_call_kwargs}__{grid_name}".
 # Лучше это будет буквально id, сохраненный где-то
 # в отдельном файле / базе данных.
 
 
 
-from typing import Iterable, List, Tuple, Dict, Optional
+from typing import Iterable, List, Tuple, Dict, Optional, Any
 import os
 import json
 import pickle
@@ -54,22 +61,36 @@ from concurrent.futures import ProcessPoolExecutor
 from model import MODEL_GETTERS_DICT
 from ns_tokenizers import CharLevelTokenizerv2, KeyboardTokenizerv1
 from dataset import CurveDataset, CurveDatasetSubset
-from ns_tokenizers import ALL_CYRILLIC_LETTERS_ALPHABET_ORD
 from word_generators import GENERATOR_CTORS_DICT
+from transforms import get_val_transform, weights_function_v1
+
+############# Old code start
+from ns_tokenizers import ALL_CYRILLIC_LETTERS_ALPHABET_ORD
 from transforms import KbTokens_InitTransform, KbTokens_GetItemTransform
 from nearest_key_lookup import NearestKeyLookup
+############# Old code end
 
+
+RawPredictionType = List[List[Tuple[float, str]]]
 
 
 @dataclass
 class Prediction:
-    prediction: List[List[Tuple[float, str]]]
+    prediction: RawPredictionType
     model_name: str
     model_weights: str
     generator_name: str
-    generator_kwargs: dict
+    generator_call_kwargs: dict
+    use_vocab_for_generation: bool
     grid_name: str
     dataset_split: str
+    transform_name: str
+
+
+
+def get_vocab(vocab_path: str) -> List[str]:
+    with open(vocab_path, 'r', encoding = "utf-8") as f:
+        return f.read().splitlines()
 
 
 class Predictor:
@@ -84,7 +105,9 @@ class Predictor:
                  model_architecture_name: str,
                  model_weights_path: str,
                  word_generator_type: str,
-                 generator_kwargs: Optional[dict]=None,
+                 use_vocab_for_generation: bool,
+                 n_classes: int,
+                 generator_call_kwargs,
                  ) -> None:
         DEVICE = torch.device('cpu')
 
@@ -95,9 +118,23 @@ class Predictor:
         model_getter = MODEL_GETTERS_DICT[model_architecture_name]
         model = model_getter(DEVICE, model_weights_path)
         self.word_char_tokenizer = CharLevelTokenizerv2(config['voc_path'])
+
+        self.use_vocab_for_generation = use_vocab_for_generation
+
+        word_generator_init_kwargs = {}
+        if use_vocab_for_generation:
+            word_generator_init_kwargs = {
+                'vocab': get_vocab(config['voc_path']),
+                'max_token_id': n_classes - 1
+            }
+
         self.word_generator = word_generator_ctor(
-            model, self.word_char_tokenizer, DEVICE)
-        self.generator_kwargs = generator_kwargs
+            model, self.word_char_tokenizer, DEVICE, 
+            **word_generator_init_kwargs)
+        
+        self.generator_call_kwargs = generator_call_kwargs
+
+        
 
     def _predict_example(self,
                          data: Tuple[int, Tuple[Tensor, Tensor]]
@@ -122,11 +159,11 @@ class Predictor:
             char_sequence: str
         """
         i, gen_in = data
-        pred = self.word_generator(*gen_in, **self.generator_kwargs)
+        pred = self.word_generator(*gen_in, **self.generator_call_kwargs)
         return i, pred
     
     def _predict_raw_mp(self, dataset: CurveDataset,
-                        num_workers: int=3) -> List[List[Tuple[float, str]]]:
+                        num_workers: int) -> List[List[Tuple[float, str]]]:
         """
         Creates predictions given a word generator
         
@@ -150,6 +187,12 @@ class Predictor:
         data = [(i, (traj_feats, kb_tokens))
                 for i, ((traj_feats, kb_tokens, _), _) in enumerate(dataset)]     
         
+        if num_workers <= 0:
+
+            for i, pred in tqdm(map(self._predict_example, data), total=len(dataset)):
+                preds[i] = pred
+            return preds
+        
         with ProcessPoolExecutor(num_workers) as executor:
             for i, pred in tqdm(executor.map(self._predict_example, data), total=len(dataset)):
                 preds[i] = pred
@@ -158,7 +201,7 @@ class Predictor:
 
     def predict(self, dataset: CurveDataset, 
                 grid_name: str, dataset_split: str,
-                num_workers: int=3) -> Prediction:
+                transform_name: str, num_workers: int) -> Prediction:
         """
         Creates predictions given a word generator
         
@@ -176,7 +219,8 @@ class Predictor:
         preds_with_meta = Prediction(
             preds, self.model_architecture_name,
             self.model_weights_path, self.word_generator_type,
-            self.generator_kwargs, grid_name, dataset_split)
+            self.generator_call_kwargs, self.use_vocab_for_generation,
+            grid_name, dataset_split, transform_name)
         
         return preds_with_meta
 
@@ -196,12 +240,27 @@ def save_predictions(preds_wtih_meta: Prediction,
                      preds_csv_path: str) -> None:
     with open(out_path, 'wb') as f:
         pickle.dump(
-            preds_wtih_meta.prediction, f, protocol=pickle.HIGHEST_PROTOCOL)
+            preds_wtih_meta, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 #     # df = load_df(preds_csv_path)
 #     # update_database(df, preds_wtih_meta)
 #     # df.to_csv(preds_csv_path, index=False)
 
+
+def get_config(config_path: str) -> dict:
+    with open(config_path, 'r') as f:
+        full_config = json.load(f)
+    prediction_config = dict(full_config['prediction_config'])
+
+    data_split = prediction_config['data_split']
+    data_path = prediction_config['data_split__to__path'][data_split]
+    prediction_config['data_path'] = data_path
+
+    return prediction_config
+
+
+
+############# Old code start
 
 def get_grid(grid_name: str, grids_path: str) -> dict:
     with open(grids_path, "r", encoding="utf-8") as f:
@@ -215,18 +274,6 @@ def get_grid_name_to_grid(grid_name_to_grid__path: str) -> dict:
         for grid_name in ("default", "extra")
     }
     return grid_name_to_grid
-
-
-def get_config(config_path: str) -> dict:
-    with open(config_path, 'r') as f:
-        full_config = json.load(f)
-    prediction_config = dict(full_config['prediction_config'])
-
-    data_split = prediction_config['data_split']
-    data_path = prediction_config['data_split__to__path'][data_split]
-    prediction_config['data_path'] = data_path
-
-    return prediction_config
 
 
 def get_gridname_to_dataset(config) -> Dict[str, Dataset]:
@@ -279,6 +326,10 @@ def get_gridname_to_dataset(config) -> Dict[str, Dataset]:
     return gridname_to_dataset
 
 
+
+############# Old code end
+
+
 def check_all_weights_exist(model_params: Iterable, models_root: str) -> None:
     for _, _, w_fname in model_params:
         if not os.path.exists(os.path.join(models_root, w_fname)):
@@ -315,11 +366,14 @@ if __name__ == '__main__':
             model_getter_name,
             os.path.join(config['models_root'], weights_f_name),
             config['generator'],
-            generator_kwargs=config['generator_call_kwargs']
+            use_vocab_for_generation = config['use_vocab_for_generation'],
+            n_classes = config['n_classes'],
+            generator_call_kwargs=config['generator_call_kwargs'],
         )
 
         preds_and_meta = predictor.predict(
             gridname_to_dataset[grid_name],
-            grid_name, config['data_split'], args.num_workers)
+            grid_name, config['data_split'], 
+            config['transform_name'], args.num_workers)
 
         save_predictions(preds_and_meta, out_path, config["csv_path"])
