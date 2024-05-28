@@ -645,7 +645,7 @@ def get_traj_and_nearest_key_transform(gname_to_grid: Dict[str, dict],
         include_velocities=True,
         include_accelerations=True,
         kb_tokens_dtype=torch.int32,
-        word_tokens_dtype=torch.int64
+        word_tokens_dtype=torch.int32
     )
 
     return full_transform

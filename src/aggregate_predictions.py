@@ -122,9 +122,9 @@ def load_preds_to_aggregate(paths: List[str]
     preds_to_aggregate = []
     for f_path in paths:
         with open(f_path, 'rb') as f:
-            unpickled_prediction = pickle.load(f)
-        prediction = unpickled_prediction.prediction if isinstance(unpickled_prediction, Prediction) else unpickled_prediction
-        preds_to_aggregate.append([curve_pred[:7] for curve_pred in prediction])
+            prediction_and_meta = pickle.load(f)
+        prediction = prediction_and_meta.prediction
+        preds_to_aggregate.append(prediction)
     return preds_to_aggregate
 
 

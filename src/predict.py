@@ -64,12 +64,6 @@ from dataset import CurveDataset, CurveDatasetSubset
 from word_generators import GENERATOR_CTORS_DICT
 from transforms import get_val_transform, weights_function_v1
 
-############# Old code start
-from ns_tokenizers import ALL_CYRILLIC_LETTERS_ALPHABET_ORD
-from transforms import KbTokens_InitTransform, KbTokens_GetItemTransform
-from nearest_key_lookup import NearestKeyLookup
-############# Old code end
-
 
 RawPredictionType = List[List[Tuple[float, str]]]
 
@@ -259,62 +253,26 @@ def get_config(config_path: str) -> dict:
     return prediction_config
 
 
-
-############# Old code start
-
-def get_grid(grid_name: str, grids_path: str) -> dict:
-    with open(grids_path, "r", encoding="utf-8") as f:
-        return json.load(f)[grid_name]
-
-
-def get_grid_name_to_grid(grid_name_to_grid__path: str) -> dict:
-    # In case there will be more grids in "grid_name_to_grid.json"
-    grid_name_to_grid = {
-        grid_name: get_grid(grid_name, grid_name_to_grid__path)
-        for grid_name in ("default", "extra")
-    }
-    return grid_name_to_grid
-
-
 def get_gridname_to_dataset(config) -> Dict[str, Dataset]:
-    word_char_tokenizer = CharLevelTokenizerv2(config['voc_path'])
+    char_tokenizer = CharLevelTokenizerv2(config['voc_path'])
 
-    kb_tokenizer = KeyboardTokenizerv1()
-                                 
-    grid_name_to_grid = get_grid_name_to_grid(
-        config['grid_name_to_grid__path'])
-    
-
-    gname_to_wh = {
-        gname: (grid['width'], grid['height']) 
-        for gname, grid in grid_name_to_grid.items()
-    }
-    
-    print("Creating NearestKeyLookups...")
-    gridname_to_nkl = {
-        gname: NearestKeyLookup(grid, ALL_CYRILLIC_LETTERS_ALPHABET_ORD)
-        for gname, grid in grid_name_to_grid.items()
-    }
-    
-    init_transform = KbTokens_InitTransform(
-        grid_name_to_nk_lookup=gridname_to_nkl,
-        kb_tokenizer=kb_tokenizer,
-    )
-
-    get_item_transform = KbTokens_GetItemTransform(
-        grid_name_to_wh=gname_to_wh,
-        word_tokenizer=word_char_tokenizer,
-        include_time=False,
-        include_velocities=True,
-        include_accelerations=True,
+    transform = get_val_transform(
+        gridname_to_grid_path=config['grid_name_to_grid__path'],
+        grid_names=('default', 'extra'),
+        transform_name=config['transform_name'],
+        char_tokenizer=char_tokenizer,
+        uniform_noise_range=0,
+        ds_paths_list=[config['data_path']],
+        dist_weights_func=weights_function_v1,
+        totals = [10_000]
     )
 
     print("Creating dataset...")
     dataset = CurveDataset(
         data_path=config['data_path'],
         store_gnames = True,
-        init_transform=init_transform,
-        get_item_transform=get_item_transform,
+        init_transform=transform,
+        get_item_transform=None,
         total = 10_000,
     )
 
@@ -324,10 +282,6 @@ def get_gridname_to_dataset(config) -> Dict[str, Dataset]:
     }
 
     return gridname_to_dataset
-
-
-
-############# Old code end
 
 
 def check_all_weights_exist(model_params: Iterable, models_root: str) -> None:
