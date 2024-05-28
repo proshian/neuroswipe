@@ -385,7 +385,7 @@ class TokensTypeCastTransform:
 
 
 ############################################################  
-# Transformes below were used to make training faster while avoiding RAM 
+# Transforms below were used to make training faster while avoiding RAM 
 # overflow. Probably won't be needed: multiprocessing in dataloader 
 # makes them useless.
 
