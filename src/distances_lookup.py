@@ -1,4 +1,4 @@
-from typing import Optional, List, Dict, Tuple, Any
+from typing import Optional, List, Dict, Tuple, Any, Union
 import pickle
 
 import numpy as np
@@ -157,7 +157,7 @@ class DistancesLookup:
             return self._distance(np.array([[x, y]]), self.centers).flatten()
         return self.coord_to_distances[x, y]
 
-    def get_distances(self, x: int, y: int) -> Dict[str, float] | np.ndarray:
+    def get_distances(self, x: int, y: int) -> Union[Dict[str, float], np.ndarray]:
         dist_arr = self.get_distances_arr(x, y)
         if self.return_dict:
             return {kb_key: dist for kb_key, dist in zip(self.KB_KEY_LIST, dist_arr)}
