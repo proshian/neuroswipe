@@ -679,6 +679,26 @@ class WeightsSumEmbeddingWithPos(WeightedSumEmbedding):
 
 
 
+
+class NearestEmbeddingWithPos(nn.Module):
+    """
+    Parameters:
+    -----------
+    n_elements: int
+        Number of tokenized keyboard keys
+    """
+    def __init__(self, n_elements, dim, max_len, device, dropout) -> None:
+        self.key_emb = nn.Embedding(n_elements, dim)
+        self.pos_encoder = PositionalEncoding(dim, max_len, device)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, kb_ids_seq: torch.Tensor):
+        kb_k_emb = self.key_emb(kb_ids_seq)
+        kb_k_emb = self.pos_encoder(kb_k_emb)
+        kb_k_emb = self.dropout(kb_k_emb)   
+        return kb_k_emb    
+
+
 class SeparateTrajAndWEightedEmbeddingWithPos(nn.Module):
     # Separate in a sence that we don't apply a linear layer to mix the layers
     def __init__(self, n_keys, key_emb_size, max_len, device, dropout = 0.1) -> None:
@@ -698,17 +718,19 @@ class SeparateTrajAndNearestEmbeddingWithPos(nn.Module):
     # Separate in a sence that we don't apply a linear layer to mix the layers
     def __init__(self, n_keys, key_emb_size, max_len, device, dropout = 0.1) -> None:
         super().__init__()
-        self.key_emb = nn.Embedding(n_keys, key_emb_size)
-        self.pos_encoder = PositionalEncoding(key_emb_size, max_len, device)
-        self.dropout = nn.Dropout(dropout)
+        self.key_emb = NearestEmbeddingWithPos(
+            n_keys, key_emb_size, max_len, device, dropout)
     
     def forward(self, input_tuple: Tuple[torch.Tensor, torch.Tensor]):
-        traj_feats, nearest_kb_key_id = input_tuple
-        kb_k_emb = self.key_emb(nearest_kb_key_id)
-        kb_k_emb = self.pos_encoder(kb_k_emb)
-        kb_k_emb = self.dropout(kb_k_emb)
+        traj_feats, nearest_kb_key_ids = input_tuple
+        kb_k_emb = self.key_emb(nearest_kb_key_ids)
         x = torch.cat((traj_feats, kb_k_emb), dim = -1)
         return x
+    
+
+
+
+
     
 
 #############
@@ -1552,9 +1574,9 @@ def _get_transformer_bigger__v3(input_embedding: nn.Module,
 
 
 
-def get_transformer_bigger_weighted__v3(device = None, 
-                                        weights_path = None,
-                                        n_coord_feats = 6):
+def get_transformer_bigger_weighted_and_traj__v3(device = None, 
+                                                 weights_path = None,
+                                                 n_coord_feats = 6):
     CHAR_VOCAB_SIZE = 37  # = len(word_char_tokenizer.char_to_idx)
     MAX_CURVES_SEQ_LEN = 299
     # Actually, n_keys != n_word_chars. n_keys = 36.
@@ -1586,9 +1608,9 @@ def get_transformer_bigger_weighted__v3(device = None,
 
 
 
-def get_transformer_bigger_nearest__v3(device = None,
-                                       weights_path = None,
-                                       n_coord_feats = 6):
+def get_transformer_bigger_nearest_and_traj__v3(device = None,
+                                                weights_path = None,
+                                                n_coord_feats = 6):
     device = torch.device(
         device 
         or 'cuda' if torch.cuda.is_available() else 'cpu')
@@ -1632,6 +1654,6 @@ MODEL_GETTERS_DICT = {
     "v2_nearest_transformer_bigger": get_transformer_bigger_nearest__v2,  # has layer norm
 
 
-    "v3_weighted_transformer_bigger": get_transformer_bigger_weighted__v3,  # has layer norm
-    "v3_nearest_transformer_bigger": get_transformer_bigger_nearest__v3,  # has layer norm
+    "v3_weighted_and_traj_transformer_bigger": get_transformer_bigger_weighted_and_traj__v3,  # has layer norm
+    "v3_nearest_and_traj_transformer_bigger": get_transformer_bigger_nearest_and_traj__v3,  # has layer norm
 }
