@@ -1512,7 +1512,8 @@ def get_word_char_embedding_model_bigger__v3(d_model: int, n_word_chars: int,
 
 
 def _get_transformer_bigger__v3(input_embedding: nn.Module,
-                                device = None):
+                                device = None,
+                                n_coord_feats = 6):
     CHAR_VOCAB_SIZE = 37  # = len(word_char_tokenizer.char_to_idx)
     MAX_CURVES_SEQ_LEN = 299
     MAX_OUT_SEQ_LEN = 35  # word_char_tokenizer.max_word_len - 1
@@ -1544,8 +1545,7 @@ def _get_transformer_bigger__v3(input_embedding: nn.Module,
     decoder = get_transformer_decoder_backbone_bigger__v3()
 
 
-    return partial(
-        EncoderDecoderTransformerLike,
+    return EncoderDecoderTransformerLike(
         input_embedding, word_char_embedding_model, encoder, decoder, out
     )
 
@@ -1553,16 +1553,16 @@ def _get_transformer_bigger__v3(input_embedding: nn.Module,
 
 
 def get_transformer_bigger_weighted__v3(device = None, 
-                                        weights_path = None):
+                                        weights_path = None,
+                                        n_coord_feats = 6):
     CHAR_VOCAB_SIZE = 37  # = len(word_char_tokenizer.char_to_idx)
     MAX_CURVES_SEQ_LEN = 299
     # Actually, n_keys != n_word_chars. n_keys = 36.
     # It's legacy. It should not affect the model performace though.
     n_keys = CHAR_VOCAB_SIZE
 
-    key_emb_size = 122
-    # n_coord_feats = 6
-    # d_model = n_coord_feats + key_emb_size
+    d_model = 128
+    key_emb_size = d_model - n_coord_feats
 
     device = torch.device(
         device 
@@ -1572,7 +1572,7 @@ def get_transformer_bigger_weighted__v3(device = None,
         n_keys=n_keys, key_emb_size=key_emb_size, 
         max_len=MAX_CURVES_SEQ_LEN, device = device, dropout=0.1)
     
-    model = _get_transformer_bigger__v3(input_embedding, device)
+    model = _get_transformer_bigger__v3(input_embedding, device, n_coord_feats)
 
     if weights_path:
         model.load_state_dict(
@@ -1587,16 +1587,20 @@ def get_transformer_bigger_weighted__v3(device = None,
 
 
 def get_transformer_bigger_nearest__v3(device = None,
-                                       weights_path = None):
+                                       weights_path = None,
+                                       n_coord_feats = 6):
     device = torch.device(
         device 
         or 'cuda' if torch.cuda.is_available() else 'cpu')
 
+    d_model = 128
+    key_emb_size = d_model - n_coord_feats
+
     input_embedding = SeparateTrajAndNearestEmbeddingWithPos(
-        n_keys=37, key_emb_size=122, 
+        n_keys=37, key_emb_size=key_emb_size, 
         max_len=299, device = device, dropout=0.1)
     
-    model = _get_transformer_bigger__v3(input_embedding, device)
+    model = _get_transformer_bigger__v3(input_embedding, device, n_coord_feats)
 
     if weights_path:
         model.load_state_dict(
