@@ -1422,7 +1422,22 @@ def get_transformer_bigger_nearest__v2(device = None,
 ################################################################################
 
 
+def _get_mask(max_seq_len: int):
+    """
+    Returns a mask for the decoder transformer.
+    """
+    mask = torch.triu(torch.ones(max_seq_len, max_seq_len), diagonal=1)
+    mask = mask.masked_fill(mask == 1, float('-inf'))
+    return mask
+
+
 class EncoderDecoderTransformerLike(nn.Module):
+    def _get_mask(self, max_seq_len: int):
+        """
+        Returns a mask for the decoder transformer.
+        """
+        return _get_mask(max_seq_len)
+
     def __init__(self, 
                  enc_in_emb_model: nn.Module, 
                  dec_in_emb_model: nn.Module, 
