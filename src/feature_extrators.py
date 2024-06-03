@@ -176,6 +176,61 @@ class DistancesGetter:
 
 
 
+
+
+
+
+def get_avg_half_key_diag(grid: dict, 
+                          allowed_keys: List[str] = tuple(DEFAULT_ALLOWED_KEYS)) -> float:
+    hkd_list = []
+    for key in grid['keys']:
+        label = get_kb_label(key)
+        if label not in allowed_keys:
+            continue
+        hitbox = key['hitbox']
+        kw, kh = hitbox['w'], hitbox['h']
+        half_key_diag = (kw**2 + kh**2)**0.5 / 2
+        hkd_list.append(half_key_diag)
+    return sum(hkd_list) / len(hkd_list)
+
+    
+def get_gname_to_half_key_diag(gname_to_grid: Dict[str, dict], 
+                               allowed_keys: List[str] = tuple(DEFAULT_ALLOWED_KEYS)
+                               ) -> Dict[str, float]:
+    result = {gname: None for gname in gname_to_grid}
+    for gname, grid in gname_to_grid.items():
+        result[gname] = get_avg_half_key_diag(grid, allowed_keys)
+    return result
+
+
+
+
+
+class KeyWeightsGetter:
+    def __init__(self, 
+                 grid_name_to_dists_lookup: Dict[str, DistancesLookup],
+                 grid_name_to_half_key_diag: Dict[str, float],
+                 weights_function: Callable,
+                 dtype: torch.dtype = torch.float32,
+                 ) -> None:
+        self.distances_getter = DistancesGetter(grid_name_to_dists_lookup, dtype)
+        self.weights_function = weights_function
+        self.grid_name_to_half_key_diag = grid_name_to_half_key_diag
+        self.dtype = dtype
+
+    def __call__(self, X: Iterable, Y: Iterable, grid_name: str
+                 ) -> Tensor:
+        distances = self.distances_getter(X, Y, grid_name)
+        mask = (distances < 0)
+        distances.masked_fill_(mask=mask, value = float('inf'))
+        half_key_diag = self.grid_name_to_half_key_diag[grid_name]
+        weights = self.weights_function(distances, half_key_diag)
+        weights.masked_fill_(mask=mask, value=0)
+        return weights
+
+
+
+
 #########################################################################
 ########################  EncoderFeaturesGetters ########################
 #########################################################################
@@ -232,8 +287,7 @@ class EncoderFeaturesGetter_NearestKbTokensAndTrajFeats(EncoderFeaturesGetter):
         return traj_feats, kb_tokens
 
 
-
-class EncoderFeaturesGetter_Weighted:
+class EncoderFeaturesGetter_KbKeyWeightsAndTrajFeats(EncoderFeaturesGetter):
     def __init__(self,
                  grid_name_to_dist_lookup: Dict[str, DistancesLookup],
                  grid_name_to_grid: Dict[str, dict],
@@ -396,27 +450,7 @@ def weights_function_sigmoid_normalized_v1(distances: Tensor,
 
 
 
-class KeyWeightsGetter:
-    def __init__(self, 
-                 grid_name_to_dists_lookup: Dict[str, DistancesLookup],
-                 grid_name_to_half_key_diag: Dict[str, float],
-                 weights_function: Callable,
-                 dtype: torch.dtype = torch.float32,
-                 ) -> None:
-        self.distances_getter = DistancesGetter(grid_name_to_dists_lookup, dtype)
-        self.weights_function = weights_function
-        self.grid_name_to_half_key_diag = grid_name_to_half_key_diag
-        self.dtype = dtype
 
-    def __call__(self, X: Iterable, Y: Iterable, grid_name: str
-                 ) -> Tensor:
-        distances = self.distances_getter(X, Y, grid_name)
-        mask = (distances < 0)
-        distances.masked_fill_(mask=mask, value = float('inf'))
-        half_key_diag = self.grid_name_to_half_key_diag[grid_name]
-        weights = self.weights_function(distances, half_key_diag)
-        weights.masked_fill_(mask=mask, value=0)
-        return weights
         
 
 
@@ -424,28 +458,6 @@ class KeyWeightsGetter:
 
 
 
-
-def get_avg_half_key_diag(grid: dict, 
-                          allowed_keys: List[str] = tuple(DEFAULT_ALLOWED_KEYS)) -> float:
-    hkd_list = []
-    for key in grid['keys']:
-        label = get_kb_label(key)
-        if label not in allowed_keys:
-            continue
-        hitbox = key['hitbox']
-        kw, kh = hitbox['w'], hitbox['h']
-        half_key_diag = (kw**2 + kh**2)**0.5 / 2
-        hkd_list.append(half_key_diag)
-    return sum(hkd_list) / len(hkd_list)
-
-    
-def get_gname_to_half_key_diag(gname_to_grid: Dict[str, dict], 
-                               allowed_keys: List[str] = tuple(DEFAULT_ALLOWED_KEYS)
-                               ) -> Dict[str, float]:
-    result = {gname: None for gname in gname_to_grid}
-    for gname, grid in gname_to_grid.items():
-        result[gname] = get_avg_half_key_diag(grid, allowed_keys)
-    return result
 
 
 
@@ -534,7 +546,8 @@ def get_gridname_to_out_of_bounds_coords_dict(
         totals: Iterable[Optional[int]] = None
         ) -> Dict[str, Set[Tuple[int, int]]]:
     """
-    Returns a dictionary with grid names as keys and lists of out of bounds coordinates as values.
+    Returns a dictionary with grid names as keys and
+    lists of out of bounds coordinates present in the dataset as values.
     """
     totals = totals or [None] * len(data_paths)
     
@@ -596,31 +609,40 @@ def update_out_of_bounds_with_noise(
         
 
 
+def get_extra_coords_dict(ds_paths_list: List[str], 
+                          gridname_to_wh: Dict[str, Tuple[int, int]],
+                          uniform_noise_range: int = 0,
+                          totals: Optional[List[int]] = None
+                          ) -> Dict[str, Set[Tuple[int, int]]]:
+    print("Accumulating out-of-bounds coordinates...")
+    gname_to_out_of_bounds = get_gridname_to_out_of_bounds_coords_dict(
+        ds_paths_list, 
+        gridname_to_wh = gridname_to_wh,
+        totals=totals
+    )
+
+    print("augmenting gname_to_out_of_bounds")
+    gname_to_out_of_bounds = update_out_of_bounds_with_noise(
+        noise_min = -uniform_noise_range, noise_max=uniform_noise_range+1,
+        gname_to_out_of_bounds = gname_to_out_of_bounds, gridname_to_wh = gridname_to_wh,
+    )
+    
+    return gname_to_out_of_bounds
+
+
+
 def get_traj_and_nearest_key_transform(gname_to_grid: Dict[str, dict],
                                        char_tokenizer: CharLevelTokenizerv2,
                                        kb_tokenizer: KeyboardTokenizerv1,
                                        gname_to_wh: Dict[str, Tuple[int, int]],
-                                       uniform_noise_range: int = 0,
-                                       ds_paths_list: Optional[List[str]] = None,
-                                       totals: Tuple[Optional[int], Optional[int]] = (None, None),
+                                       extra_coords_dict: Optional[Dict[str, Set[Tuple[int, int]]]] = None,
                                        ) -> Callable:
-    if ds_paths_list is not None:
-        print("Accumulating out-of-bounds coordinates...")
-        gname_to_out_of_bounds = get_gridname_to_out_of_bounds_coords_dict(
-            ds_paths_list, 
-            gridname_to_wh = gname_to_wh,
-            totals=totals
-        )
-
-        print("augmenting gname_to_out_of_bounds")
-        gname_to_out_of_bounds = update_out_of_bounds_with_noise(
-            noise_min = -uniform_noise_range, noise_max=uniform_noise_range+1,
-            gname_to_out_of_bounds = gname_to_out_of_bounds, gridname_to_wh = gname_to_wh,
-        )
-    else:
+    
+    gname_to_out_of_bounds = extra_coords_dict
+    if get_extra_coords_dict is None:
         print("Warning: no ds_paths_list provided. gname_to_out_of_bounds will be empty.")
         gname_to_out_of_bounds = {gname: set() for gname in gname_to_wh.keys()}
-
+   
 
     print("Creating ExtendedNearestKeyLookups...")
     gridname_to_nkl = {
@@ -668,16 +690,6 @@ def get_traj_feats_and_distances_transform(gname_to_grid: Dict[str, dict],
             dtype=torch.int64
         )
     )
-
-    # grid_name_to_grid=gname_to_grid,
-    # grid_name_to_dist_lookup=grid_name_to_dist_lookup,
-    # word_tokenizer=char_tokenizer,
-    # include_time=False,
-    # include_velocities=True,
-    # include_accelerations=True,
-    # weights_func=weights_func,
-    # word_tokens_dtype=torch.int64,
-
 
     return full_transform
 
