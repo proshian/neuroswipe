@@ -31,7 +31,7 @@ def distance(dots: np.ndarray, centers: np.ndarray) -> np.ndarray:
     # (K, 2) -> (1, 1, ..., 1, K, 2), 
     centers = centers.reshape([1]*(dots.ndim - 1) + list(centers.shape))
     dots = np.expand_dims(dots, -2)  # (*DOT_DIMS, 1, 2)
-    return np.power((centers - dots), 2).sum(axis=-1)
+    return np.sqrt(np.power((centers - dots), 2).sum(axis=-1))
 
 
 class DistancesLookup:

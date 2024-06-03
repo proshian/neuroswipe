@@ -177,7 +177,7 @@ class DistancesGetter:
 
 
 
-
+####################   Related to weights aquiring   ####################
 
 
 def get_avg_half_key_diag(grid: dict, 
@@ -204,8 +204,6 @@ def get_gname_to_half_key_diag(gname_to_grid: Dict[str, dict],
 
 
 
-
-
 class KeyWeightsGetter:
     def __init__(self, 
                  grid_name_to_dists_lookup: Dict[str, DistancesLookup],
@@ -223,18 +221,126 @@ class KeyWeightsGetter:
         distances = self.distances_getter(X, Y, grid_name)
         mask = (distances < 0)
         distances.masked_fill_(mask=mask, value = float('inf'))
+        distances_scaled = distances / half_key_diag
         half_key_diag = self.grid_name_to_half_key_diag[grid_name]
-        weights = self.weights_function(distances, half_key_diag)
+        weights = self.weights_function(distances_scaled)
         weights.masked_fill_(mask=mask, value=0)
         return weights
 
 
 
+########################### Weights functions ###########################
+
+def weights_function_v1(distances: Tensor, bias = 4, scale = 1.8) -> Tensor:
+    """
+    Arguments:
+    ----------
+    distances: Tensor
+        A 2d tensor where i-th element is a vector of distances 
+        for i-th swipe dot and each of keyboard keys. It's supposed
+        that distances are measured in half_key_diagonals 
+        (distances = raw_distances / half_key_diagonal)
+
+    $$f(x) = \frac{1}{1+e^{\frac{s \cdot x}{key\_radius} - b}}$$
+    b = bias = 4
+    s = scale = 1.8
+    """
+    
+    # return 1 / (1 + torch.exp(1.8 * distances - 4))
+
+    #! It may be a good idea to move division by half_key_diag outside
+    # this function.  The division is just a scaling of distances
+    # so that they are not in pixels but use half_key_diag as a unit. 
+    sigmoid_input = distances * (-scale) + bias
+    return torch.nn.functional.sigmoid(sigmoid_input)
+
+
+def weights_function_v1_softmax(distances: Tensor, bias = 4, scale = 1.8) -> Tensor:
+    """
+    Arguments:
+    ----------
+    distances: Tensor
+        A 2d tensor where i-th element is a vector of distances 
+        for i-th swipe dot and each of keyboard keys. It's supposed
+        that distances are measured in half_key_diagonals 
+        (distances = raw_distances / half_key_diagonal)
+    """
+    mask = torch.isinf(distances)
+    sigmoid_input = distances * (-scale) + bias
+    weights = torch.nn.functional.sigmoid(sigmoid_input)
+    # -inf to zero out unpresent values and have a sum of one 
+    weights.masked_fill_(mask, float('-inf'))
+    return torch.nn.functional.softmax(weights, dim=1)
+
+
+
+def weights_function_sigmoid_normalized_v1(distances: Tensor, 
+                                           bias = 4, scale = 1.8) -> Tensor:
+    """
+    Arguments:
+    ----------
+    distances: Tensor
+        A 2d tensor where i-th element is a vector of distances 
+        for i-th swipe dot and each of keyboard keys. It's supposed
+        that distances are measured in half_key_diagonals 
+        (distances = raw_distances / half_key_diagonal)
+    
+    $$f(x) = \frac{1}{1+e^{\frac{s \cdot x}{key\_radius} - b}}$$
+    b = bias = 4
+    s = scale = 1.8
+    """
+    #! It may be a good idea to move division by half_key_diag outside
+    # this function.  The division is just a scaling of distances
+    # so that they are not in pixels but use half_key_diag as a unit. 
+    sigmoid_input = distances * (-scale) + bias
+    sigmoidal_weights = torch.nn.functional.sigmoid(sigmoid_input)
+    weights = sigmoidal_weights / sigmoidal_weights.sum(dim=1, keepdim=True)
+    return weights
+
+
+###################    util transforms    ###################
+
+class SequentialTransform:
+    def __init__(self, transforms) -> None:
+        self.transforms = transforms
+    
+    def __call__(self, data):
+        for transform in self.transforms:
+            data = transform(data)
+        return data
+
+
+class TokensTypeCastTransform:
+    def __call__(self, data: FullTransformResultType) -> FullTransformResultType:
+        (traj_feats, kb_tokens, decoder_in), decoder_out = data
+        # Embedding layer accepts int32, but not smaller types
+        kb_tokens = kb_tokens.to(torch.int32)
+        decoder_in = decoder_in.to(torch.int32)
+        # CELoss accepts int64 only
+        decoder_out = decoder_out.to(torch.int64)
+        return (traj_feats, kb_tokens, decoder_in), decoder_out
+
+
+
+#########################################################################
+########################      Augmentations     #########################
+#########################################################################
+
+class RandIntToTrajTransform:
+    def __init__(self, min_ = -3, max_ = 3) -> None:
+        self.min = min_
+        self.max = max_
+        
+    def __call__(self, data):
+        X, Y, T, grid_name, tgt_word = data
+        X = np.array(X, dtype = int) + np.random.randint(self.min, self.max, (len(X),))
+        Y = np.array(Y, dtype = int) + np.random.randint(self.min, self.max, (len(Y),))
+        return X, Y, T, grid_name, tgt_word
+
 
 #########################################################################
 ########################  EncoderFeaturesGetters ########################
 #########################################################################
-
 
 class EncoderFeaturesGetter:
     def __call__(self, X: array, Y: array, T: array, grid_name: str) -> EncoderInType:
@@ -364,149 +470,6 @@ class DecoderInputOutputGetter:
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-
-
-
-
-def weights_function_v1(distances: Tensor, half_key_diag, bias = 4, scale = 1.8) -> Tensor:
-    """
-    Arguments:
-    ----------
-    distances: Tensor
-        A 2d tensor where i-th element is a vector of distances 
-        for i-th swipe dot and each of keyboard keys.
-
-    $$f(x) = \frac{1}{1+e^{\frac{s \cdot x}{key\_radius} - b}}$$
-    b = bias = 4
-    s = scale = 1.8
-    """
-    
-    # return 1 / (1 + torch.exp(1.8 * distances - 4))
-
-    # Sqrt beacuse currently distances is squared euclidian distance
-
-    #! It may be a good idea to move division by half_key_diag outside
-    # this function.  The division is just a scaling of distances
-    # so that they are not in pixels but use half_key_diag as a unit. 
-    sigmoid_input = distances.sqrt() / half_key_diag * (-scale) + bias
-    return torch.nn.functional.sigmoid(sigmoid_input)
-
-
-def weights_function_v1_softmax(distances: Tensor, half_key_diag, bias = 4, scale = 1.8) -> Tensor:
-    mask = torch.isinf(distances)
-    sigmoid_input = distances.sqrt() / half_key_diag * (-scale) + bias
-    weights = torch.nn.functional.sigmoid(sigmoid_input)
-    # -inf to zero out unpresent values and have a sum of one 
-    weights.masked_fill_(mask, float('-inf'))
-    return torch.nn.functional.softmax(weights, dim=1)
-
-
-
-def weights_function_sigmoid_normalized_v1(distances: Tensor, 
-                                           half_key_diag,
-                                           bias = 4, scale = 1.8) -> Tensor:
-    """
-    Arguments:
-    ----------
-    distances: Tensor
-        A 2d tensor where i-th element is a vector of distances 
-        for i-th swipe dot and each of keyboard keys.
-
-    $$f(x) = \frac{1}{1+e^{\frac{s \cdot x}{key\_radius} - b}}$$
-    b = bias = 4
-    s = scale = 1.8
-    """
-    
-    # return 1 / (1 + torch.exp(1.8 * distances - 4))
-
-    # Sqrt beacuse currently distances is squared euclidian distance
-
-    #! It may be a good idea to move division by half_key_diag outside
-    # this function.  The division is just a scaling of distances
-    # so that they are not in pixels but use half_key_diag as a unit. 
-    sigmoid_input = distances.sqrt() / half_key_diag * (-scale) + bias
-    sigmoidal_weights = torch.nn.functional.sigmoid(sigmoid_input)
-    weights = sigmoidal_weights / sigmoidal_weights.sum(dim=1, keepdim=True)
-    return weights
-
-
-
-
-        
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-class TokensTypeCastTransform:
-    def __call__(self, data: FullTransformResultType) -> FullTransformResultType:
-        (traj_feats, kb_tokens, decoder_in), decoder_out = data
-        # Embedding layer accepts int32, but not smaller types
-        kb_tokens = kb_tokens.to(torch.int32)
-        decoder_in = decoder_in.to(torch.int32)
-        # CELoss accepts int64 only
-        decoder_out = decoder_out.to(torch.int64)
-        return (traj_feats, kb_tokens, decoder_in), decoder_out
-
-
-
-
-
-
-
-
-
-###################    util transforms    ###################
-
-class SequentialTransform:
-    def __init__(self, transforms) -> None:
-        self.transforms = transforms
-    
-    def __call__(self, data):
-        for transform in self.transforms:
-            data = transform(data)
-        return data
-
-
-
-
-
-
-
-
-
-
 ###################    Full transforms aquiring    ###################
 
 
@@ -518,20 +481,6 @@ from tqdm.auto import tqdm
 
 from grid_processing_utils import get_grid
 from nearest_key_lookup import ExtendedNearestKeyLookup
-
-
-
-class RandIntToTrajTransform:
-    def __init__(self, min_ = -3, max_ = 3) -> None:
-        self.min = min_
-        self.max = max_
-        
-    def __call__(self, data):
-        X, Y, T, grid_name, tgt_word = data
-        X = np.array(X, dtype = int) + np.random.randint(self.min, self.max, (len(X),))
-        Y = np.array(Y, dtype = int) + np.random.randint(self.min, self.max, (len(Y),))
-        return X, Y, T, grid_name, tgt_word
-    
 
 
 
@@ -680,7 +629,7 @@ def get_traj_feats_and_distances_transform(gname_to_grid: Dict[str, dict],
     }
 
     full_transform = FullTransform(
-        encoder_in_getter=EncoderFeaturesGetter_Weighted(
+        encoder_in_getter=EncoderFeaturesGetter_KbKeyWeightsAndTrajFeats(
             grid_name_to_dist_lookup, gname_to_grid,
             include_time=False, include_velocities=True,
             include_accelerations=True, weights_func=weights_func

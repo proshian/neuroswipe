@@ -163,18 +163,16 @@ def weights_function_v1(distances: Tensor, half_key_diag, bias = 4, scale = 1.8)
     
     # return 1 / (1 + torch.exp(1.8 * distances - 4))
 
-    # Sqrt beacuse currently distances is squared euclidian distance
-
     #! It may be a good idea to move division by half_key_diag outside
     # this function.  The division is just a scaling of distances
     # so that they are not in pixels but use half_key_diag as a unit. 
-    sigmoid_input = distances.sqrt() / half_key_diag * (-scale) + bias
+    sigmoid_input = distances / half_key_diag * (-scale) + bias
     return torch.nn.functional.sigmoid(sigmoid_input)
 
 
 def weights_function_v1_softmax(distances: Tensor, half_key_diag, bias = 4, scale = 1.8) -> Tensor:
     mask = torch.isinf(distances)
-    sigmoid_input = distances.sqrt() / half_key_diag * (-scale) + bias
+    sigmoid_input = distances / half_key_diag * (-scale) + bias
     weights = torch.nn.functional.sigmoid(sigmoid_input)
     # -inf to zero out unpresent values and have a sum of one 
     weights.masked_fill_(mask, float('-inf'))
@@ -199,12 +197,10 @@ def weights_function_sigmoid_normalized_v1(distances: Tensor,
     
     # return 1 / (1 + torch.exp(1.8 * distances - 4))
 
-    # Sqrt beacuse currently distances is squared euclidian distance
-
     #! It may be a good idea to move division by half_key_diag outside
     # this function.  The division is just a scaling of distances
     # so that they are not in pixels but use half_key_diag as a unit. 
-    sigmoid_input = distances.sqrt() / half_key_diag * (-scale) + bias
+    sigmoid_input = distances / half_key_diag * (-scale) + bias
     sigmoidal_weights = torch.nn.functional.sigmoid(sigmoid_input)
     weights = sigmoidal_weights / sigmoidal_weights.sum(dim=1, keepdim=True)
     return weights
@@ -776,4 +772,4 @@ def get_transforms(gridname_to_grid_path: str,
         train_transform = val_transform
 
     return train_transform, val_transform
-                
+    

@@ -13,7 +13,7 @@ from ns_tokenizers import ALL_CYRILLIC_LETTERS_ALPHABET_ORD
 from dataset import RawDatasetEl 
 from grid_processing_utils import get_gname_to_wh, get_kb_label
 
-from feature_extrators import (NearestKbTokensGetter, GetItemTransformInput, 
+from feature_extractors import (NearestKbTokensGetter, GetItemTransformInput, 
                            FullTransformResultType, DecoderInputOutputGetter,
                            TrajFeatsGetter)
 

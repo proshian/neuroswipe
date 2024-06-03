@@ -13,6 +13,14 @@
 
 
 
+
+
+* Может быть, поменять в distances_lookup значение расстояния для отсутствующих токенов с ```-1``` на ```float('inf')```
+* Может быть брать sqrt в distances_lookup а не в features_extractor
+* Меняет ли строчка ```weights.masked_fill_(mask=mask, value=0)``` что-то? По идее не должна
+
+
+
 # После окончания
 * Переписать все модели в виде v2_model, описать абстрактуную версию для пояснения структуры всех моеделей, также пояснить, что kwargs зло, поэтому абстрактно сделать не мог
 * А лучше сделать Encoder и Decoder модели с унифицированным интерфейсом!!! Это будет TransformerLikeEncoderDecoder. Получает на вход классы, как текущаая имплементация AbstractEncoderDecoder, но вызывает encoder и decoder с конкретными параметрами. Нужно просто добиться, чтобы любой класс из Transformer-Like имел одинаковый интерфейc. То есть TransformerEncoder и ConformerEncoder имели одинаковые интерфейсы; Также будет RNNLikeEncoderDecoder
