@@ -1573,6 +1573,15 @@ def _get_transformer_bigger__v3(input_embedding: nn.Module,
 
 
 
+def _set_state(model, weights_path, device):
+    if weights_path:
+        model.load_state_dict(
+            torch.load(weights_path, map_location = device))
+    model = model.to(device)
+    model = model.eval()
+    return model
+
+
 
 def get_transformer_bigger_weighted_and_traj__v3(device = None, 
                                                  weights_path = None,
@@ -1596,12 +1605,7 @@ def get_transformer_bigger_weighted_and_traj__v3(device = None,
     
     model = _get_transformer_bigger__v3(input_embedding, device, n_coord_feats)
 
-    if weights_path:
-        model.load_state_dict(
-            torch.load(weights_path, map_location = device))
-
-    model = model.to(device)
-    model = model.eval()
+    model = _set_state(model, weights_path, device)
 
     return model
 
@@ -1624,16 +1628,30 @@ def get_transformer_bigger_nearest_and_traj__v3(device = None,
     
     model = _get_transformer_bigger__v3(input_embedding, device, n_coord_feats)
 
-    if weights_path:
-        model.load_state_dict(
-            torch.load(weights_path, map_location = device))
-
-    model = model.to(device)
-    model = model.eval()
+    model = _set_state(model, weights_path, device)
 
     return model
 
 
+
+
+
+def get_transformer_bigger_nearest_only__v3(device = None,
+                                            weights_path = None):
+    device = torch.device(
+        device 
+        or 'cuda' if torch.cuda.is_available() else 'cpu')
+
+    d_model = 128
+
+    input_embedding = NearestEmbeddingWithPos(
+        n_elements=37, dim=d_model, max_len=299, device=device, dropout=0.1)
+    
+    model = _get_transformer_bigger__v3(input_embedding, device)
+
+    model = _set_state(model, weights_path, device)
+
+    return model
 
 
 
@@ -1656,4 +1674,5 @@ MODEL_GETTERS_DICT = {
 
     "v3_weighted_and_traj_transformer_bigger": get_transformer_bigger_weighted_and_traj__v3,  # has layer norm
     "v3_nearest_and_traj_transformer_bigger": get_transformer_bigger_nearest_and_traj__v3,  # has layer norm
+    "v3_nearest_only_transformer_bigger": get_transformer_bigger_nearest_only__v3,  # has layer norm
 }
