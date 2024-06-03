@@ -2,7 +2,7 @@
 The dataset by default returns a tuple of 5 elements:
 (X: array, Y: array, T: array, grid_name: str, tgt_word: str)
 
-Transforms defined in this module are used 
+Feature extractors defined in this module are used 
 to convert this tuple a tuple (model_in, model_out)
 """
 

@@ -1,3 +1,4 @@
+# features_extractors.py is the updated version of transforms.py
 """
 The dataset by default returns a tuple of 5 elements:
 (X: array, Y: array, T: array, grid_name: str, tgt_word: str)
