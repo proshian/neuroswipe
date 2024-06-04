@@ -256,3 +256,113 @@ class CollateFn:
                           traj_pad_mask, word_pad_mask)
 
         return transformer_in, dec_out
+
+
+
+class CollateFnV2:
+    def __init__(self, batch_first: bool, word_pad_idx: int, 
+                 swipe_pad_idx: int = 0) -> None:
+        self.word_pad_idx = word_pad_idx
+        self.batch_first = batch_first
+        self.swipe_pad_idx = swipe_pad_idx
+
+    def _assert_encoder_in_type_and_shape(self, encoder_in_example):
+        assert len(encoder_in_example) == 2
+        for el in encoder_in_example:
+            assert isinstance(el, torch.Tensor), \
+                f"Expected torch.Tensor, got {type(el)}"
+        
+    def _is_encoder_input_tuple(self, batch):
+        encoder_in_example = batch[0][0][0]
+        if isinstance(encoder_in_example, tuple):
+            self._assert_encoder_in_type_and_shape(encoder_in_example)
+            return True
+        elif isinstance(encoder_in_example, torch.Tensor):
+            return False
+        else:
+            raise ValueError(f"Unknown type of encoder input {type(batch[0][0])}")
+    
+    def __call__(self, batch: list):
+        """
+        Given a List where each row is 
+        ((encoder_in_sample, decoder_in_sample), decoder_out_sample) 
+        returns a tuple of two elements:
+        1. (encoder_in, decoder_in, swipe_pad_mask, word_pad_mask)
+        2. decoder_out
+
+        Arguments:
+        ----------
+        batch: list of tuples:
+            ((encoder_in, dec_in_char_seq), dec_out_char_seq),
+            where encoder_in may be a tuple of torch tensors
+            (ex. ```(traj_feats, nearest_kb_tokens)```)
+            or a single tensor (ex. ```nearest_kb_tokens```)
+
+
+        Returns:
+        --------
+        transformer_in: tuple of torch tensors:
+            1. (enc_in, dec_in, swipe_pad_mask, word_pad_mask),
+                where enc_in can be either a single tensor or a tuple
+                of two tensors (depends on type of input)
+                Each element is a torch tensor of shape:
+                - enc_in: either (curve_len, batch_size, n_feats) or
+                    ((curve_len, batch_size, n_feats1), (curve_len, batch_size, n_feats2))
+                - dec_in: (chars_seq_len - 1, batch_size)
+                - swipe_pad_mask: (batch_size, curve_len)
+                - word_pad_mask: (batch_size, chars_seq_len - 1, )
+        """
+        is_encoder_input_tuple = self._is_encoder_input_tuple(batch)
+        dec_in_no_pad = []
+        dec_out_no_pad = []
+
+        encoder_in_no_pad = ([], []) if is_encoder_input_tuple else []
+
+        for row in batch:
+            x_smpl, decoder_out_smpl = row
+            encoder_in_smpl, decoder_in_smpl = x_smpl
+            if is_encoder_input_tuple:
+                encoder_in0, encoder_in1 = encoder_in_smpl
+                encoder_in_no_pad_0, encoder_in_no_pad_1 = encoder_in_no_pad
+                encoder_in_no_pad_0.append(encoder_in0)
+                encoder_in_no_pad_1.append(encoder_in1)
+            else:
+                encoder_in_no_pad.append(encoder_in)
+
+            dec_in_no_pad.append(decoder_in_smpl)
+            dec_out_no_pad.append(decoder_out_smpl)
+
+        if is_encoder_input_tuple:
+            encoder_in = tuple(pad_sequence(encoder_in_no_pad_i, batch_first=self.batch_first, 
+                                       padding_value=self.swipe_pad_idx)
+                          for encoder_in_no_pad_i in encoder_in_no_pad)
+        else:
+            encoder_in = pad_sequence(encoder_in_no_pad, batch_first=self.batch_first,
+                                      padding_value=self.swipe_pad_idx)
+
+        dec_out = pad_sequence(dec_out_no_pad, batch_first=self.batch_first,
+                                        padding_value=self.word_pad_idx)
+        
+        dec_in = pad_sequence(dec_in_no_pad, batch_first=self.batch_first,
+                                        padding_value=self.word_pad_idx)
+        
+        word_pad_mask = dec_in == self.word_pad_idx
+        if not self.batch_first:
+            word_pad_mask = word_pad_mask.T  # word_pad_mask is always batch first
+
+        encoder_in_el = encoder_in[0] if is_encoder_input_tuple else encoder_in
+        max_curve_len = encoder_in_el.shape[1] if self.batch_first else encoder_in_el.shape[0]
+        encoder_in_no_pad_el = encoder_in_no_pad[0] if is_encoder_input_tuple else encoder_in_no_pad
+        encoder_lens = torch.tensor([len(x) for x in encoder_in_no_pad_el])
+
+        # Берем матрицу c len(encoder_lens) строками вида
+        # [0, 1, ... , max_curve_len - 1].  Каждый элемент i-ой строки
+        # сравниваем с длиной i-ой траектории.  Получится матрица, где True
+        # только на позициях, больших, чем длина соответствующей траектории.
+        # (batch_size, max_curve_len)
+        encoder_pad_mask = torch.arange(max_curve_len).expand(
+            len(encoder_lens), max_curve_len) >= encoder_lens.unsqueeze(1)
+        
+        transformer_in = (encoder_in, dec_in, encoder_pad_mask, word_pad_mask)
+        
+        return transformer_in, dec_out
