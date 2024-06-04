@@ -241,7 +241,7 @@ class CollateFn:
         if not self.batch_first:
             word_pad_mask = word_pad_mask.T  # word_pad_mask is always batch first
 
-        max_curve_len = traj_feats.shape[0]
+        max_curve_len = traj_feats.shape[1] if self.batch_first else traj_feats.shape[0]
         traj_lens = torch.tensor([len(x) for x in traj_feats_no_pad])
 
         # Берем матрицу c len(traj_lens) строками вида 
