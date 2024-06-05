@@ -688,6 +688,7 @@ class NearestEmbeddingWithPos(nn.Module):
         Number of tokenized keyboard keys
     """
     def __init__(self, n_elements, dim, max_len, device, dropout) -> None:
+        super().__init__()
         self.key_emb = nn.Embedding(n_elements, dim)
         self.pos_encoder = PositionalEncoding(dim, max_len, device)
         self.dropout = nn.Dropout(dropout)
@@ -1600,7 +1601,7 @@ def _set_state(model, weights_path, device):
 
 def get_transformer_bigger_weighted_and_traj__v3(device = None, 
                                                  weights_path = None,
-                                                 n_coord_feats = 6):
+                                                 n_coord_feats = 6) -> EncoderDecoderTransformerLike:
     CHAR_VOCAB_SIZE = 37  # = len(word_char_tokenizer.char_to_idx)
     MAX_CURVES_SEQ_LEN = 299
     # Actually, n_keys != n_word_chars. n_keys = 36.
@@ -1629,7 +1630,7 @@ def get_transformer_bigger_weighted_and_traj__v3(device = None,
 
 def get_transformer_bigger_nearest_and_traj__v3(device = None,
                                                 weights_path = None,
-                                                n_coord_feats = 6):
+                                                n_coord_feats = 6) -> EncoderDecoderTransformerLike:
     device = torch.device(
         device 
         or 'cuda' if torch.cuda.is_available() else 'cpu')
@@ -1652,7 +1653,9 @@ def get_transformer_bigger_nearest_and_traj__v3(device = None,
 
 
 def get_transformer_bigger_nearest_only__v3(device = None,
-                                            weights_path = None):
+                                            weights_path = None,
+                                            n_coord_feats = 0) -> EncoderDecoderTransformerLike:
+    assert n_coord_feats == 0, f"n_coord_feats is {n_coord_feats}, but should be 0"
     device = torch.device(
         device 
         or 'cuda' if torch.cuda.is_available() else 'cpu')
