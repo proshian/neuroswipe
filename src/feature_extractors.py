@@ -222,8 +222,8 @@ class KeyWeightsGetter:
         distances = self.distances_getter(X, Y, grid_name)
         mask = (distances < 0)
         distances.masked_fill_(mask=mask, value = float('inf'))
-        distances_scaled = distances / half_key_diag
         half_key_diag = self.grid_name_to_half_key_diag[grid_name]
+        distances_scaled = distances / half_key_diag
         weights = self.weights_function(distances_scaled)
         weights.masked_fill_(mask=mask, value=0)
         return weights
