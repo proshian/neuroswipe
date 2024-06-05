@@ -711,26 +711,30 @@ def get_val_transform(gridname_to_grid_path: str,
 
 
 def get_transforms(gridname_to_grid_path: str,
-                   grid_names: List[str],
-                   transform_name: str,
-                   char_tokenizer: KeyboardTokenizerv1,
-                   uniform_noise_range: int = 0,
-                   dist_weights_func: Optional[Callable] = None,
-                   ds_paths_list: Optional[List[str]] = None,
-                   totals: Tuple[Optional[int], Optional[int]] = None
-                   ) -> Tuple[Callable, Callable]:
-    """Returns train and validation transforms."""
+                     grid_names: List[str],
+                     transform_name: str,
+                     char_tokenizer: KeyboardTokenizerv1,
+                     uniform_noise_range: int = 0,
+                     include_time: Optional[bool] = None,
+                     include_velocities: Optional[bool] = None,
+                     include_accelerations: Optional[bool] = None,
+                     dist_weights_func: Optional[Callable] = None,
+                     ds_paths_list: Optional[List[str]] = None,
+                     totals: Tuple[Optional[int], Optional[int]] = None
+                     ) -> Tuple[Callable, Callable]:
+    """Returns train and validation transforms"""
+    
     
     val_transform = get_val_transform(
         gridname_to_grid_path, grid_names, transform_name, char_tokenizer,
-        uniform_noise_range, dist_weights_func, ds_paths_list, totals)
+        uniform_noise_range, include_time, include_velocities,
+        include_accelerations, dist_weights_func, ds_paths_list, totals
+    )
 
-    train_transform = None
+    train_transform = val_transform
     if uniform_noise_range != 0:
         augmentation_transform = RandIntToTrajTransform(-uniform_noise_range, uniform_noise_range + 1)
         train_transform = SequentialTransform([augmentation_transform, val_transform])
-    else:
-        train_transform = val_transform
 
     return train_transform, val_transform
                 
