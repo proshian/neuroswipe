@@ -322,10 +322,8 @@ class CollateFnV2:
             x_smpl, decoder_out_smpl = row
             encoder_in_smpl, decoder_in_smpl = x_smpl
             if is_encoder_input_tuple:
-                encoder_in0, encoder_in1 = encoder_in_smpl
-                encoder_in_no_pad_0, encoder_in_no_pad_1 = encoder_in_no_pad
-                encoder_in_no_pad_0.append(encoder_in0)
-                encoder_in_no_pad_1.append(encoder_in1)
+                for i in range(2):
+                    encoder_in_no_pad[i].append(encoder_in_smpl[i])
             else:
                 encoder_in_no_pad.append(encoder_in)
 

@@ -6,25 +6,27 @@ Feature extractors defined in this module are used
 to convert this tuple a tuple (model_in, model_out)
 """
 
-from typing import Tuple, Dict, Optional, Iterable, List, Callable, Union, Any
+from typing import Tuple, Dict, Optional, Iterable, List, Callable, Union, Set
 from array import array
+import json
 
 import torch
 from torch import Tensor
+import numpy as np
+from tqdm.auto import tqdm
 
-from nearest_key_lookup import NearestKeyLookup
+from nearest_key_lookup import NearestKeyLookup, ExtendedNearestKeyLookup
 from distances_lookup import DistancesLookup
 from ns_tokenizers import KeyboardTokenizerv1, CharLevelTokenizerv2
 from ns_tokenizers import ALL_CYRILLIC_LETTERS_ALPHABET_ORD
 from dataset import RawDatasetEl 
-from grid_processing_utils import get_gname_to_wh, get_kb_label
+from grid_processing_utils import get_gname_to_wh, get_kb_label, get_grid
 
 
 DEFAULT_ALLOWED_KEYS = ALL_CYRILLIC_LETTERS_ALPHABET_ORD
 GetItemTransformInput = Tuple[array, array, array, str, Optional[str], array]
 EncoderInType = Union[Tensor, Tuple[Tensor, Tensor]]
 FullTransformResultType = Tuple[Tuple[EncoderInType, Tensor], Tensor]
-
 
 
 class FullTransform:
@@ -46,7 +48,6 @@ class FullTransform:
                 "Decoder in/out getter is not provided, but tgt_word is not None."
             decoder_in, decoder_out = self.get_decoder_in_out(tgt_word)
         return (encoder_in, decoder_in), decoder_out
-
 
 
 #################################################################################
@@ -456,32 +457,11 @@ class DecoderInputOutputGetter:
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+######################################################################
+######################################################################
 ###################    Full transforms aquiring    ###################
-
-
-from typing import Callable, Tuple, Optional, List, Dict, Set, Iterable
-import json
-
-import numpy as np
-from tqdm.auto import tqdm
-
-from grid_processing_utils import get_grid
-from nearest_key_lookup import ExtendedNearestKeyLookup
-
+######################################################################
+######################################################################
 
 
 def get_grid(grid_name: str, grids_path: str) -> dict:
@@ -580,20 +560,10 @@ def get_extra_coords_dict(ds_paths_list: List[str],
 
 
 
-def get_traj_and_nearest_key_transform(gname_to_grid: Dict[str, dict],
-                                       char_tokenizer: CharLevelTokenizerv2,
-                                       kb_tokenizer: KeyboardTokenizerv1,
-                                       gname_to_wh: Dict[str, Tuple[int, int]],
-                                       extra_coords_dict: Optional[Dict[str, Set[Tuple[int, int]]]] = None,
-                                       ) -> Callable:
+def get_gname_to_nkl(gname_to_grid: Dict[str, dict],
+                     gname_to_out_of_bounds: Dict[str, Set[Tuple[int, int]]]
+                        ) -> Dict[str, ExtendedNearestKeyLookup]:
     
-    gname_to_out_of_bounds = extra_coords_dict
-    if get_extra_coords_dict is None:
-        print("Warning: no ds_paths_list provided. gname_to_out_of_bounds will be empty.")
-        gname_to_out_of_bounds = {gname: set() for gname in gname_to_wh.keys()}
-   
-
-    print("Creating ExtendedNearestKeyLookups...")
     gridname_to_nkl = {
         gname: ExtendedNearestKeyLookup(
             grid, ALL_CYRILLIC_LETTERS_ALPHABET_ORD,
@@ -601,26 +571,18 @@ def get_traj_and_nearest_key_transform(gname_to_grid: Dict[str, dict],
         ) for gname, grid in gname_to_grid.items()
     }
 
-    full_transform = FullTransform(
-        grid_name_to_nk_lookup=gridname_to_nkl,
-        grid_name_to_wh=gname_to_wh,
-        kb_tokenizer=kb_tokenizer,
-        word_tokenizer=char_tokenizer,
-        include_time=False,
-        include_velocities=True,
-        include_accelerations=True,
-        kb_tokens_dtype=torch.int32,
-        word_tokens_dtype=torch.int64
-    )
-
-    return full_transform
+    return gridname_to_nkl
 
 
 
 def get_traj_feats_and_distances_transform(gname_to_grid: Dict[str, dict],
                                            char_tokenizer: CharLevelTokenizerv2,
                                            kb_tokenizer: KeyboardTokenizerv1,
-                                           weights_func: Callable):
+                                           weights_func: Callable,
+                                           include_time: bool,
+                                           include_velocities: bool,
+                                           include_accelerations: bool
+                                            ) -> Callable:
     assert isinstance(kb_tokenizer.i2t, list)
     grid_name_to_dist_lookup = {
         # Extra token is for legacy reasons
@@ -631,8 +593,8 @@ def get_traj_feats_and_distances_transform(gname_to_grid: Dict[str, dict],
     full_transform = FullTransform(
         encoder_in_getter=EncoderFeaturesGetter_KbKeyWeightsAndTrajFeats(
             grid_name_to_dist_lookup, gname_to_grid,
-            include_time=False, include_velocities=True,
-            include_accelerations=True, weights_func=weights_func
+            include_time=include_time, include_velocities=include_velocities,
+            include_accelerations=include_accelerations, weights_func=weights_func
         ),
         decoder_in_out_getter=DecoderInputOutputGetter(
             word_tokenizer=char_tokenizer,
@@ -643,6 +605,13 @@ def get_traj_feats_and_distances_transform(gname_to_grid: Dict[str, dict],
     return full_transform
 
 
+def assert_traj_feats_provided(include_time: Optional[bool],
+                               include_velocities: Optional[bool],
+                               include_accelerations: Optional[bool]) -> None:
+    assert include_time is not None, "include_time must be provided"
+    assert include_velocities is not None, "include_velocities must be provided"
+    assert include_accelerations is not None, "include_accelerations must be provided"
+
 
 
 def get_val_transform(gridname_to_grid_path: str,
@@ -650,11 +619,18 @@ def get_val_transform(gridname_to_grid_path: str,
                       transform_name: str,
                       char_tokenizer: KeyboardTokenizerv1,
                       uniform_noise_range: int = 0,
+                      include_time: Optional[bool] = None,
+                      include_velocities: Optional[bool] = None,
+                      include_accelerations: Optional[bool] = None,
                       dist_weights_func: Optional[Callable] = None,
                       ds_paths_list: Optional[List[str]] = None,
-                      totals: Tuple[Optional[int], Optional[int]] = (None, None)
+                      totals: Tuple[Optional[int], Optional[int]] = None
                    ) -> Tuple[Callable, Callable]:
     """Returns validation transform"""
+
+    transforms_need_out_of_bounds = ["traj_feats_and_nearest_key", "nearest_key_only"]
+    transforms_need_nkl = ["traj_feats_and_nearest_key", "nearest_key_only"]
+    
     
     gname_to_grid = {gname: get_grid(gname, gridname_to_grid_path) 
                      for gname in grid_names}
@@ -662,18 +638,70 @@ def get_val_transform(gridname_to_grid_path: str,
     gname_to_wh = {gname: (grid['width'], grid['height']) for gname, grid in gname_to_grid.items()}
 
     kb_tokenizer = KeyboardTokenizerv1()
+
+
+    if transform_name in transforms_need_out_of_bounds:
+        assert ds_paths_list is not None, "ds_paths_list must be provided"
+        if ds_paths_list is None:
+            print("Warning: no ds_paths_list provided. gname_to_out_of_bounds will be empty.")
+            gname_to_out_of_bounds = {gname: set() for gname in gname_to_wh.keys()}
+        else:
+            gname_to_out_of_bounds = get_extra_coords_dict(
+                ds_paths_list, gname_to_wh, totals
+            )
     
+    if transform_name in transforms_need_nkl:
+        gridname_to_nkl = get_gname_to_nkl(gname_to_grid, gname_to_out_of_bounds)
+
+     
 
     if transform_name == "traj_feats_and_nearest_key":
-        full_transform = get_traj_and_nearest_key_transform(
-            gname_to_grid, char_tokenizer, kb_tokenizer, gname_to_wh,
-            uniform_noise_range, ds_paths_list, totals)
+        assert_traj_feats_provided(include_time, include_velocities, include_accelerations)
+
+        if ds_paths_list is None:
+            gname_to_out_of_bounds = None
+        else:
+            gname_to_out_of_bounds = get_extra_coords_dict(
+                ds_paths_list, gname_to_wh, uniform_noise_range, totals
+            )
+
+        full_transform = FullTransform(
+            encoder_in_getter=EncoderFeaturesGetter_NearestKbTokensAndTrajFeats(
+                grid_name_to_nk_lookup=gridname_to_nkl,
+                grid_name_to_wh=gname_to_wh,
+                kb_tokenizer=kb_tokenizer,
+                include_time=include_time,
+                include_velocities=include_velocities,
+                include_accelerations=include_accelerations
+            ),
+            decoder_in_out_getter=DecoderInputOutputGetter(
+                word_tokenizer=char_tokenizer,
+                dtype=torch.int64
+            )
+        )
+
                 
     elif transform_name == "traj_feats_and_distances":
+        assert_traj_feats_provided(include_time, include_velocities, include_accelerations)
         assert dist_weights_func is not None, "dist_weights_func must be provided"
 
         full_transform = get_traj_feats_and_distances_transform(
-            gname_to_grid, char_tokenizer, kb_tokenizer, dist_weights_func)
+            gname_to_grid, char_tokenizer, kb_tokenizer, dist_weights_func,
+            include_time, include_velocities, include_accelerations
+        )
+
+    elif transform_name == "nearest_key_only":
+        full_transform = FullTransform(
+            encoder_in_getter=EncoderFeaturesGetter_NearestKbTokens(
+                grid_name_to_nk_lookup=gridname_to_nkl,
+                kb_tokenizer=kb_tokenizer,
+                dtype=torch.int32
+            ),
+            decoder_in_out_getter=DecoderInputOutputGetter(
+                word_tokenizer=char_tokenizer,
+                dtype=torch.int64
+            )
+        )
 
     else:
         raise ValueError(f"Unknown transform name: '{transform_name}'")
@@ -689,7 +717,7 @@ def get_transforms(gridname_to_grid_path: str,
                    uniform_noise_range: int = 0,
                    dist_weights_func: Optional[Callable] = None,
                    ds_paths_list: Optional[List[str]] = None,
-                   totals: Tuple[Optional[int], Optional[int]] = (None, None)
+                   totals: Tuple[Optional[int], Optional[int]] = None
                    ) -> Tuple[Callable, Callable]:
     """Returns train and validation transforms."""
     
