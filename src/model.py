@@ -1444,13 +1444,16 @@ class EncoderDecoderTransformerLike(nn.Module):
                  dec_in_emb_model: nn.Module, 
                  encoder: nn.Module, 
                  decoder: nn.Module, 
-                 out: nn.Module):
+                 out: nn.Module,
+                 device: Optional[str] = None):
         super().__init__()
         self.enc_in_emb_model = enc_in_emb_model
         self.dec_in_emb_model = dec_in_emb_model
         self.encoder = encoder
         self.decoder = decoder
         self.out = out  # linear
+        self.device = torch.device(
+            device or 'cuda' if torch.cuda.is_available() else 'cpu')
 
     # x can be a tuple (ex. traj_feats, kb_tokens) or a single tensor
     # (ex. just kb_tokens).
