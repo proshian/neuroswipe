@@ -647,7 +647,7 @@ def get_val_transform(gridname_to_grid_path: str,
             gname_to_out_of_bounds = {gname: set() for gname in gname_to_wh.keys()}
         else:
             gname_to_out_of_bounds = get_extra_coords_dict(
-                ds_paths_list, gname_to_wh, totals
+                ds_paths_list, gname_to_wh, uniform_noise_range, totals
             )
     
     if transform_name in transforms_need_nkl:
@@ -666,7 +666,7 @@ def get_val_transform(gridname_to_grid_path: str,
             )
 
         full_transform = FullTransform(
-            encoder_in_getter=EncoderFeaturesGetter_NearestKbTokensAndTrajFeats(
+                encoder_in_getter=EncoderFeaturesGetter_NearestKbTokensAndTrajFeats(
                 grid_name_to_nk_lookup=gridname_to_nkl,
                 grid_name_to_wh=gname_to_wh,
                 kb_tokenizer=kb_tokenizer,
