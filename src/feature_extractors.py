@@ -658,13 +658,6 @@ def get_val_transform(gridname_to_grid_path: str,
     if transform_name == "traj_feats_and_nearest_key":
         assert_traj_feats_provided(include_time, include_velocities, include_accelerations)
 
-        if ds_paths_list is None:
-            gname_to_out_of_bounds = None
-        else:
-            gname_to_out_of_bounds = get_extra_coords_dict(
-                ds_paths_list, gname_to_wh, uniform_noise_range, totals
-            )
-
         full_transform = FullTransform(
                 encoder_in_getter=EncoderFeaturesGetter_NearestKbTokensAndTrajFeats(
                 grid_name_to_nk_lookup=gridname_to_nkl,

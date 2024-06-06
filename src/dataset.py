@@ -325,7 +325,7 @@ class CollateFnV2:
                 for i in range(2):
                     encoder_in_no_pad[i].append(encoder_in_smpl[i])
             else:
-                encoder_in_no_pad.append(encoder_in)
+                encoder_in_no_pad.append(encoder_in_smpl)
 
             dec_in_no_pad.append(decoder_in_smpl)
             dec_out_no_pad.append(decoder_out_smpl)
