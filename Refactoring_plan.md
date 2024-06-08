@@ -17,6 +17,9 @@
 
 
 # План максимум:
+* Оценить выбросы в графике "Распределение длин свайпа для каждой из длин ломаной, проходящей через центры клавиш, соответствующих буквам слова" в data_analysis.ipynb.
+      * Examine the outliers to understand their causes. Are they due to user errors, data entry errors, or other factors?
+      * If outliers are found to be due to errors, consider cleaning the data to remove these points.
 * Написать скрипт для генерации синтетического датасета
 * Сделать android и ios клавиатуру
 

@@ -1,7 +1,12 @@
 import argparse
 import os
+import logging
+from typing import Optional
 
 import torch
+
+
+logger = logging.getLogger(__name__)
 
 
 def remove_prefix(text, prefix):
@@ -33,6 +38,9 @@ def convert_and_save_dir(ckpt_root: str, out_root: str,
             assert orig_ext == '.ckpt'
             orig_path_no_ext_no_root = os.path.relpath(orig_path_no_ext, ckpt_root)
             out_path = os.path.join(out_root, orig_path_no_ext_no_root + '.pt')
+            if os.path.exists(out_path):
+                logger.info(f"Skipping {ckpt_path} as {out_path} already exists")
+                continue
             out_parent = os.path.dirname(out_path)
             if not os.path.exists(out_parent):
                 os.makedirs(out_parent)
@@ -47,6 +55,15 @@ def convert_and_save_file(ckpt_path: str, out_path: str,
     torch.save(state_dict, out_path)
 
 
+def setup_logging(log_file: Optional[str] = None) -> None:
+    if log_file is not None:
+        handlers = [logging.StreamHandler(), logging.FileHandler(log_file, mode='w')]
+    else:
+        handlers = None
+    logging.basicConfig(level=logging.INFO, format='%(funcName)-20s   : %(message)s', handlers=handlers)
+    
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument('--ckpt-path', type=str, required=True)
@@ -57,13 +74,14 @@ def parse_args() -> argparse.Namespace:
 
 if __name__ == '__main__':
     args = parse_args()
+    setup_logging()
 
     assert os.path.exists(args.ckpt_path), f"ckpt_path does not exist: {args.ckpt_path}"
-    assert not os.path.exists(args.out_path), f"out_path already exists: {args.out_path}"
 
     device = torch.device(args.device)
 
     if os.path.isfile(args.ckpt_path):
+        assert os.path.exists(args.ckpt_path), f"ckpt_path does not exist: {args.ckpt_path}"
         convert_and_save_file(args.ckpt_path, args.out_path, device)
     else:
         convert_and_save_dir(args.ckpt_path, args.out_path, device)
