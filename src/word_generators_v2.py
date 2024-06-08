@@ -140,7 +140,7 @@ class GreedyGenerator(WordGeneratorWithVocab):
             curve_pad_mask = None
 
             next_tokens_logits = self.model.decode(
-                encoded, dec_in_char_seq, curve_pad_mask, word_pad_mask).transpose_(0, 1)[0, -1]
+                dec_in_char_seq, encoded, curve_pad_mask, word_pad_mask).transpose_(0, 1)[0, -1]
             next_tokens_logits = self._mask_out_unallowed_ids(tokens, next_tokens_logits)
             next_tokens_logproba = F.log_softmax(next_tokens_logits)
             best_next_token = int(next_tokens_logproba.argmax())  # batch_i = 0, decoder_out_onehot_vector_seq_i = -1 
