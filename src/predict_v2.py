@@ -127,6 +127,11 @@ class Predictor:
         self.model_weights_path = model_weights_path
         model_getter = MODEL_GETTERS_DICT[model_architecture_name]
 
+        self.include_coords = include_coords
+        self.include_time = include_time
+        self.include_velocities = include_velocities
+        self.include_accelerations = include_accelerations
+
         n_coord_feats = get_n_coord_feats(
             include_coords = include_coords,
             inculde_time = include_time,
@@ -238,10 +243,19 @@ class Predictor:
         preds = self._predict_raw_mp(dataset, num_workers)
 
         preds_with_meta = Prediction(
-            preds, self.model_architecture_name,
-            self.model_weights_path, self.word_generator_type,
-            self.generator_call_kwargs, self.use_vocab_for_generation,
-            grid_name, dataset_split, transform_name)
+            prediction=preds, 
+            model_name=self.model_architecture_name,
+            model_weights=self.model_weights_path, 
+            generator_name=self.word_generator_type,
+            generator_call_kwargs=self.generator_call_kwargs, 
+            use_vocab_for_generation=self.use_vocab_for_generation,
+            grid_name=grid_name, 
+            dataset_split=dataset_split, 
+            include_coords=self.include_coords,
+            include_time=self.include_time,
+            include_velocities=self.include_velocities,
+            include_accelerations=self.include_accelerations,
+            transform_name=transform_name)
         
         return preds_with_meta
 
