@@ -1,5 +1,5 @@
 {
-    "out_csv_path": "./results/evaluation_results.csv",
+    "out_csv_path": "./results/evaluation_results_v3.csv",
 
     "data_split__to__path": {
         "test": "./data/data_separated_grid/test.jsonl",
@@ -7,6 +7,9 @@
     },
 
     "prediction_paths": [
-        "./results/predictions/val/"
+        "./results/predictions/val/google_2015_features",
+        "./results/predictions/val/indiswipe_features",
+        "./results/predictions/val/my_features_1",
+        "./results/predictions/val/phrase_swipe_feats"
     ]
 }

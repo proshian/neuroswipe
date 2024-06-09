@@ -10,7 +10,7 @@
             ["default", "v3_nearest_and_traj_transformer_bigger", "v3_nearest_and_traj_transformer_bigger-default--epoch=20-val_loss=0.445-val_word_level_accuracy=0.862.pt"],
             ["default", "v3_nearest_and_traj_transformer_bigger", "v3_nearest_and_traj_transformer_bigger-default--epoch=25-val_loss=0.445-val_word_level_accuracy=0.865.pt"]
         ],
-        "out_path": "./results/predictions/val",
+        "out_path": "./results/predictions/val/my_features_1",
         "csv_path": "",
         "data_split": "val",
         "grid_name_to_grid__path": "./data/data_separated_grid/gridname_to_grid.json",

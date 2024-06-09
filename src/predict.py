@@ -305,6 +305,8 @@ if __name__ == '__main__':
 
     check_all_weights_exist(config['model_params'], config['models_root'])
 
+    assert os.path.exists(config['out_path']), f"config['out_path'] doesn't exist ({config['out_path']})"
+
     gridname_to_dataset = get_gridname_to_dataset(config)
 
     for grid_name, model_getter_name, weights_f_name in config['model_params']:
