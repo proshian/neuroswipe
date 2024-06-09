@@ -20,11 +20,11 @@ def _prepare_encoder_input(encoder_in: Union[Tensor, Tuple[Tensor, Tensor]],
     else:
         is_tensor = False
 
-    encoder_in = (el.unsqueeze(0) for el in encoder_in)
-    encoder_in = (el.to(device) for el in encoder_in)
+    encoder_in = [el.unsqueeze(0) for el in encoder_in]
+    encoder_in = [el.to(device) for el in encoder_in]
 
     if not batch_first:
-        encoder_in = (el.transpose(0, 1) for el in encoder_in)
+        encoder_in = [el.transpose(0, 1) for el in encoder_in]
     return encoder_in[0] if is_tensor else encoder_in
 
 
