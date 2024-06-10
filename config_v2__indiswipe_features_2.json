@@ -3,8 +3,6 @@
     {
         "model_params": 
         [
-            ["default", "v3_nearest_and_traj_transformer_bigger", "v3_nearest_and_traj_transformer_bigger-default--epoch=20-val_loss=0.447-val_word_level_accuracy=0.863.pt"],
-            ["default", "v3_nearest_and_traj_transformer_bigger", "v3_nearest_and_traj_transformer_bigger-default--epoch=15-val_loss=0.450-val_word_level_accuracy=0.860.pt"]
         ],
         "out_path": "./results/predictions/val/indiswipe_features",
         "csv_path": "",

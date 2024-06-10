@@ -3,6 +3,13 @@
     {
         "model_params": 
         [
+            ["default", "v3_nearest_and_traj_transformer_bigger", "v3_nearest_and_traj_transformer_bigger-default--epoch=45-val_loss=0.448-val_word_level_accuracy=0.861.pt"],
+            ["default", "v3_nearest_and_traj_transformer_bigger", "v3_nearest_and_traj_transformer_bigger-default--epoch=43-val_loss=0.450-val_word_level_accuracy=0.857.pt"],
+
+            
+
+            ["default", "v3_nearest_and_traj_transformer_bigger", "v3_nearest_and_traj_transformer_bigger-default--epoch=40-val_loss=0.450-val_word_level_accuracy=0.859.pt"],
+            ["default", "v3_nearest_and_traj_transformer_bigger", "v3_nearest_and_traj_transformer_bigger-default--epoch=35-val_loss=0.451-val_word_level_accuracy=0.855.pt"],
             ["default", "v3_nearest_and_traj_transformer_bigger", "v3_nearest_and_traj_transformer_bigger-default--epoch=29-val_loss=0.452-val_word_level_accuracy=0.854.pt"],
             ["default", "v3_nearest_and_traj_transformer_bigger", "v3_nearest_and_traj_transformer_bigger-default--epoch=25-val_loss=0.452-val_word_level_accuracy=0.851.pt"],
             ["default", "v3_nearest_and_traj_transformer_bigger", "v3_nearest_and_traj_transformer_bigger-default--epoch=20-val_loss=0.454-val_word_level_accuracy=0.851.pt"],
