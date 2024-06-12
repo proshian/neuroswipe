@@ -747,29 +747,29 @@ class PSDSymmetricMatrix(nn.Module):
         self.num_params = (N * (N + 1)) // 2
         self.trainable_params = nn.Parameter(torch.randn(self.num_params))
 
-    def forward(self):
+    @property
+    def psd_sym_matrix(self):
         A = torch.zeros(self.N, self.N, device=self.trainable_params.device)
         i, j = torch.triu_indices(self.N, self.N)
         A[i, j] = self.trainable_params
         A = A + A.T - torch.diag(A.diag())
         A = torch.relu(A)
         return A
+
+    def forward(self):
+        return self.psd_sym_matrix
     
 
     
-class TrainableMultivariateNormal(nn.Module):
-    def __init__(self, dim, ):
+class TrainableMultivariateNormal2d(nn.Module):
+    def __init__(self):
         super().__init__()
-        self.mean = torch.nn.parameter.Parameter(torch.randn(dim))
+        self.mean = nn.parameter.Parameter(torch.randn(2))
         # covariance is a semi-positive definite symmetric matrix
-        self.covariance = PSDSymmetricMatrix(dim, dim)
+        self.covariance = PSDSymmetricMatrix(2)
 
     def forward(self, x):
         return torch.distributions.MultivariateNormal(self.mean, self.covariance).log_prob(x)
-    
-class TrainableMultivariateNormal2d(TrainableMultivariateNormal):
-    def __init__(self):
-        super().__init__(2)
 
 class KeyboardKeyNormalDistributions(nn.Module):
     def __init__(self, n_keys):
