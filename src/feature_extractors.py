@@ -159,6 +159,11 @@ class NearestKbTokensGetter:
         return kb_tokens
 
 
+
+
+
+####################   Related to weights aquiring   ####################
+
 class DistancesGetter:
     def __init__(self, 
                  grid_name_to_dists_lookup: Dict[str, DistancesLookup],
@@ -166,9 +171,8 @@ class DistancesGetter:
                  ) -> None:
         self.grid_name_to_dists_lookup = grid_name_to_dists_lookup
         self.dtype = dtype
-
-    def __call__(self, X: Iterable, Y: Iterable, grid_name: str
-                 ) -> Tensor:
+    
+    def _get_distances(self, X: Iterable, Y: Iterable, grid_name: str) -> Tensor:
         dl_lookup = self.grid_name_to_dists_lookup[grid_name]
         # distances = dl_lookup.get_distances_for_full_swipe_without_map(X, Y)
         distances = dl_lookup.get_distances_for_full_swipe_using_map(X, Y)
@@ -176,9 +180,10 @@ class DistancesGetter:
         return distances
 
 
+    def __call__(self, X: Iterable, Y: Iterable, T: Iterable, grid_name: str
+                 ) -> Tensor:
+        return self._get_distances(X, Y, grid_name)
 
-
-####################   Related to weights aquiring   ####################
 
 
 def get_avg_half_key_diag(grid: dict, 
@@ -219,7 +224,7 @@ class KeyWeightsGetter:
 
     def __call__(self, X: Iterable, Y: Iterable, grid_name: str
                  ) -> Tensor:
-        distances = self.distances_getter(X, Y, grid_name)
+        distances = self.distances_getter._get_distances(X, Y, grid_name)
         mask = (distances < 0)
         distances.masked_fill_(mask=mask, value = float('inf'))
         half_key_diag = self.grid_name_to_half_key_diag[grid_name]
@@ -428,6 +433,51 @@ class EncoderFeaturesGetter_KbKeyWeightsAndTrajFeats(EncoderFeaturesGetter):
         return traj_feats, weights
 
 
+
+
+class EncoderFeaturesTupleGetter:
+    """
+    Given a tuple of two feature getters: 
+        1) that extracts features as points of a trajectory
+        2) that extracts features from point location on keyboard
+    
+    Returns a tuple of two tensors:
+        1) Trajectory point features
+        2) Keyboard point features
+    """
+    def __init__(self, traj_feats_getter: Callable, kb_feats_getter: Callable, 
+                 kb_uses_t: bool = True) -> None:
+        self.traj_feats_getter = traj_feats_getter
+        self.kb_feats_getter = kb_feats_getter
+        self.kb_uses_t
+
+    def __call__(self, X: array, Y: array, T: array, grid_name: str) -> Tuple[Tensor, Tensor]:
+        traj_feats = self.traj_feats_getter(X, Y, T, grid_name)
+        if self.kb_uses_t:
+            kb_feats = self.kb_feats_getter(X, Y, T, grid_name)
+        else:
+            kb_feats = self.kb_feats_getter(X, Y, grid_name)
+        return traj_feats, kb_feats
+
+
+
+
+class EncoderFeaturesGetter_KbKeyDistancesAndTrajFeats(EncoderFeaturesTupleGetter):
+    def __init__(self, 
+                 distances_getter: Callable,
+                 grid_name_to_grid: Dict[str, dict],
+                 include_time: bool,
+                 include_velocities: bool,
+                 include_accelerations: bool) -> None:
+        gname_to_wh = get_gname_to_wh(grid_name_to_grid)
+        traj_feats_getter = TrajFeatsGetter(
+            gname_to_wh,
+            include_time, include_velocities, include_accelerations)
+    
+        super().__init__(traj_feats_getter, distances_getter, kb_uses_t=True)
+
+                 
+
 #########################################################################
 ########################  DecoderInputOutputGetter  #####################
 #########################################################################
@@ -449,10 +499,6 @@ class DecoderInputOutputGetter:
         decoder_in = tgt_token_seq[:-1]
         decoder_out = tgt_token_seq[1:]
         return decoder_in, decoder_out
-
-
-
-
 
 
 
@@ -575,24 +621,17 @@ def get_gname_to_nkl(gname_to_grid: Dict[str, dict],
 
 
 
-def get_traj_feats_and_distances_transform(gname_to_grid: Dict[str, dict],
+def get_traj_feats_and_weights_transform(gname_to_grid: Dict[str, dict],
                                            char_tokenizer: CharLevelTokenizerv2,
-                                           kb_tokenizer: KeyboardTokenizerv1,
+                                           grid_name_to_dists_lookup: Dict[str, DistancesLookup],
                                            weights_func: Callable,
                                            include_time: bool,
                                            include_velocities: bool,
                                            include_accelerations: bool
                                             ) -> Callable:
-    assert isinstance(kb_tokenizer.i2t, list)
-    grid_name_to_dist_lookup = {
-        # Extra token is for legacy reasons
-        gname: DistancesLookup(grid, kb_tokenizer.i2t + ['<extra_token>'])
-        for gname, grid in gname_to_grid.items()
-    }
-
     full_transform = FullTransform(
         encoder_in_getter=EncoderFeaturesGetter_KbKeyWeightsAndTrajFeats(
-            grid_name_to_dist_lookup, gname_to_grid,
+            grid_name_to_dists_lookup, gname_to_grid,
             include_time=include_time, include_velocities=include_velocities,
             include_accelerations=include_accelerations, weights_func=weights_func
         ),
@@ -627,10 +666,15 @@ def get_val_transform(gridname_to_grid_path: str,
                       totals: Tuple[Optional[int], Optional[int]] = None
                    ) -> Tuple[Callable, Callable]:
     """Returns validation transform"""
+    TRAJ_FEATS_AND_WEIGHTS = "traj_feats_and_distances"  # Not a mistake; Legacy name
+    TRAJ_FEATS_AND_DISTANCES = "traj_feats_and_distances__actual"
+    TRAJ_FEATS_AND_NEAREST_KEY = "traj_feats_and_nearest_key"
+    NEAREST_KEY_ONLY = "nearest_key_only"
 
-    transforms_need_out_of_bounds = ["traj_feats_and_nearest_key", "nearest_key_only"]
-    transforms_need_nkl = ["traj_feats_and_nearest_key", "nearest_key_only"]
-    
+
+    transforms_need_out_of_bounds = [TRAJ_FEATS_AND_NEAREST_KEY, NEAREST_KEY_ONLY]
+    transforms_need_nkl = [TRAJ_FEATS_AND_NEAREST_KEY, NEAREST_KEY_ONLY]
+    transforms_need_dist_lookup = [TRAJ_FEATS_AND_WEIGHTS, TRAJ_FEATS_AND_DISTANCES]
     
     gname_to_grid = {gname: get_grid(gname, gridname_to_grid_path) 
                      for gname in grid_names}
@@ -653,9 +697,18 @@ def get_val_transform(gridname_to_grid_path: str,
     if transform_name in transforms_need_nkl:
         gridname_to_nkl = get_gname_to_nkl(gname_to_grid, gname_to_out_of_bounds)
 
+    if transform_name in transforms_need_dist_lookup:
+        assert isinstance(kb_tokenizer.i2t, list)
+        grid_name_to_dist_lookup = {
+            # Extra token is for legacy reasons
+            gname: DistancesLookup(grid, kb_tokenizer.i2t + ['<extra_token>'])
+            for gname, grid in gname_to_grid.items()
+        }
+        gridname_to_dists_lookup = {gname: DistancesLookup(grid) for gname, grid in gname_to_grid.items()}
+
      
 
-    if transform_name == "traj_feats_and_nearest_key":
+    if transform_name == TRAJ_FEATS_AND_NEAREST_KEY:
         assert_traj_feats_provided(include_time, include_velocities, include_accelerations)
 
         full_transform = FullTransform(
@@ -674,16 +727,16 @@ def get_val_transform(gridname_to_grid_path: str,
         )
 
                 
-    elif transform_name == "traj_feats_and_distances":
+    elif transform_name == TRAJ_FEATS_AND_WEIGHTS:
         assert_traj_feats_provided(include_time, include_velocities, include_accelerations)
         assert dist_weights_func is not None, "dist_weights_func must be provided"
 
-        full_transform = get_traj_feats_and_distances_transform(
-            gname_to_grid, char_tokenizer, kb_tokenizer, dist_weights_func,
+        full_transform = get_traj_feats_and_weights_transform(
+            gname_to_grid, char_tokenizer, gridname_to_dists_lookup, dist_weights_func,
             include_time, include_velocities, include_accelerations
         )
 
-    elif transform_name == "nearest_key_only":
+    elif transform_name == NEAREST_KEY_ONLY:
         full_transform = FullTransform(
             encoder_in_getter=EncoderFeaturesGetter_NearestKbTokens(
                 grid_name_to_nk_lookup=gridname_to_nkl,
@@ -695,6 +748,20 @@ def get_val_transform(gridname_to_grid_path: str,
                 dtype=torch.int64
             )
         )
+    
+    elif transform_name == TRAJ_FEATS_AND_DISTANCES:
+        assert_traj_feats_provided(include_time, include_velocities, include_accelerations)
+        
+        full_transform = FullTransform(
+            encoder_in_getter=EncoderFeaturesTupleGetter(
+                traj_feats_getter=TrajFeatsGetter(gname_to_wh, include_time, include_velocities, include_accelerations),
+                kb_feats_getter=DistancesGetter(grid_name_to_dist_lookup, dtype=torch.float32),
+                kb_uses_t=True
+            ),
+            decoder_in_out_getter=DecoderInputOutputGetter(
+                word_tokenizer=char_tokenizer,
+                dtype=torch.int64
+            )
 
     else:
         raise ValueError(f"Unknown transform name: '{transform_name}'")
