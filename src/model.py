@@ -736,11 +736,33 @@ class SeparateTrajAndNearestEmbeddingWithPos(nn.Module):
     
 
 
+
+class PSDSymmetricMatrix(nn.Module):
+    """
+    A trainable symmetric positive semi-definite matrix.
+    """
+    def __init__(self, N) -> None:
+        super().__init__()
+        self.N = N
+        self.num_params = (N * (N + 1)) // 2
+        self.trainable_params = nn.Parameter(torch.randn(self.num_params))
+
+    def forward(self):
+        A = torch.zeros(self.N, self.N, device=self.trainable_params.device)
+        i, j = torch.triu_indices(self.N, self.N)
+        A[i, j] = self.trainable_params
+        A = A + A.T - torch.diag(A.diag())
+        A = torch.relu(A)
+        return A
+    
+
+    
 class TrainableMultivariateNormal(nn.Module):
     def __init__(self, dim, ):
         super().__init__()
         self.mean = torch.nn.parameter.Parameter(torch.randn(dim))
-        self.covariance = torch.nn.parameter.Parameter(torch.randn(dim, dim))
+        # covariance is a semi-positive definite symmetric matrix
+        self.covariance = PSDSymmetricMatrix(dim, dim)
 
     def forward(self, x):
         return torch.distributions.MultivariateNormal(self.mean, self.covariance).log_prob(x)
