@@ -633,7 +633,9 @@ def get_transformer_bb_model(device = None, weights_path = None):
 # В __init__ model_getter'а будет создаваться embedding_model_ctor c аргументом...
 
 
-
+##############################################################################
+######################## Swipe Point Embedding Layers ########################
+##############################################################################
 
 # class EmbeddingModel(nn.Module):
 #     def __init__(self, out_dim):
@@ -733,6 +735,50 @@ class SeparateTrajAndNearestEmbeddingWithPos(nn.Module):
         return x
     
 
+
+class TrainableMultivariateNormal(nn.Module):
+    def __init__(self, dim):
+        super().__init__()
+        self.mean = torch.nn.parameter.Parameter(torch.randn(dim))
+        self.covariance = torch.nn.parameter.Parameter(torch.randn(dim, dim))
+
+    def forward(self, x):
+        return torch.distributions.MultivariateNormal(self.mean, self.covariance).log_prob(x)
+    
+class TrainableMultivariateNormal2d(TrainableMultivariateNormal):
+    def __init__(self):
+        super().__init__(2)
+
+class KeyboardKeyNormalDistributions(nn.Module):
+    def __init__(self, n_keys):
+        super().__init__()
+        self.distributions = nn.ModuleList(
+            [TrainableMultivariateNormal2d() for _ in range(n_keys)]
+        )
+    
+    def forward(self, x):
+        return torch.stack([dist(x) for dist in self.distributions], dim = 1)
+
+
+class SeparateTrajAndTrainableWeightedEmbeddingWithPos(nn.Module):
+    # Separate in a sence that we don't apply a linear layer to mix the layers
+    def __init__(self, n_keys, key_emb_size, max_len, device, dropout = 0.1) -> None:
+        super().__init__()
+        self.weights_getter = KeyboardKeyNormalDistributions(n_keys)
+        self.weighted_sum_emb = WeightsSumEmbeddingWithPos(n_keys, key_emb_size, max_len, device)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, input_tuple: Tuple[torch.Tensor, torch.Tensor]):
+        traj_feats, distances = input_tuple
+        kb_key_weights = self.weights_getter(distances)
+        kb_k_emb = self.weighted_sum_emb(kb_key_weights)
+        kb_k_emb = self.dropout(kb_k_emb)
+        x = torch.cat((traj_feats, kb_k_emb), dim = -1)
+        return x
+    
+
+##############################################################################
+##############################################################################
 
 
 
