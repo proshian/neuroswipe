@@ -449,7 +449,7 @@ class EncoderFeaturesTupleGetter:
                  kb_uses_t: bool = True) -> None:
         self.traj_feats_getter = traj_feats_getter
         self.kb_feats_getter = kb_feats_getter
-        self.kb_uses_t
+        self.kb_uses_t = kb_uses_t
 
     def __call__(self, X: array, Y: array, T: array, grid_name: str) -> Tuple[Tensor, Tensor]:
         traj_feats = self.traj_feats_getter(X, Y, T, grid_name)
