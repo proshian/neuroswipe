@@ -737,7 +737,7 @@ class SeparateTrajAndNearestEmbeddingWithPos(nn.Module):
 
 
 class TrainableMultivariateNormal(nn.Module):
-    def __init__(self, dim):
+    def __init__(self, dim, ):
         super().__init__()
         self.mean = torch.nn.parameter.Parameter(torch.randn(dim))
         self.covariance = torch.nn.parameter.Parameter(torch.randn(dim, dim))
@@ -1726,6 +1726,30 @@ def get_transformer_bigger_nearest_only__v3(device = None,
 
 
 
+def get_transformer_bigger_trainable_gaussian_weights_and_traj__v3(
+                                                                device = None,
+                                                                weights_path = None,
+                                                                n_coord_feats = 6) -> EncoderDecoderTransformerLike:
+    device = torch.device(
+        device 
+        or 'cuda' if torch.cuda.is_available() else 'cpu')
+    
+    d_model = 128
+    key_emb_size = d_model - n_coord_feats
+
+    input_embedding = SeparateTrajAndTrainableWeightedEmbeddingWithPos(
+        n_keys=37, key_emb_size=key_emb_size,
+        max_len=299, device=device, dropout=0.1)
+    
+    model = _get_transformer_bigger__v3(input_embedding, device, n_coord_feats)
+
+    model = _set_state(model, weights_path, device)
+
+    return model
+
+
+
+
 
 MODEL_GETTERS_DICT = {
     "m1": get_m1_model,  # doesn't have layer norm
@@ -1746,4 +1770,6 @@ MODEL_GETTERS_DICT = {
     "v3_weighted_and_traj_transformer_bigger": get_transformer_bigger_weighted_and_traj__v3,  # has layer norm
     "v3_nearest_and_traj_transformer_bigger": get_transformer_bigger_nearest_and_traj__v3,  # has layer norm
     "v3_nearest_only_transformer_bigger": get_transformer_bigger_nearest_only__v3,  # has layer norm
+    
+    "v3_trainable_gaussian_weights_and_traj_transformer_bigger": get_transformer_bigger_trainable_gaussian_weights_and_traj__v3,  # has layer norm
 }
