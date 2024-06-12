@@ -775,11 +775,13 @@ def get_val_transform(gridname_to_grid_path: str,
         assert_traj_feats_provided(include_time, include_velocities, include_accelerations)
         
         full_transform = FullTransform(
-            encoder_in_getter=EncoderFeaturesTupleGetter(
-                traj_feats_getter=TrajFeatsGetter(gname_to_wh, include_time, include_velocities, include_accelerations),
-                kb_feats_getter=DistancesGetter(grid_name_to_dist_lookup, dtype=torch.float32),
-                kb_uses_t=True
-            ),
+            encoder_in_getter=EncoderFeaturesGetter_KbKeyDistancesAndTrajFeats(
+                grid_name_to_dists_lookup=gridname_to_dists_lookup,
+                grid_name_to_wh=gname_to_wh,
+                include_time=include_time,
+                include_velocities=include_velocities,
+                include_accelerations=include_accelerations
+            )
             decoder_in_out_getter=DecoderInputOutputGetter(
                 word_tokenizer=char_tokenizer,
                 dtype=torch.int64
