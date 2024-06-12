@@ -7,9 +7,7 @@
     },
 
     "prediction_paths": [
-        "./results/predictions/val/google_2015_features",
-        "./results/predictions/val/indiswipe_features",
-        "./results/predictions/val/my_features_1",
-        "./results/predictions/val/phrase_swipe_feats"
+        "./results/predictions/val"
+        
     ]
 }

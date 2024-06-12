@@ -762,6 +762,7 @@ def get_val_transform(gridname_to_grid_path: str,
                 word_tokenizer=char_tokenizer,
                 dtype=torch.int64
             )
+        )
 
     else:
         raise ValueError(f"Unknown transform name: '{transform_name}'")
