@@ -434,7 +434,8 @@ class EncoderFeaturesGetter_KbKeyWeightsAndTrajFeats(EncoderFeaturesGetter):
 
 
 
-
+#! Is not currently used because traj feats getter needs tensors and 
+#! distances getter needs arrays.
 class EncoderFeaturesTupleGetter:
     """
     Given a tuple of two feature getters: 
@@ -462,19 +463,40 @@ class EncoderFeaturesTupleGetter:
 
 
 
-class EncoderFeaturesGetter_KbKeyDistancesAndTrajFeats(EncoderFeaturesTupleGetter):
+# class EncoderFeaturesGetter_KbKeyDistancesAndTrajFeats(EncoderFeaturesTupleGetter):
+#     def __init__(self, 
+#                  distances_getter: Callable,
+#                  grid_name_to_grid: Dict[str, dict],
+#                  include_time: bool,
+#                  include_velocities: bool,
+#                  include_accelerations: bool) -> None:
+#         gname_to_wh = get_gname_to_wh(grid_name_to_grid)
+#         traj_feats_getter = TrajFeatsGetter(
+#             gname_to_wh,
+#             include_time, include_velocities, include_accelerations)
+    
+#         super().__init__(traj_feats_getter, distances_getter, kb_uses_t=True)
+
+class EncoderFeaturesGetter_KbKeyDistancesAndTrajFeats:
     def __init__(self, 
-                 distances_getter: Callable,
-                 grid_name_to_grid: Dict[str, dict],
+                 grid_name_to_dists_lookup: Dict[str, DistancesLookup],
+                 grid_name_to_wh: Dict[str, Tuple[int, int]],
                  include_time: bool,
                  include_velocities: bool,
-                 include_accelerations: bool) -> None:
-        gname_to_wh = get_gname_to_wh(grid_name_to_grid)
-        traj_feats_getter = TrajFeatsGetter(
-            gname_to_wh,
+                 include_accelerations: bool
+                 ) -> None:
+        self._get_traj_feats = TrajFeatsGetter(
+            grid_name_to_wh, 
             include_time, include_velocities, include_accelerations)
-    
-        super().__init__(traj_feats_getter, distances_getter, kb_uses_t=True)
+        
+        self._get_distances = DistancesGetter(grid_name_to_dists_lookup)
+
+    def __call__(self, X: array, Y: array, T: array, grid_name: str) -> Tuple[Tensor, Tensor]:
+        distances = self._get_distances(X, Y, T, grid_name)
+        X, Y, T = (torch.tensor(arr, dtype=torch.float32) for arr in (X, Y, T))
+        traj_feats = self._get_traj_feats(X, Y, T, grid_name)
+        
+        return traj_feats, distances
 
                  
 

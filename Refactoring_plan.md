@@ -1,5 +1,6 @@
 
 # План минимум:
+* Рассмотреть поддержку EncoderFeaturesTupleGetter
 * Определить какие эксперименты значимы
 * Повторить эти эксперименты с помощью v3 model + train_v2
 * Удалить train.ipynb; transforms.py; collate_fn в dataset.py; Все модели не являющиеся v3 model.
