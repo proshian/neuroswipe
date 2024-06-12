@@ -781,7 +781,7 @@ def get_val_transform(gridname_to_grid_path: str,
                 include_time=include_time,
                 include_velocities=include_velocities,
                 include_accelerations=include_accelerations
-            )
+            ),
             decoder_in_out_getter=DecoderInputOutputGetter(
                 word_tokenizer=char_tokenizer,
                 dtype=torch.int64
