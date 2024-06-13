@@ -789,6 +789,7 @@ class TrainableMultivariateNormal2d(nn.Module):
         return self._psd_sym_matrix.psd_sym_matrix
 
     def forward(self, x):
+        # x is of shape (seq_len, batch_size, 2)
         return torch.distributions.MultivariateNormal(self.mean, self.covariance).log_prob(x)
 
 class KeyboardKeyNormalDistributions(nn.Module):
@@ -798,9 +799,12 @@ class KeyboardKeyNormalDistributions(nn.Module):
             [TrainableMultivariateNormal2d() for _ in range(n_keys)]
         )
     
-    def forward(self, x):
-        return torch.stack([dist(x) for dist in self.distributions], dim = 1)
-
+    def forward(self, coords):
+        # coords.shape = (seq_len, batch_size, 2)
+        # returns shape = (seq_len, batch_size, n_keys)
+        return torch.stack([dist(coords) for dist in self.distributions], dim = -1)
+        
+    
 
 class SeparateTrajAndTrainableWeightedEmbeddingWithPos(nn.Module):
     # Separate in a sence that we don't apply a linear layer to mix the layers
@@ -811,8 +815,8 @@ class SeparateTrajAndTrainableWeightedEmbeddingWithPos(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, input_tuple: Tuple[torch.Tensor, torch.Tensor]):
-        traj_feats, distances = input_tuple
-        kb_key_weights = self.weights_getter(distances)
+        traj_feats, xy_coords = input_tuple
+        kb_key_weights = self.weights_getter(xy_coords)
         kb_k_emb = self.weighted_sum_emb(kb_key_weights)
         kb_k_emb = self.dropout(kb_k_emb)
         x = torch.cat((traj_feats, kb_k_emb), dim = -1)
