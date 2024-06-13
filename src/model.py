@@ -766,18 +766,11 @@ class PSDSymmetricMatrix(nn.Module):
     """
     def __init__(self, N) -> None:
         super().__init__()
-        self.N = N
-        self.num_params = (N * (N + 1)) // 2
-        self.trainable_params = nn.Parameter(torch.randn(self.num_params))
+        self.matrix = nn.parameter.Parameter(torch.randn(N, N), requires_grad=True)
 
     @property
     def psd_sym_matrix(self):
-        A = torch.zeros(self.N, self.N, device=self.trainable_params.device)
-        i, j = torch.triu_indices(self.N, self.N)
-        A[i, j] = self.trainable_params
-        A = A + A.T - torch.diag(A.diag())
-        A = torch.relu(A)
-        return A
+        return self.matrix @ self.matrix.T
 
     def forward(self):
         return self.psd_sym_matrix
@@ -787,7 +780,7 @@ class PSDSymmetricMatrix(nn.Module):
 class TrainableMultivariateNormal2d(nn.Module):
     def __init__(self):
         super().__init__()
-        self.mean = nn.parameter.Parameter(torch.randn(2))
+        self.mean = nn.parameter.Parameter(torch.randn(2), requires_grad=True)
         # covariance is a semi-positive definite symmetric matrix
         self._psd_sym_matrix = PSDSymmetricMatrix(2)
     
