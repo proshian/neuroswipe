@@ -68,6 +68,9 @@
 
 
 
+# WARNING! WARNING! WARNING! WARNING!
+ё в токенизаторе клавиатуры - это не ` из русской раскладки, а другой символ, котрый также выглядит.
+
 
 * Мб сделать nearset only частным случаем nearst_and_traj_transform?
 
