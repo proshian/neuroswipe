@@ -3,7 +3,26 @@ The dataset by default returns a tuple of 5 elements:
 (X: array, Y: array, T: array, grid_name: str, tgt_word: str)
 
 Feature extractors defined in this module are used 
-to convert this tuple a tuple (model_in, model_out)
+to convert this tuple into a tuple (model_in, model_out).
+
+In case of encoder-decoder model (currently the only model type)
+model_in is a tuple of two elements:
+    1) encoder_in: Tensor
+    2) decoder_in: Tensor
+model_out = decoder_out: Tensor
+
+Here is my current vision of encoder_in:
+It may consist of `traj_feats`, `kb_feats` or both.
+* `traj_feats` are features of a point that are exracted 
+    from it in the context of merely a trajectory.
+* `kb_feats` are features of a point that are extracted
+    from it in the context of a keyboard.
+
+So `traj_feats` regard a point as a part of a trajectory and 
+`kb_feats` regard a point as location on a keyboard.
+
+`traj_feats` and `kb_feats` are not concatenated as they use different
+types of embedding layers (actually, `traj_feats` are not embedded at all).
 """
 
 from typing import Tuple, Dict, Optional, Iterable, List, Callable, Union, Set
@@ -87,6 +106,9 @@ def get_dx_dt(X: Tensor,
 
 
 class TrajFeatsGetter:
+    """
+    Returns a tensor of 
+    """
     def __init__(self, 
                  grid_name_to_wh: Dict[str, Tuple[int, int]],
                  include_time: bool,
@@ -103,22 +125,22 @@ class TrajFeatsGetter:
         self.include_accelerations = include_accelerations
 
     def __call__(self, X: Tensor, Y: Tensor, T: Tensor, grid_name: str) -> Tensor:
-        traj_feats = [X, Y]
+        traj_feats_lst = [X, Y]
         if self.include_time:
-            traj_feats.append(T)
+            traj_feats_lst.append(T)
 
         if self.include_velocities:
             dx_dt = get_dx_dt(X, T)
             dy_dt = get_dx_dt(Y, T)
-            traj_feats.extend([dx_dt, dy_dt])
+            traj_feats_lst.extend([dx_dt, dy_dt])
         
         if self.include_accelerations:
             d2x_dt2 = get_dx_dt(dx_dt, T)
             d2y_dt2 = get_dx_dt(dy_dt, T)
-            traj_feats.extend([d2x_dt2, d2y_dt2])
+            traj_feats_lst.extend([d2x_dt2, d2y_dt2])
         
         traj_feats = torch.cat(
-            [traj_feat.reshape(-1, 1) for traj_feat in traj_feats],
+            [traj_feat.reshape(-1, 1) for traj_feat in traj_feats_lst],
             axis = 1
         )
 
@@ -304,7 +326,10 @@ def weights_function_sigmoid_normalized_v1(distances: Tensor,
     return weights
 
 
-###################    util transforms    ###################
+
+#########################################################################
+#########################    util transforms    #########################
+#########################################################################
 
 class SequentialTransform:
     def __init__(self, transforms) -> None:
@@ -438,27 +463,19 @@ class EncoderFeaturesGetter_KbKeyWeightsAndTrajFeats(EncoderFeaturesGetter):
 #! distances getter needs arrays.
 class EncoderFeaturesTupleGetter:
     """
-    Given a tuple of two feature getters: 
-        1) that extracts features as points of a trajectory
-        2) that extracts features from point location on keyboard
-    
-    Returns a tuple of two tensors:
-        1) Trajectory point features
-        2) Keyboard point features
+    Given an iterable of feature getters returns a tuple of extracted features.
+
+    A feature getter is supposed to extract features considering
+    swipe points as one of the following:
+        1) parts of a trajectory
+        2) locations on a keyboard
     """
-    def __init__(self, traj_feats_getter: Callable, kb_feats_getter: Callable, 
-                 kb_uses_t: bool = True) -> None:
-        self.traj_feats_getter = traj_feats_getter
-        self.kb_feats_getter = kb_feats_getter
-        self.kb_uses_t = kb_uses_t
+    def __init__(self, feats_getters: Iterable[Callable]) -> None:
+        self.feats_getters = feats_getters
+
 
     def __call__(self, X: array, Y: array, T: array, grid_name: str) -> Tuple[Tensor, Tensor]:
-        traj_feats = self.traj_feats_getter(X, Y, T, grid_name)
-        if self.kb_uses_t:
-            kb_feats = self.kb_feats_getter(X, Y, T, grid_name)
-        else:
-            kb_feats = self.kb_feats_getter(X, Y, grid_name)
-        return traj_feats, kb_feats
+        return [getter(X, Y, T, grid_name) for getter in self.feats_getters]
 
 
 
@@ -498,7 +515,35 @@ class EncoderFeaturesGetter_KbKeyDistancesAndTrajFeats:
         
         return traj_feats, distances
 
-                 
+
+class EncoderFeaturesGetter_XYForKbAndTrajFeats:
+    def __init__(self, 
+                 grid_name_to_grid: Dict[str, dict],
+                 include_time: bool,
+                 include_velocities: bool,
+                 include_accelerations: bool,
+                 kb_x_scaler: Callable = lambda x: x,
+                 kb_y_scaler: Callable = lambda y: y,
+                 ) -> None:
+        self.kb_x_scaler = kb_x_scaler
+        self.kb_y_scaler = kb_y_scaler
+        self.grid_name_to_wh = get_gname_to_wh(grid_name_to_grid)
+        self._get_traj_feats = TrajFeatsGetter(
+            self.grid_name_to_wh, 
+            include_time, include_velocities, include_accelerations)
+    
+    def __call__(self, X: array, Y: array, T: array, grid_name: str) -> Tensor:
+        X, Y, T = (torch.tensor(arr, dtype=torch.float32) for arr in (X, Y, T))
+        traj_feats = self._get_traj_feats(X, Y, T, grid_name)
+
+        # !! Warning: in-place operations
+        X.apply_(self.kb_x_scaler)
+        Y.apply_(self.kb_y_scaler)
+        kb_feats = torch.cat(
+            [feat.reshape(-1, 1) for feat in [X, Y]], 
+            axis=1)
+        return traj_feats, kb_feats
+
 
 #########################################################################
 ########################  DecoderInputOutputGetter  #####################
@@ -685,12 +730,15 @@ def get_val_transform(gridname_to_grid_path: str,
                       include_accelerations: Optional[bool] = None,
                       dist_weights_func: Optional[Callable] = None,
                       ds_paths_list: Optional[List[str]] = None,
-                      totals: Tuple[Optional[int], Optional[int]] = None
+                      totals: Tuple[Optional[int], Optional[int]] = None,
+                      kb_x_scaler: Callable = lambda x: x,
+                      kb_y_scaler: Callable = lambda y: y
                    ) -> Tuple[Callable, Callable]:
     """Returns validation transform"""
     TRAJ_FEATS_AND_WEIGHTS = "traj_feats_and_distances"  # Not a mistake; Legacy name
     TRAJ_FEATS_AND_DISTANCES = "traj_feats_and_distances__actual"
     TRAJ_FEATS_AND_NEAREST_KEY = "traj_feats_and_nearest_key"
+    TRAJ_FEATS_AND_XY = "traj_feats_and_xy"
     NEAREST_KEY_ONLY = "nearest_key_only"
 
 
@@ -781,6 +829,24 @@ def get_val_transform(gridname_to_grid_path: str,
                 include_time=include_time,
                 include_velocities=include_velocities,
                 include_accelerations=include_accelerations
+            ),
+            decoder_in_out_getter=DecoderInputOutputGetter(
+                word_tokenizer=char_tokenizer,
+                dtype=torch.int64
+            )
+        )
+
+    elif transform_name == TRAJ_FEATS_AND_XY:
+        assert_traj_feats_provided(include_time, include_velocities, include_accelerations)
+        
+        full_transform = FullTransform(
+            encoder_in_getter=EncoderFeaturesGetter_XYForKbAndTrajFeats(
+                grid_name_to_grid=gname_to_grid,
+                include_time=include_time,
+                include_velocities=include_velocities,
+                include_accelerations=include_accelerations,
+                kb_x_scaler=kb_x_scaler,
+                kb_y_scaler=kb_y_scaler
             ),
             decoder_in_out_getter=DecoderInputOutputGetter(
                 word_tokenizer=char_tokenizer,

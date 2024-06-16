@@ -56,6 +56,19 @@
 
 
 
+
+
+
+# feature_extractors_refactoring
+1) Заменить grid_name_to_wh в TrajFeatsExtractor на scale_x, scale_y
+    * Предварительно прочитать про метод нормализации из статьи гугла
+2) Заменить все encoder_features_getters на EncoderFeaturesTupleGetter
+    * Кажется, что так как работать это будет точно также, просто код станет чуть чище
+        это не срочно...
+
+
+
+
 * Мб сделать nearset only частным случаем nearst_and_traj_transform?
 
 
