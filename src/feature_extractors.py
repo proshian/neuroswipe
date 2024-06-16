@@ -871,7 +871,9 @@ def get_transforms(gridname_to_grid_path: str,
                      include_accelerations: Optional[bool] = None,
                      dist_weights_func: Optional[Callable] = None,
                      ds_paths_list: Optional[List[str]] = None,
-                     totals: Tuple[Optional[int], Optional[int]] = None
+                     totals: Tuple[Optional[int], Optional[int]] = None,
+                     kb_x_scaler: Callable = lambda x: x,
+                     kb_y_scaler: Callable = lambda y: y
                      ) -> Tuple[Callable, Callable]:
     """Returns train and validation transforms"""
     
@@ -879,7 +881,8 @@ def get_transforms(gridname_to_grid_path: str,
     val_transform = get_val_transform(
         gridname_to_grid_path, grid_names, transform_name, char_tokenizer,
         uniform_noise_range, include_time, include_velocities,
-        include_accelerations, dist_weights_func, ds_paths_list, totals
+        include_accelerations, dist_weights_func, ds_paths_list, totals,
+        kb_x_scaler, kb_y_scaler
     )
 
     train_transform = val_transform
