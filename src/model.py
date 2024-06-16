@@ -778,9 +778,16 @@ class PSDSymmetricMatrix(nn.Module):
 
     
 class TrainableMultivariateNormal2d(nn.Module):
-    def __init__(self):
+    def __init__(self, mean: Optional[torch.Tensor] = None) -> None:
+        """
+        mean: torch.Tensor of shape (2,)
+            If present is supposed to be a center of a corresponding key on a keyboard.
+
+        """
         super().__init__()
-        self.mean = nn.parameter.Parameter(torch.randn(2), requires_grad=True)
+        if mean is None:
+            mean = torch.randn(2)
+        self.mean = nn.parameter.Parameter(mean, requires_grad=True)
         # covariance is a semi-positive definite symmetric matrix
         self._psd_sym_matrix = PSDSymmetricMatrix(2)
     
@@ -793,24 +800,42 @@ class TrainableMultivariateNormal2d(nn.Module):
         return torch.distributions.MultivariateNormal(self.mean, self.covariance).log_prob(x)
 
 class KeyboardKeyNormalDistributions(nn.Module):
-    def __init__(self, n_keys):
+    def __init__(self, n_keys, key_centers: Optional[torch.Tensor] = None) -> None:
+        """
+        Arguments:
+        ----------
+        n_keys: int
+            Number of keys on a keyboard.
+        key_centers: torch.Tensor of shape (n_keys, 2) or None
+            If present, is supposed to be a tensor with centers of keys on a keyboard.
+        """
+
         super().__init__()
-        self.distributions = nn.ModuleList(
-            [TrainableMultivariateNormal2d() for _ in range(n_keys)]
-        )
-    
+        if key_centers is None:
+            key_centers = torch.randn(n_keys, 2)
+
+        self.unpresent_keys = []
+        if key_centers is not None:
+            self.unpresent_keys = [i for i in range(n_keys) 
+                                   if key_centers[i][0] == -1 and key_centers[i][1] == -1]
+
+        self.distributions = nn.ModuleList([TrainableMultivariateNormal2d(mean) for mean in key_centers])
+
+        
     def forward(self, coords):
         # coords.shape = (seq_len, batch_size, 2)
         # returns shape = (seq_len, batch_size, n_keys)
-        return torch.stack([dist(coords) for dist in self.distributions], dim = -1)
-        
-    
+        weights_lst = [dist(coords) for dist in self.distributions]
+        for i in self.unpresent_keys:
+            weights_lst[i] = torch.zeros_like(weights_lst[0])
+        return torch.stack(weights_lst, dim = -1)
 
 class SeparateTrajAndTrainableWeightedEmbeddingWithPos(nn.Module):
     # Separate in a sence that we don't apply a linear layer to mix the layers
-    def __init__(self, n_keys, key_emb_size, max_len, device, dropout = 0.1) -> None:
+    def __init__(self, n_keys, key_emb_size, max_len, device, dropout = 0.1,
+                 key_centers: Optional[torch.Tensor] = None) -> None:
         super().__init__()
-        self.weights_getter = KeyboardKeyNormalDistributions(n_keys)
+        self.weights_getter = KeyboardKeyNormalDistributions(n_keys, key_centers)
         self.weighted_sum_emb = WeightsSumEmbeddingWithPos(n_keys, key_emb_size, max_len, device)
         self.dropout = nn.Dropout(dropout)
 
@@ -1775,7 +1800,9 @@ def get_transformer_bigger_nearest_only__v3(device = None,
 def get_transformer_bigger_trainable_gaussian_weights_and_traj__v3(
                                                                 device = None,
                                                                 weights_path = None,
-                                                                n_coord_feats = 6) -> EncoderDecoderTransformerLike:
+                                                                n_coord_feats = 6,
+                                                                key_centers: Optional[torch.Tensor] = None
+                                                                ) -> EncoderDecoderTransformerLike:
     device = torch.device(
         device 
         or 'cuda' if torch.cuda.is_available() else 'cpu')
@@ -1785,7 +1812,8 @@ def get_transformer_bigger_trainable_gaussian_weights_and_traj__v3(
 
     input_embedding = SeparateTrajAndTrainableWeightedEmbeddingWithPos(
         n_keys=37, key_emb_size=key_emb_size,
-        max_len=299, device=device, dropout=0.1)
+        max_len=299, device=device, dropout=0.1,
+        key_centers=key_centers)
     
     model = _get_transformer_bigger__v3(input_embedding, device, n_coord_feats)
 
