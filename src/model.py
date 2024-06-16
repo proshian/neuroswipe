@@ -814,20 +814,24 @@ class KeyboardKeyNormalDistributions(nn.Module):
         if key_centers is None:
             key_centers = torch.randn(n_keys, 2)
 
+        assert key_centers.shape == (n_keys, 2)
         self.unpresent_keys = []
         if key_centers is not None:
             self.unpresent_keys = [i for i in range(n_keys) 
                                    if key_centers[i][0] == -1 and key_centers[i][1] == -1]
-
-        self.distributions = nn.ModuleList([TrainableMultivariateNormal2d(mean) for mean in key_centers])
-
+        
+        self.distributions = nn.ModuleList([None if i in self.unpresent_keys
+                                            else TrainableMultivariateNormal2d(mean) 
+                                            for i, mean in enumerate(key_centers)])
         
     def forward(self, coords):
         # coords.shape = (seq_len, batch_size, 2)
-        # returns shape = (seq_len, batch_size, n_keys)
-        weights_lst = [dist(coords) for dist in self.distributions]
-        for i in self.unpresent_keys:
-            weights_lst[i] = torch.zeros_like(weights_lst[0])
+        # returns shape = (seq_len, batch_size, n_keys)      
+        weights_lst = [
+            torch.zeros(coords.shape[:-1], device = coords.device) if i in self.unpresent_keys 
+                else dist(coords) 
+            for i, dist in enumerate(self.distributions)
+        ]
         return torch.stack(weights_lst, dim = -1)
 
 class SeparateTrajAndTrainableWeightedEmbeddingWithPos(nn.Module):
