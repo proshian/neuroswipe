@@ -8,6 +8,5 @@
 
     "prediction_paths": [
         "./results/predictions/val"
-        
     ]
 }
