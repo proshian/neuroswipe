@@ -769,13 +769,11 @@ def get_val_transform(gridname_to_grid_path: str,
 
     if transform_name in transforms_need_dist_lookup:
         assert isinstance(kb_tokenizer.i2t, list)
-        grid_name_to_dist_lookup = {
+        gridname_to_dists_lookup = {
             # Extra token is for legacy reasons
             gname: DistancesLookup(grid, kb_tokenizer.i2t + ['<extra_token>'])
             for gname, grid in gname_to_grid.items()
         }
-        gridname_to_dists_lookup = {gname: DistancesLookup(grid) for gname, grid in gname_to_grid.items()}
-
      
 
     if transform_name == TRAJ_FEATS_AND_NEAREST_KEY:
