@@ -343,112 +343,6 @@ def get_m1_smaller_model(device = None, weights_path = None):
 
 
 
-
-
-
-
-
-
-
-
-# ##########################################
-# import torch
-# import math
-# from torch import nn
-# from torchaudio.models import Conformer
-
-
-    
-
-
-
-
-# class ConformerEncoderTransformerDecoderWithPos(nn.Module):
-
-       
-#     def __init__(self, 
-#                  n_coord_feats,  # 6
-#                  key_emb_size,  # 122
-#                  char_vocab_size: int,
-#                  num_encoder_layers,  # 6
-#                  num_decoder_layers,  # 6
-#                  dim_feedforward,  # 128 у меня. Но надо бы 2048 
-#                  dropout:float,
-#                  char_embedding_dropout: float,
-#                  key_embedding_dropout: float,
-#                  num_heads_encoder,  # 4 
-#                  num_heads_decoder,  # 4
-#                  max_out_seq_len: int,
-#                  max_curves_seq_len: int,
-#                  activation: Callable = F.relu,
-#                  device = None,) -> None:
-#         super().__init__()
-
-#         self.device = torch.device(
-#             device 
-#             or 'cuda' if torch.cuda.is_available() else 'cpu')
-        
-#         d_model = n_coord_feats + key_emb_size
-
-#         self.char_embedding_dropout = nn.Dropout(char_embedding_dropout)
-#         self.key_embedding_dropout = nn.Dropout(key_embedding_dropout)
-        
-#         self.char_embedding = nn.Embedding(char_vocab_size, d_model)
-#         self.key_embedding = nn.Embedding(char_vocab_size, key_emb_size)
-
-
-#         # self.encoder = SwipeCurveTransformerEncoderv1(
-#         #     input_feats_size, d_model, dim_feedforward,
-#         #     num_encoder_layers, num_heads_encoder_1,
-#         #     num_heads_encoder_2, dropout, device=device)
-
-#         self.encoder = Conformer(input_dim=d_model,
-#                                  num_heads=num_heads_encoder,
-#                                  ffn_dim=dim_feedforward,
-#                                  num_layers=num_encoder_layers,
-#                                  depthwise_conv_kernel_size=32,
-#                                  dropout=dropout)
-        
-#         self.char_pos_encoder = PositionalEncoding(
-#             d_model, max_out_seq_len, device=device)
-        
-#         self.key_pos_encoder = PositionalEncoding(
-#             key_emb_size, max_curves_seq_len, device=device)
-        
-#         n_classes = char_vocab_size - 2  # <sos> and <pad> are not predicted
-#         self.decoder = SwipeCurveTransformerDecoderv1(
-#             d_model, n_classes, num_heads_decoder,
-#             num_decoder_layers, dim_feedforward, dropout, activation, device=device)
-
-#         self.mask = self._get_mask(max_out_seq_len).to(device=device)
-
-
-#     # def encode(self, x, kb_tokens, x_pad_mask):
-#     #     kb_k_emb = self.key_embedding(kb_tokens)  # keyboard key
-#     #     kb_k_emb = self.key_embedding_dropout(kb_k_emb)
-#     #     kb_k_emb = self.key_pos_encoder(kb_k_emb)
-#     #     x = torch.cat((x, kb_k_emb), dim = -1)
-#     #     x = self.encoder(x, src_key_padding_mask = x_pad_mask)
-#     #     return x
-    
-#     # def decode(self, x_encoded, y, x_pad_mask, y_pad_mask):
-#     #     y = self.char_embedding(y)
-#     #     y = self.char_embedding_dropout(y)
-#     #     y = self.char_pos_encoder(y)
-#     #     mask = self._get_mask(len(y)).to(device=self.device)
-#     #     y = self.decoder(y, x_encoded, mask, x_pad_mask, y_pad_mask)
-#     #     return y
-
-#     # def forward(self, x, kb_tokens, y, x_pad_mask, y_pad_mask):
-#     #     x_encoded = self.encode(x, kb_tokens, x_pad_mask)
-#     #     return self.decode(x_encoded, y, x_pad_mask, y_pad_mask)
-
-
-
-
-
-
-
 #############################################
 
 
@@ -1830,19 +1724,21 @@ def get_transformer_bigger_trainable_gaussian_weights_and_traj__v3(
 
 
 MODEL_GETTERS_DICT = {
+    ########## Legacy models
     "m1": get_m1_model,  # doesn't have layer norm
     "m1_bigger": get_m1_bigger_model,  # doesn't have layer norm
     "m1_smaller": get_m1_smaller_model,  # doesn't have layer norm
 
-    "transformer_m1_bigger": get_transformer_bigger_model,  # doesn't have layer norm
-    "transformer_bb_model": get_transformer_bb_model,  # doesn't have layer norm
+
+    "transformer_m1_bigger": get_transformer_bigger_model,  # doesn't have layer norm  # ! Deleteme
+    "transformer_bb_model": get_transformer_bb_model,  # doesn't have layer norm  # ! Deleteme
 
     # has layer norm, but will be deprecated
-    "weighted_transformer_bigger": get_transformer_bigger_weighted,  
+    "weighted_transformer_bigger": get_transformer_bigger_weighted,   # ! Move to v3_nearest_and_traj_transformer_bigger
 
 
-    "v2_weighted_transformer_bigger": get_transformer_bigger_weighted__v2,  # has layer norm
-    "v2_nearest_transformer_bigger": get_transformer_bigger_nearest__v2,  # has layer norm
+    "v2_weighted_transformer_bigger": get_transformer_bigger_weighted__v2,  # has layer norm  # ! Deleteme
+    "v2_nearest_transformer_bigger": get_transformer_bigger_nearest__v2,  # has layer norm  # ! Move to v3_nearest_and_traj_transformer_bigger
 
 
     "v3_weighted_and_traj_transformer_bigger": get_transformer_bigger_weighted_and_traj__v3,  # has layer norm

@@ -151,11 +151,11 @@ class GreedyGenerator(WordGeneratorWithVocab):
 
         return [(-log_prob, self.tokenizer.decode(tokens[1:-1]))]
 
-    def __call__(self, xyt, kb_tokens, max_steps_n=35) -> List[Tuple[float, str]]:
-        return self._generate(xyt, kb_tokens, max_steps_n)
+    def __call__(self, encoder_in, max_steps_n=35) -> List[Tuple[float, str]]:
+        return self._generate(encoder_in, max_steps_n)
     
-    def generate_word_only(self, xyt, kb_tokens, max_steps_n=35) -> str:
-        return self._generate(xyt, kb_tokens, max_steps_n)[0][1]
+    def generate_word_only(self, encoder_in, max_steps_n=35) -> str:
+        return self._generate(encoder_in, max_steps_n)[0][1]
 
 
 
