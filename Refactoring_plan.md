@@ -2,6 +2,9 @@
 * Попробовал загрузить веса "weighted_transformer_bigger" в модель "v3_weighted_and_traj_transformer_bigger". Я это делал в word_generation_demo.ipynb. Слой с весами клавиш ругался, что перемножаются матрицы с размерами 39 и 37 (Я указал только размеры, которые должны совпадать). Предположительно, в одном  случае мы обучались как будто клавиш 39,а в другом - какбудто 37
 
 # Текущая ситация по рефакторингу
+
+Было проверено, что веса my_weighted_transformer подходят модели v3_weighted_and_traj_transformer_bigger
+
 1. Продолжить обучение nearest_transformer
 2. Перенести веса my_weighted_transformer (скорее всего, придется все-таки повторно обучить)
 3. Удалить все модели, кроме семейства v3_models
@@ -340,3 +343,63 @@ predictions_dict будет поучаться с помощью функции 
 
 # Notes 
 * Все, что многопоточное (Predictor._predict_raw_mp и CurveDataset._get_data_mp) работает только в скриптах. В jupyter notebook'ах - нет. Кажется, проблема в использовани concurrent.futures. Возможно, все наладится, если исопльзовать модуль multiprocessing.
+
+
+
+
+
+#  Раздел "не наступай на грабли"
+
+Казалось хорошей идеей сделать полностью абстрактный encoder decoder с kwargs
+Плозая идея: очень сложно такое дебажить. Расписано в комменте
+
+```python
+#############
+# !!!!!!!!!!!!!!! EncoderDecoderAbstract
+# This class is awful because it's very hard to debug.
+# For example if our encoder is a nn.TransformerEncoder
+# and we pass its forward with a typo in `src_key_padding_mask`
+# (ex forget `key` and end up with `src_padding_mask`) this
+# won't be an error, further more a default parameter will be used
+# which would lead to an error.
+# Upd. I think the problem lies in a situation when self.encoder model
+# has a **kwargs too. Otherwise the abovemntioned situation would 
+# raise an error about an unexpected argument.
+
+class EncoderDecoderAbstract(nn.Module):
+    def __init__(self, enc_in_emb_model: nn.Module, dec_in_emb_model: nn.Module, encoder, decoder, out):
+        super().__init__()
+        self.enc_in_emb_model = enc_in_emb_model
+        self.dec_in_emb_model = dec_in_emb_model
+        self.encoder = encoder
+        self.decoder = decoder
+        self.out = out  # linear
+
+    # x can be a tuple (ex. traj_feats, kb_tokens) or a single tensor
+    # (ex. just kb_tokens).
+    def encode(self, x, *encoder_args, **encoder_kwargs):
+        x = self.enc_in_emb_model(x)
+        return self.encoder(x, *encoder_args, **encoder_kwargs)
+    
+    def decode(self, y, x_encoded, *decoder_args, **decoder_kwargs):
+        y = self.dec_in_emb_model(y)
+        dec_out = self.decoder(y, x_encoded, *decoder_args, **decoder_kwargs)
+        return self.out(dec_out)
+    
+    def forward(self, x, y, 
+                encoder_args: list = None, 
+                encoder_kwargs: dict = None,
+                decoder_args: list = None,
+                decoder_kwargs: dict = None):
+        if encoder_args is None:
+            encoder_args = []
+        if decoder_args is None:
+            decoder_args = []
+        if encoder_kwargs is None:
+            encoder_kwargs = {}
+        if decoder_kwargs is None:
+            decoder_kwargs = {}
+
+        x_encoded = self.encode(x, *encoder_args, **encoder_kwargs)
+        return self.decode(y, x_encoded, *decoder_args, **decoder_kwargs)
+```
