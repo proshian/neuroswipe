@@ -9,7 +9,7 @@ The repository is my yandex cup 2023 solution (7-th place) with improvements
 You can try out one of the models trained as part of the competition in a [web app](https://proshian.pythonanywhere.com/)
 
 
-![demo](https://github.com/proshian/neuroswipe/assets/98213116/96bf9817-bacf-4ca3-b436-411a39290804)
+![demo](https://github.com/proshian/neuroswipe/assets/98213116/0ccfedf2-5a4e-40b0-98fc-de5f4bcbc1ab)
 
 
 
