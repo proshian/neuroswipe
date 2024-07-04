@@ -12,6 +12,7 @@ You can try out one of the models trained as part of the competition in a [web a
 ![demo](https://github.com/proshian/neuroswipe/assets/98213116/4f3f5d7d-833b-41ae-8c67-288bfd1f5b54)
 
 
+If the website is not available, you can run the demo yourself by following the instructions from [the web app's GitHub repository](https://github.com/proshian/neuroswipe_inference_web).
 
 ## Method
 
