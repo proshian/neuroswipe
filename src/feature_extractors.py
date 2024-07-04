@@ -735,8 +735,9 @@ def get_val_transform(gridname_to_grid_path: str,
                       kb_y_scaler: Callable = lambda y: y
                    ) -> Tuple[Callable, Callable]:
     """Returns validation transform"""
-    TRAJ_FEATS_AND_WEIGHTS = "traj_feats_and_distances"  # Not a mistake; Legacy name
-    TRAJ_FEATS_AND_DISTANCES = "traj_feats_and_distances__actual"
+    TRAJ_FEATS_AND_WEIGHTS = "traj_feats_and_distance_weights"
+    # Better to keep this name since originally TRAJ_FEATS_AND_WEIGHTS was eqal to "traj_feats_and_distances"
+    TRAJ_FEATS_AND_DISTANCES = "traj_feats_and_distances__actual" 
     TRAJ_FEATS_AND_NEAREST_KEY = "traj_feats_and_nearest_key"
     TRAJ_FEATS_AND_XY = "traj_feats_and_xy"
     NEAREST_KEY_ONLY = "nearest_key_only"

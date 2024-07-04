@@ -6,7 +6,7 @@ import copy
 import json
 
 # Without this import pickle.load won't be able to load predictions.
-from predict import Prediction
+from predict_v2 import Prediction
 
 
 def remove_probs(dataset_preds: List[List[Tuple[float, str]]]

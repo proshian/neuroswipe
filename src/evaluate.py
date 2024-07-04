@@ -8,7 +8,7 @@ from dataclasses import asdict
 import pandas as pd
 from tqdm.auto import tqdm
 
-from predict import Prediction
+from predict_v2 import Prediction
 from metrics import get_mmr, get_accuracy
 
 def parse_args() -> argparse.Namespace:
