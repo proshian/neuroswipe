@@ -1,5 +1,6 @@
-from typing import Callable, Optional, Tuple
+from typing import Callable, Optional, Tuple, List, Dict, Set
 import math
+from collections import defaultdict
 
 import torch
 import torch.nn as nn
@@ -1101,6 +1102,91 @@ class EncoderDecoderTransformerLike(nn.Module):
     def forward(self, x, y, x_pad_mask, y_pad_mask):
         x_encoded = self.encode(x, x_pad_mask)
         return self.decode(y, x_encoded, x_pad_mask, y_pad_mask)
+    
+
+
+
+
+# def _create_prefix_to_allowed_ids(vocab: List[str],
+#                                   tokenizer,
+#                                     ) -> Dict[Tuple[int, ...], Set[int]]:
+#     # ! When switching to another type of tokenizer where tokens are not just characters
+#     # but can be a sequence of characters, we need to change the implementation of this method. 
+#     prefix_to_allowed_ids = defaultdict(set)
+
+#     for word in vocab:
+#         tokenized_word = tokenizer.encode(word)
+#         for i in range(1, len(tokenized_word)):
+#             prefix = tuple(tokenized_word[:i])
+#             prefix_to_allowed_ids[prefix].add(tokenized_word[i])
+#     return prefix_to_allowed_ids
+
+
+def inverse_prefix_to_allowed_ids(prefix_to_allowed_ids, tokenizer,
+                                  max_token_id, prefix_ids: List[int]
+                                  ) -> Dict[Tuple[int, ...], Set[int]]:
+    prefix_to_unallowed_ids = defaultdict(set)
+    all_ids = set(tokenizer.idx_to_char.keys())
+    impossible_ids = set(range(max_token_id + 1, len(tokenizer.char_to_idx)))
+    for prefix, allowed_ids in prefix_to_allowed_ids:
+        unallowed_ids = all_ids - allowed_ids - impossible_ids
+        prefix_to_unallowed_ids[prefix] = unallowed_ids
+    return prefix_to_unallowed_ids
+
+
+# Masking impossible logits might be helpful,
+# Because it will increase probabilities of true labels
+# Making the optimization problem easier.
+# Note that probabilities of false labels
+# don't make any impact in CELoss.
+class EncoderDecoderTransformerLike_WithVocab(EncoderDecoderTransformerLike):
+    def _get_mask(self, max_seq_len: int):
+        """
+        Returns a mask for the decoder transformer.
+        """
+        return _get_mask(max_seq_len)
+
+    def __init__(self, 
+                 enc_in_emb_model: nn.Module, 
+                 dec_in_emb_model: nn.Module, 
+                 encoder: nn.Module, 
+                 decoder: nn.Module, 
+                 out: nn.Module,
+                 prefix_to_impossile_ids: Dict[Tuple[int, ...], Set[int]],
+                 device: Optional[str] = None):
+        super().__init__(
+            enc_in_emb_model=enc_in_emb_model, 
+            dec_in_emb_model=dec_in_emb_model, 
+            encoder=encoder, 
+            decoder=decoder, 
+            out=out,
+            device=device
+        )
+        self.prefix_to_impossile_ids = prefix_to_impossile_ids
+
+    def _mask_out_unallowed_ids(self, prefix_ids: List[int], logits: torch.Tensor) -> torch.Tensor:
+        if self.prefix_to_impossile_ids is None:
+            return logits
+        unallowed_ids = self.prefix_to_impossile_ids.get(tuple(prefix_ids), set())
+        logits[torch.tensor(list(unallowed_ids), dtype=torch.long)] = float('-inf')
+        return logits
+
+    def decode(self, y, x_encoded, memory_key_padding_mask, tgt_key_padding_mask):
+        y_emb = self.dec_in_emb_model(y)
+        tgt_mask = self._get_mask(y_emb.size(1)).to(device=self.device)
+
+        dec_out = self.decoder(y_emb, x_encoded, tgt_mask=tgt_mask, 
+                               memory_key_padding_mask=memory_key_padding_mask, 
+                               tgt_key_padding_mask=tgt_key_padding_mask)
+        logits = self.out(dec_out)
+        seq_len, batch_size, n_classes = logits.shape
+
+        for seq_idx in range(1, seq_len):
+            prefix_ids = y[seq_idx, :].tolist()
+            for batch_idx in range(batch_size):
+                logits[seq_idx, batch_idx, :] = self._mask_out_unallowed_ids(
+                    prefix_ids[batch_idx], logits[seq_idx, batch_idx, :])
+        return logits
 
 
 
