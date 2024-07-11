@@ -3,25 +3,14 @@
     {
         "model_params": 
         [
-            ["default", "v3_nearest_only_transformer_bigger", "v3_nearest_only_transformer_bigger-default--epoch=53-val_loss=0.459-val_word_level_accuracy=0.852.pt"],
-            ["default", "v3_nearest_only_transformer_bigger", "v3_nearest_only_transformer_bigger-default--epoch=50-val_loss=0.457-val_word_level_accuracy=0.851.pt"],
-            ["default", "v3_nearest_only_transformer_bigger", "v3_nearest_only_transformer_bigger-default--epoch=47-val_loss=0.457-val_word_level_accuracy=0.852.pt"],
-
-            ["default", "v3_nearest_only_transformer_bigger", "v3_nearest_only_transformer_bigger-default--epoch=45-val_loss=0.455-val_word_level_accuracy=0.853.pt"],
-            ["default", "v3_nearest_only_transformer_bigger", "v3_nearest_only_transformer_bigger-default--epoch=40-val_loss=0.457-val_word_level_accuracy=0.851.pt"],
-            ["default", "v3_nearest_only_transformer_bigger", "v3_nearest_only_transformer_bigger-default--epoch=35-val_loss=0.455-val_word_level_accuracy=0.852.pt"],
-            ["default", "v3_nearest_only_transformer_bigger", "v3_nearest_only_transformer_bigger-default--epoch=29-val_loss=0.459-val_word_level_accuracy=0.849.pt"],
-            ["default", "v3_nearest_only_transformer_bigger", "v3_nearest_only_transformer_bigger-default--epoch=5-val_loss=0.483-val_word_level_accuracy=0.823.pt"],
-            ["default", "v3_nearest_only_transformer_bigger", "v3_nearest_only_transformer_bigger-default--epoch=15-val_loss=0.465-val_word_level_accuracy=0.843.pt"],
-            ["default", "v3_nearest_only_transformer_bigger", "v3_nearest_only_transformer_bigger-default--epoch=20-val_loss=0.460-val_word_level_accuracy=0.844.pt"],
-            ["default", "v3_nearest_only_transformer_bigger", "v3_nearest_only_transformer_bigger-default--epoch=25-val_loss=0.459-val_word_level_accuracy=0.847.pt"],
-            ["default", "v3_nearest_only_transformer_bigger", "v3_nearest_only_transformer_bigger-default--epoch=10-val_loss=0.471-val_word_level_accuracy=0.837.pt"]
+            ["default", "v3_nearest_only_transformer_bigger", "v3_nearest_only_transformer_bigger-default--epoch=42-val_loss=0.458-val_word_level_accuracy=0.850.pt"],
+            ["default", "v3_nearest_only_transformer_bigger", "v3_nearest_only_transformer_bigger-default--epoch=11-val_loss=0.470-val_word_level_accuracy=0.838.pt"]
         ],
-        "out_path": "./results/predictions/val/phrase_swipe_feats",
+        "out_path": "./results/predictions/val/phrase_swipe_features",
         "csv_path": "",
         "data_split": "val",
         "grid_name_to_grid__path": "./data/data_separated_grid/gridname_to_grid.json",
-        "models_root": "./results/models_for_debug/phrase_swipe_feats",
+        "models_root": "./results/models_for_debug/phrase_swipe_features",
         "voc_path": "./data/data_separated_grid/voc.txt",
         "transform_name": "nearest_key_only",
         "include_coords": false,

@@ -3,18 +3,14 @@
     {
         "model_params": 
         [
-            ["default", "v3_nearest_and_traj_transformer_bigger", "v3_nearest_and_traj_transformer_bigger-default--epoch=29-val_loss=0.442-val_word_level_accuracy=0.868.pt"],
-            ["default", "v3_nearest_and_traj_transformer_bigger", "v3_nearest_and_traj_transformer_bigger-default--epoch=5-val_loss=0.474-val_word_level_accuracy=0.835.pt"],
-            ["default", "v3_nearest_and_traj_transformer_bigger", "v3_nearest_and_traj_transformer_bigger-default--epoch=10-val_loss=0.457-val_word_level_accuracy=0.850.pt"],
-            ["default", "v3_nearest_and_traj_transformer_bigger", "v3_nearest_and_traj_transformer_bigger-default--epoch=15-val_loss=0.449-val_word_level_accuracy=0.858.pt"],
-            ["default", "v3_nearest_and_traj_transformer_bigger", "v3_nearest_and_traj_transformer_bigger-default--epoch=20-val_loss=0.445-val_word_level_accuracy=0.862.pt"],
-            ["default", "v3_nearest_and_traj_transformer_bigger", "v3_nearest_and_traj_transformer_bigger-default--epoch=25-val_loss=0.445-val_word_level_accuracy=0.865.pt"]
+            ["default", "v3_nearest_and_traj_transformer_bigger", "v3_nearest_and_traj_transformer_bigger-default--epoch=63-val_loss=0.440-val_word_level_accuracy=0.870.pt"],
+            ["default", "v3_nearest_and_traj_transformer_bigger", "v3_nearest_and_traj_transformer_bigger-default--epoch=45-val_loss=0.442-val_word_level_accuracy=0.865.pt"]
         ],
-        "out_path": "./results/predictions/val/my_features_1",
+        "out_path": "./results/predictions/val/my_nearest_features",
         "csv_path": "",
         "data_split": "val",
         "grid_name_to_grid__path": "./data/data_separated_grid/gridname_to_grid.json",
-        "models_root": "./results/models_for_debug/my_features_1",
+        "models_root": "./results/models_for_debug/my_nearest_features",
         "voc_path": "./data/data_separated_grid/voc.txt",
         "transform_name": "traj_feats_and_nearest_key",
         "include_coords": true,
