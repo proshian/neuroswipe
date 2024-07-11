@@ -208,54 +208,6 @@ class CurveDatasetSubset:
     
     def __getitem__(self, idx):
         return self.dataset[self.grid_idxs[idx]]
-    
-
-class CollateFn:
-    def __init__(self, word_pad_idx: int, batch_first: bool):
-        self.word_pad_idx = word_pad_idx
-        self.batch_first = batch_first
-    
-    def __call__(self, batch: list):
-        """
-        Arguments:
-        ----------
-        batch: list of tuples:
-            ((traj_feats, kb_tokens, dec_in_char_seq), dec_out_char_seq)
-        """
-        x, dec_out_no_pad = zip(*batch)
-        (traj_feats_no_pad, kb_tokens_no_pad, dec_in_no_pad) = zip(*x)
-
-        # traj_feats[i].shape = (curve_len, batch_size, n_coord_feats)
-        traj_feats = pad_sequence(traj_feats_no_pad, batch_first=self.batch_first)
-        # kb_tokens[i].shape = (curve_len, batch_size)
-        kb_tokens = pad_sequence(kb_tokens_no_pad, batch_first=self.batch_first)
-
-        # (chars_seq_len - 1, batch_size)
-        dec_in = pad_sequence(dec_in_no_pad, batch_first=self.batch_first, 
-                                       padding_value=self.word_pad_idx)
-        dec_out = pad_sequence(dec_out_no_pad, batch_first=self.batch_first,
-                                        padding_value=self.word_pad_idx)
-        
-        
-        word_pad_mask = dec_in == self.word_pad_idx
-        if not self.batch_first:
-            word_pad_mask = word_pad_mask.T  # word_pad_mask is always batch first
-
-        max_curve_len = traj_feats.shape[1] if self.batch_first else traj_feats.shape[0]
-        traj_lens = torch.tensor([len(x) for x in traj_feats_no_pad])
-
-        # Берем матрицу c len(traj_lens) строками вида 
-        # [0, 1, ... , max_curve_len - 1].  Каждый элемент i-ой строки 
-        # сравниваем с длиной i-ой траектории.  Получится матрица, где True 
-        # только на позициях, больших, чем длина соответствующей траектории.
-        # (batch_size, max_curve_len)    
-        traj_pad_mask = torch.arange(max_curve_len).expand(
-            len(traj_lens), max_curve_len) >= traj_lens.unsqueeze(1)
-        
-        transformer_in = (traj_feats, kb_tokens, dec_in, 
-                          traj_pad_mask, word_pad_mask)
-
-        return transformer_in, dec_out
 
 
 
