@@ -31,15 +31,47 @@ Keyboard key embeddings used in encoder and charracter embeddings used in decode
 
 More info in [solution_description.md](solution_description.md) file (in Russian).
 
-## Competition submission reprodction instructions
-Competition submission reprodction instructions are [here: submission_reproduciton_instrucitons.md](submission_reproduciton_instrucitons.md)
+## Requirements
+
+Install the dependencies:
+
+```sh
+pip install -r requirements.txt
+```
+
+* The inference was tested with python 3.10
+* The training was done in kaggle on Tesla P100
+
 
 ## Training
-The training is in [src/train.ipynb notebook](src/train.ipynb)
 
 <!-- Перед побучением необходимо очистить тренировочный датасет -->
 
-## Future work
+The training is done in [train.ipynb](src/train.ipynb)
+
+> [!WARNING]  
+> `train.ipynb` drains RAM. Switch to **TODO: create and referece here the branch** branch to avoid this issue.
+
+
+## Prediction
+
+[word_generation_demo.ipynb](src/word_generation_demo.ipynb) serves as an example on how to predict via a trained model.
+
+[predict_v2.py](src/predict_v2.py) is used to obtain word candidates for a whole dataset and pickle them
+
+> [!WARNING]  
+> If the decoding algorithm in `predict_v2.py` script utilizes a vocabulary for masking (`use_vocab_for_generation: true` in the config), it is necessary to disable multiprocessing by passing the command-line argument `--num-workers 0` to the script. Otherwise, the prediction will take a long time.
+
+
+## Results
+
+
+
+## Yandex cup 2023 submission reprodction instructions
+Yandex cup 2023 submission reprodction instructions are [here: submission_reproduciton_instrucitons.md](submission_reproduciton_instrucitons.md)
+
+
+
 
 ## For future me
 See refactoring plan [here](./Refactoring_plan.md)
