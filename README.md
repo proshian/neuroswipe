@@ -1,6 +1,6 @@
 # NeuroSwipe
 
-Transformer model that is used for a gesture keyboard (performs recognition of curves that are swiped across a keyboard on a smartphone display)
+A transformer neural network for a gesture keyboard that transduces curves swiped across a keyboard into word candidates.
 
 The repository is my yandex cup 2023 solution (7-th place) with improvements
 
@@ -13,6 +13,10 @@ You can try out one of the models trained as part of the competition in a [web a
 
 
 If the website is not available, you can run the demo yourself by following the instructions from [the web app's GitHub repository](https://github.com/proshian/neuroswipe_inference_web).
+
+
+## Existing work
+
 
 ## Method
 
@@ -31,7 +35,17 @@ Keyboard key embeddings used in encoder and charracter embeddings used in decode
 
 More info in [solution_description.md](solution_description.md) file (in Russian).
 
-## Requirements
+
+
+
+## Results
+
+
+> [!NOTE]  
+> The sudden increase in accuracy for `my_nearest_features` and `indiswipe_features` is due to a decrease in learning rate. The  losses on validation set of these models did not change over 2000 validations, which led to the ReduceLROnPlateau scheduler cutting learning rate in half. For other models, ReduceLROnPlateau haven't taken any actions yet.
+
+
+## Prerequisites
 
 Install the dependencies:
 
@@ -63,15 +77,13 @@ The training is done in [train.ipynb](src/train.ipynb)
 > If the decoding algorithm in `predict_v2.py` script utilizes a vocabulary for masking (`use_vocab_for_generation: true` in the config), it is necessary to disable multiprocessing by passing the command-line argument `--num-workers 0` to the script. Otherwise, the prediction will take a long time.
 
 
-## Results
 
 
-
-## Yandex cup 2023 submission reprodction instructions
+## Yandex cup 2023 submission reproduction instructions
 Yandex cup 2023 submission reprodction instructions are [here: submission_reproduciton_instrucitons.md](submission_reproduciton_instrucitons.md)
 
 
 
 
 ## For future me
-See refactoring plan [here](./Refactoring_plan.md)
+See [refactoring plan](./Refactoring_plan.md)
