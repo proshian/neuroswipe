@@ -198,7 +198,7 @@ Swipe point embeddings (encoder input) are formed by combining two types of feat
 This concept of swipe point embeddings holds true for both: methods presented here and those found in the literature.
 
 > [!NOTE]  
-> "SP" below is for swipe point
+> "SP" in the sections below stands for Swipe Point.
 
 
 #### SP Embedding that uses the nearest key embedding (My Nearest SP Embedding)
