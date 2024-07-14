@@ -223,7 +223,7 @@ pip install -r requirements.txt
 The training is done in [train.ipynb](src/train.ipynb)
 
 > [!WARNING]  
-> `train.ipynb` drains RAM. Switch to **TODO: create and referece here the branch** branch to avoid this issue.
+> `train.ipynb` drains RAM when using `n_workers` > 0 in Dataloader. This can result in up to `dataset_size * n_workers` extra gigabytes of RAM usage. This is a known issue (see [here](https://github.com/pytorch/pytorch/issues/13246)) that happens when dataset uses list to store data. Although `torch.cuda.empty_cache()` can be used as a workaround, it doesn't seem to work with pytorch lightning. It appears I didn't commit this workaround, but you can adapt train.ipynb from [before-lightning branch](https://github.com/proshian/neuroswipe/tree/before-lightning) by adding ```torch.cuda.empty_cache()``` after each epoch to to avoid the issue.
 
 
 ## Prediction
