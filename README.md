@@ -24,7 +24,7 @@ If the website is not available, you can run the demo yourself by following the 
 
 <br>
 
-
+Methods comparison
 
 <table width="1068">
 <tbody>
@@ -108,7 +108,7 @@ If the website is not available, you can run the demo yourself by following the 
 <p>Contrastive distance: ELMo</p>
 </td>
 <td width="147">
-<p>Encoder-only и Contrastive Distance</p>
+<p>Encoder-only and Contrastive Distance</p>
 </td>
 <td width="367">
 <pre>concat(
@@ -120,8 +120,34 @@ If the website is not available, you can run the demo yourself by following the 
 <p><b>TO BE COUNTED</b></p>
 </td>
 </tr>
+
+<tr>
+<td width="174">
+<p>Linear Transformer (4)</p>
+</td>
+<td width="89">
+<p>2024</p>
+</td>
+<td width="177">
+<p>Gated Linear Transformer</p>
+</td>
+<td width="147">
+<p>Encoder-only</p>
+</td>
+<td width="367">
+<pre>sum(
+   nearest_key_embedding,
+   coorinate_embedding)
+</pre>
+</td>
+<td width="113">
+<p>0.654</p>
+</td>
+</tr>
+
 </tbody>
 </table>
+
 
 It can be seen on the table above that all existing approaches use similar swipe point embeddings based on the embedding of the nearest key, and other options have not been explored.
 
@@ -153,6 +179,9 @@ Decoder input is a sequence of trainable embeddings (with positional encoding) o
 
 The positional encodeing is the same as in "Attention is all you need": it's a fixed embedding based on harmonic oscilations.
 
+> [!NOTE]  
+> In my research keyboard key embeddings used in encoder and charracter embeddings used in decoder are different entities.
+
 ### Other models
 
 * There were experiments where first tranformer encoder layer can input a sequence with elements of a dimension different from other encoder layers. Actually, I used this kind of custom transfomer in yandex cup, but I don't the difference in performance or parameters economy substential.
@@ -161,24 +190,66 @@ The positional encodeing is the same as in "Attention is all you need": it's a f
 
 ### Swipe point embeddings
 
+
+Swipe point embeddings (encoder input) is formed by combining two types of features (though one of them can be omitted): 
+1) Features that regard a point as a part of a trajectory
+    * Ex: `x`, `y` coordinates; time since begining of the swipe; $\frac{dx}{dt}$, $\frac{dy}{dt}$; etc.
+2) Features that regard a point as a location on a keyboard
+    * Ex: a trainable embedding of the nearest keyboard key; a vector of distances between the swipe point and every keyboard key center; etc.
+
+This conception of swipe point embeddings states true for both: methods presented here and those found in the literature.
+
+
 #### My nearest SP embedding
 
-Encoder input sequence consists of elements denoted as `swipe point embedding` on the image below.
+This method is the same as indiswipe method but uses second derivatives too.
+
+The computational graph of a `swipe point embedding` is on the image below.
 
 ![Here should be an image of encoder_input_sequence_element](./REAME_materials/encoder_input_sequence_element.png)
 
 The $\frac{dx}{dt}$, $\frac{dy}{dt}$, $\frac{d^2x}{dt^2}$, $\frac{d^2y}{dt^2}$ derivatives are calculated using finite difference method.
 
-Keyboard key embeddings used in encoder and charracter embeddings used in decoder are different entities.
 
 #### My weighted SP embedding
+
+This is a new method invented in this research that is not found in literature: all the papers use only the nearest keyboard key embedding whe constructing a swipe point embedding.
+
+It is similar to `My nearest SP embedding` described above, but instead of `the nearest keyboard key embedding` a `weighted sum of all keyboard key embeddings` is used.
+
+$$ embedding = \sum_{key}f(d_{key}) \cdot embedding_{key}$$
+
+
+Where $d_{key}$ is the distance between between the swipe point and $key$ center, $f(d_{key})$ is a function that given a distance returns $key$ weight, $embedding_{key}$ is the $key$'s embedding.
+
+A key hyperparameter of the method is the choice of the weighting function $f$. It is assumed that the argument of the function $f$ is the distance from the point to the center of the key, expressed in half-diagonals of the keys. The range of acceptable values is the interval from 0 to 1.
+
+It should be noted that this method is almost the same as `My nearest SP embedding` if $f$ is a threshold function that returns 1 if $d_{key}$ is less than half the diagonal of the key, and 0 otherwise.
+
+
+Since the swipes are noizy by their nature and their trajectory often doesn't cross the target keys but always passes near them, the idea arises to take into account all the keys (or in other words to replace the threshold function with a smooth one).
+
+
+The weighting function used in this work along with it's graph is presented below. It is a reflected, right-shifted sigmoid with a sharpened transition from 1 to 0.
+
+$$f(x) = \frac{1}{1+e^{1.8 \cdot (x - 2.2)}}$$
+
+
+![weights_function](https://github.com/user-attachments/assets/ee43a8bf-cbb1-4885-8a2f-78c2ea034d4f)
+
+
+In the graph below, the z-axis shows the weight of key `p` (highlighted in yellow) for each point on the keyboard. For other keys, this surface will be the same, just centered at a different point. For a clear view of the keyboard there is a separate image without the surface.
+
+
 
 ![weights_viz](https://github.com/user-attachments/assets/d2c2505e-91c8-4c33-8bcc-85c386441628)
 ![3d_keyboard](https://github.com/user-attachments/assets/dce6b76b-b635-4f93-9251-48dac5e4d793)
 
-## Some info can be found in solution_description.md
+## Some extra info
 
-More info in [solution_description.md](solution_description.md) file (in Russian and may be outdated).
+Some extra info can be found [solution_description.md](solution_description.md) file (in Russian and may be outdated) and in my [master's thesis]() (in Russian)
+
+**TODO: add link to the thesis**
 
 
 ## Results
