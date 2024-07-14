@@ -112,7 +112,7 @@ If the website is not available, you can run the demo yourself by following the 
 </td>
 <td width="367">
 <pre>concat(
-   "nearest_key_one_hot",
+   nearest_key_one_hot,
    x, y, dx/dt, dy/dt)
 </pre>
 </td>
@@ -123,7 +123,9 @@ If the website is not available, you can run the demo yourself by following the 
 </tbody>
 </table>
 
+It can be seen on the table above that all existing approaches use similar swipe point embeddings based on the embedding of the nearest key, and other options have not been explored.
 
+At the same time, a hypothesis arises that including information about all keys on the keyboard in the embeddings can mitigate the noise inherent to this task and more accurately reflect the user's interaction with the keyboard. Thus the research presented in this repository mainly focuses on swipe point representations and their effect on metrics.
 
 
 ## Method
@@ -159,6 +161,8 @@ The positional encodeing is the same as in "Attention is all you need": it's a f
 
 ### Swipe point embeddings
 
+#### My nearest SP embedding
+
 Encoder input sequence consists of elements denoted as `swipe point embedding` on the image below.
 
 ![Here should be an image of encoder_input_sequence_element](./REAME_materials/encoder_input_sequence_element.png)
@@ -167,11 +171,14 @@ The $\frac{dx}{dt}$, $\frac{dy}{dt}$, $\frac{d^2x}{dt^2}$, $\frac{d^2y}{dt^2}$ d
 
 Keyboard key embeddings used in encoder and charracter embeddings used in decoder are different entities.
 
-More info in [solution_description.md](solution_description.md) file (in Russian).
-
+#### My weighted SP embedding
 
 ![weights_viz](https://github.com/user-attachments/assets/d2c2505e-91c8-4c33-8bcc-85c386441628)
 ![3d_keyboard](https://github.com/user-attachments/assets/dce6b76b-b635-4f93-9251-48dac5e4d793)
+
+## Some info can be found in solution_description.md
+
+More info in [solution_description.md](solution_description.md) file (in Russian and may be outdated).
 
 
 ## Results
