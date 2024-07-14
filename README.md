@@ -244,7 +244,7 @@ In the graph below, the z-axis shows the weight of key `p` (highlighted in yello
 
 
 ![weights_viz](https://github.com/user-attachments/assets/d2c2505e-91c8-4c33-8bcc-85c386441628)
-![3d_keyboard](https://github.com/user-attachments/assets/dce6b76b-b635-4f93-9251-48dac5e4d793)
+![3d_keyboard_cut](https://github.com/user-attachments/assets/1ca86f05-b707-41d8-8815-f47fda1f911a)
 
 ## Extra Info
 
