@@ -173,7 +173,7 @@ All experiments utilize this exact model, with the primary difference between th
 
 Encoder input is a sequence of `swipe point embeddings`. They are described in a dedicated section.
 
-Decoder input is a sequence of trainable embeddings (with positional encoding) of tokens extracted from the target word. In yhis research tokens include all alphabet characters and special tokens (<sos>, <eos>, <unk>, <pad>), however the bpe tokens or wordpiece tokens are suitable as well.
+Decoder input is a sequence of trainable embeddings (with positional encoding) of tokens extracted from the target word. In yhis research tokens include all alphabet characters and special tokens (`<sos>`, `<eos>`, `<unk>`, `<pad>`), however the bpe tokens or wordpiece tokens are suitable as well.
 
 The positional encoding is the same as in "Attention is all you need": it's a fixed embedding based on harmonic oscilations.
 
@@ -197,38 +197,41 @@ Swipe point embeddings (encoder input) are formed by combining two types of feat
 
 This concept of swipe point embeddings holds true for both: methods presented here and those found in the literature.
 
+> [!NOTE]  
+> "SP" below is for swipe point
 
-#### My Nearest SP Embedding
+
+#### SP Embedding that uses the nearest key embedding (My Nearest SP Embedding)
 
 This method is the same as indiswipe method but uses second derivatives alongside with other features.
 
-The computational graph of a `swipe point embedding` is on the image below.
+The computational graph of a `swipe point embedding` is shown in the image below.
 
 ![Here should be an image of encoder_input_sequence_element](./REAME_materials/encoder_input_sequence_element.png)
 
-The $\frac{dx}{dt}$, $\frac{dy}{dt}$, $\frac{d^2x}{dt^2}$, $\frac{d^2y}{dt^2}$ derivatives are calculated using finite difference method.
+The $\frac{dx}{dt}$, $\frac{dy}{dt}$, $\frac{d^2x}{dt^2}$, $\frac{d^2y}{dt^2}$ derivatives are calculated using the finite difference method.
 
 
-#### My Weighted SP Embedding
+#### SP Embedding that uses a weighted sum of all key embedding (My Weighted SP Embedding)
 
-This is a new method invented in this research that is not found in literature: all the papers use only the nearest keyboard key embedding whe constructing a swipe point embedding.
+This is a new method invented in this research that is not found in the literature: all the papers use only the nearest keyboard key embedding when constructing a swipe point embedding.
 
 It is similar to `My nearest SP embedding` described above, but instead of `the nearest keyboard key embedding` a `weighted sum of all keyboard key embeddings` is used.
 
 $$ embedding = \sum_{key}f(d_{key}) \cdot embedding_{key}$$
 
 
-Where $d_{key}$ is the distance between between the swipe point and $key$ center, $f(d_{key})$ is a function that given a distance returns $key$ weight, $embedding_{key}$ is the $key$'s embedding.
+Where $d_{key}$ is the distance between between the swipe point and the $key$ center, $f(d_{key})$ is a function that given a distance returns the $key$ weight and $embedding_{key}$ is the $key$'s embedding.
 
-A key hyperparameter of the method is the choice of the weighting function $f$. It is assumed that the argument of the function $f$ is the distance from the point to the center of the key, expressed in half-diagonals of the keys. The range of acceptable values is the interval from 0 to 1.
+The hyperparameter of the method is the choice of the weighting function $f$. It is assumed that the argument of the function $f$ is the distance from the point to the center of the key, expressed in half-diagonals of the keys. The range of acceptable values is the interval from 0 to 1.
 
 It should be noted that this method is almost the same as `My nearest SP embedding` if $f$ is a threshold function that returns 1 if $d_{key}$ is less than half the diagonal of the key, and 0 otherwise.
 
 
-Since the swipes are noizy by their nature and their trajectory often doesn't cross the target keys but always passes near them, the idea arises to take into account all the keys (or in other words to replace the threshold function with a smooth one).
+Since the swipes are noisy by their nature and their trajectory often doesn't cross the target keys but always passes near them, the idea arises to take into account all the keys (or in other words, to replace the threshold function with a smooth one).
 
 
-The weighting function used in this work along with it's graph is presented below. It is a reflected, right-shifted sigmoid with a sharpened transition from 1 to 0.
+The weighting function used in this work, along with its graph, is presented below. It is a reflected, right-shifted sigmoid with a sharpened transition from 1 to 0.
 
 $$f(x) = \frac{1}{1+e^{1.8 \cdot (x - 2.2)}}$$
 
@@ -254,7 +257,7 @@ Some extra info can be found [solution_description.md](solution_description.md) 
 
 
 > [!NOTE]  
-> The sudden metrics improvement for `my_nearest_features` and `indiswipe_features` is due to a decrease in learning rate. The  losses on validation set of these models did not change over 2000 validations, which led to the ReduceLROnPlateau scheduler cutting learning rate in half. For other models, ReduceLROnPlateau haven't taken any actions yet.
+> The sudden metrics improvement for `my_nearest_features` and `indiswipe_features` is due to a decrease in learning rate. The losses on the validation set of these models did not change over 2000 validations, which led to the ReduceLROnPlateau scheduler cutting the learning rate in half. For other models, ReduceLROnPlateau hasn't taken any actions yet.
 
 
 ![beamsearch_metrics](https://github.com/user-attachments/assets/cddb1290-8886-4eb4-9366-f072e191e3fc)
@@ -292,7 +295,7 @@ pip install -r requirements.txt
 The training is done in [train.ipynb](src/train.ipynb)
 
 > [!WARNING]  
-> `train.ipynb` drains RAM when using `n_workers` > 0 in Dataloader. This can result in up to `dataset_size * n_workers` extra gigabytes of RAM usage. This is a known issue (see [here](https://github.com/pytorch/pytorch/issues/13246)) that happens when dataset uses list to store data. Although `torch.cuda.empty_cache()` can be used as a workaround, it doesn't seem to work with pytorch lightning. It appears I didn't commit this workaround, but you can adapt train.ipynb from [before-lightning branch](https://github.com/proshian/neuroswipe/tree/before-lightning) by adding ```torch.cuda.empty_cache()``` after each epoch to to avoid the issue.
+> `train.ipynb` drains RAM when using `n_workers` > 0 in Dataloader. This can result in up to `dataset_size * n_workers` extra gigabytes of RAM usage. This is a known issue (see [here](https://github.com/pytorch/pytorch/issues/13246)) that happens when a dataset uses a list to store data. Although `torch.cuda.empty_cache()` can be used as a workaround, it doesn't seem to work with pytorch lightning. It appears I didn't commit this workaround, but you can adapt train.ipynb from [before-lightning branch](https://github.com/proshian/neuroswipe/tree/before-lightning) by adding ```torch.cuda.empty_cache()``` after each epoch to to avoid the issue. When training in a kaggle notebook, the issue is not a problem since a kaggle session comes with 30 Gb of RAM.  
 
 
 ## Prediction
