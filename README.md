@@ -14,7 +14,7 @@ You can try out one of the models trained during the competition in a [web app](
 If the website is not available, you can run the demo yourself by following the instructions in [the web app's GitHub repository](https://github.com/proshian/neuroswipe_inference_web).
 
 
-## Existing work
+## Existing Work
 1)  Alsharif O. et al. Long short term memory neural network for keyboard gesture decoding //2015 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP). – IEEE, 2015. – P. 2076-2080.
 2) Xu Z. et al. Phrase-Gesture Typing on Smartphones //Proceedings of the 35th Annual ACM Symposium on User Interface Software and Technology. – 2022. – P. 1-11.
 3) Biju E. et al. Joint transformer/RNN architecture for gesture typing in indic languages // Proceedings of the 28th International Conference on Computational Linguistics. – 2022 – P. 999–1010.
@@ -180,27 +180,27 @@ The positional encoding is the same as in "Attention is all you need": it's a fi
 > [!NOTE]  
 > In my research, keyboard key embeddings used in the encoder and character embeddings used in the decoder are different entities.
 
-### Other models
+### Other Models
 
 * There were experiments where the first transformer encoder layer can input a sequence with elements of a dimension different from other encoder layers. I used this kind of custom transformer in Yandex Cup 23, but I don't see the difference in performance or parameter economy as substantial.
 * There was an experiment with a larger model: it seems like there is great potential, but it's too expensive to train for me.
 
 
-### Swipe point embeddings
+### Swipe Point Embeddings
 
 
 Swipe point embeddings (encoder input) are formed by combining two types of features (though one of them can be omitted): 
 1) Features that regard a point as a part of a trajectory
-    * Ex: `x`, `y` coordinates; time since begining of the swipe; $\frac{dx}{dt}$, $\frac{dy}{dt}$; etc.
+    * Examples: `x`, `y` coordinates; time since beginning of the swipe; $\frac{dx}{dt}$, $\frac{dy}{dt}$; etc.
 2) Features that regard a point as a location on a keyboard
-    * Ex: a trainable embedding of the nearest keyboard key; a vector of distances between the swipe point and every keyboard key center; etc.
+    * Examples: a trainable embedding of the nearest keyboard key; a vector of distances between the swipe point and every keyboard key center; etc.
 
-This conception of swipe point embeddings states true for both: methods presented here and those found in the literature.
+This concept of swipe point embeddings holds true for both: methods presented here and those found in the literature.
 
 
-#### My nearest SP embedding
+#### My Nearest SP Embedding
 
-This method is the same as indiswipe method but uses second derivatives too.
+This method is the same as indiswipe method but uses second derivatives alongside with other features.
 
 The computational graph of a `swipe point embedding` is on the image below.
 
@@ -209,7 +209,7 @@ The computational graph of a `swipe point embedding` is on the image below.
 The $\frac{dx}{dt}$, $\frac{dy}{dt}$, $\frac{d^2x}{dt^2}$, $\frac{d^2y}{dt^2}$ derivatives are calculated using finite difference method.
 
 
-#### My weighted SP embedding
+#### My Weighted SP Embedding
 
 This is a new method invented in this research that is not found in literature: all the papers use only the nearest keyboard key embedding whe constructing a swipe point embedding.
 
@@ -243,7 +243,7 @@ In the graph below, the z-axis shows the weight of key `p` (highlighted in yello
 ![weights_viz](https://github.com/user-attachments/assets/d2c2505e-91c8-4c33-8bcc-85c386441628)
 ![3d_keyboard](https://github.com/user-attachments/assets/dce6b76b-b635-4f93-9251-48dac5e4d793)
 
-## Some extra info
+## Extra Info
 
 Some extra info can be found [solution_description.md](solution_description.md) file (in Russian and may be outdated) and in my [master's thesis]() (in Russian)
 
