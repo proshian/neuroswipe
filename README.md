@@ -2,17 +2,16 @@
 
 A transformer neural network for a gesture keyboard that transduces curves swiped across a keyboard into word candidates.
 
-The repository is my yandex cup 2023 solution (7-th place) with improvements
+This repository used to contain my Yandex Cup 2023 solution (7th place), but after many improvements, it has become a standalone project.
 
 ## Demo
 
-You can try out one of the models trained as part of the competition in a [web app](https://proshian.pythonanywhere.com/)
+You can try out one of the models trained during the competition in a [web app](https://proshian.pythonanywhere.com/)
 
 
 ![demo](https://github.com/proshian/neuroswipe/assets/98213116/79b3506d-2817-45b5-9459-92490edcd5dc)
 
-
-If the website is not available, you can run the demo yourself by following the instructions from [the web app's GitHub repository](https://github.com/proshian/neuroswipe_inference_web).
+If the website is not available, you can run the demo yourself by following the instructions in [the web app's GitHub repository](https://github.com/proshian/neuroswipe_inference_web).
 
 
 ## Existing work
@@ -149,16 +148,15 @@ Methods comparison
 </table>
 
 
-It can be seen on the table above that all existing approaches use similar swipe point embeddings based on the embedding of the nearest key, and other options have not been explored.
+From the table above, it can be seen that all existing approaches use similar swipe point embeddings based on the embedding of the nearest key, and other options have not been explored.
 
-At the same time, a hypothesis arises that including information about all keys on the keyboard in the embeddings can mitigate the noise inherent to this task and more accurately reflect the user's interaction with the keyboard. Thus the research presented in this repository mainly focuses on swipe point representations and their effect on metrics.
-
+At the same time, a hypothesis arises that including information about all keys on the keyboard in the embeddings can mitigate the noise inherent to this task and more accurately reflect the user's interaction with the keyboard. Thus, the research presented in this repository mainly focuses on swipe point representations and their effect on metrics.
 
 ## Method
 
 ### Model
 
-The model is an encoder-decoder transformer with hyperparameters:
+The model is an encoder-decoder transformer with the following hyperparameters:
 
 |        Hyperparameter        | Value |
 | ---------------------------- | ----- |
@@ -171,27 +169,27 @@ The model is an encoder-decoder transformer with hyperparameters:
 | Activation function          | ReLU  |
 | Dropout                      | 0.1   |
 
-All experiments utilize this exact model and the primary difference between the experiments is in the swipe-dot-embedding-layer (embeddings that are input to the encoder).
+All experiments utilize this exact model, with the primary difference between the experiments being in the swipe-dot-embedding-layer (embeddings that are encoder input).
 
 Encoder input is a sequence of `swipe point embeddings`. They are described in a dedicated section.
 
-Decoder input is a sequence of trainable embeddings (with positional encoding) of tokens extracted from the target word. In this case okens are all alphabet charracters and special tokens (`<sos>, <eos>, <unk>, <pad>`) 
+Decoder input is a sequence of trainable embeddings (with positional encoding) of tokens extracted from the target word. In yhis research tokens include all alphabet characters and special tokens (<sos>, <eos>, <unk>, <pad>), however the bpe tokens or wordpiece tokens are suitable as well.
 
-The positional encodeing is the same as in "Attention is all you need": it's a fixed embedding based on harmonic oscilations.
+The positional encoding is the same as in "Attention is all you need": it's a fixed embedding based on harmonic oscilations.
 
 > [!NOTE]  
-> In my research keyboard key embeddings used in encoder and charracter embeddings used in decoder are different entities.
+> In my research, keyboard key embeddings used in the encoder and character embeddings used in the decoder are different entities.
 
 ### Other models
 
-* There were experiments where first tranformer encoder layer can input a sequence with elements of a dimension different from other encoder layers. Actually, I used this kind of custom transfomer in yandex cup, but I don't the difference in performance or parameters economy substential.
-* There was an expermient with a larger model: it seems like there is a great potential, but it's too expensive to train for me.
+* There were experiments where the first transformer encoder layer can input a sequence with elements of a dimension different from other encoder layers. I used this kind of custom transformer in Yandex Cup 23, but I don't see the difference in performance or parameter economy as substantial.
+* There was an experiment with a larger model: it seems like there is great potential, but it's too expensive to train for me.
 
 
 ### Swipe point embeddings
 
 
-Swipe point embeddings (encoder input) is formed by combining two types of features (though one of them can be omitted): 
+Swipe point embeddings (encoder input) are formed by combining two types of features (though one of them can be omitted): 
 1) Features that regard a point as a part of a trajectory
     * Ex: `x`, `y` coordinates; time since begining of the swipe; $\frac{dx}{dt}$, $\frac{dy}{dt}$; etc.
 2) Features that regard a point as a location on a keyboard
