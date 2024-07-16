@@ -290,17 +290,17 @@ The table below demonstrates the best metric values from the graph above for eac
 
 Features Type | Swipe MMR | Accuracy | Swipe MMR Epoch | Accuracy Epoch | Max considered epoch  
 -------------- | -------- | --------- | -------------- | -------------- | ----
-My_features_weighted (НАШ) | 0.8922 | 0.8865 | 90 | 90 | 95
-my_features_nearest (НАШ) | 0.8886 | 0.8826 | 73 | 73 | 74
-Indiswipe_features | 0.8863 | 0.8801 | 31 | 31 | 67
-Google_2015_features | 0.8804 | 0.8737 | 53 | 53 | 57
-Phrase_swipe_features | 0.8712 | 0.8645 | 55 | 55 | 64
+Weighted features (OURS)  | **0.8915**  | **0.8855** | 58 | 58 | 67
+Nearest features (OURS)  | 0.8884  | 0.8822 | 33 | 33 | 67
+Indiswipe_features  | 0.8863  | 0.8801 | 31 | 31 | 67
+Google_2015_features  | 0.8804  | 0.8737 | 53 | 53 | 57
+Phrase_swipe_features  | 0.8712  | 0.8645 | 55 | 55 | 64
 
 
 
 Features Type | Swipe MMR | Accuracy 
 --------------|-----------|------------
-My_features_weighted (НАШ) | 0.8915 | 0.8855
+Weighted features (OURS) | 0.8915 | 0.8855
 Indiswipe_features | 0.8863 | 0.8801
 **Δ** | **0.59%** | **0.61%**
 
