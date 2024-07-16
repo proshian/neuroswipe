@@ -116,7 +116,7 @@ Methods comparison
 </pre>
 </td>
 <td width="113">
-<p><b>TO BE COUNTED</b></p>
+<p><b>TODO: FILL THIS FIELD</b></p>
 </td>
 </tr>
 
@@ -198,10 +198,10 @@ Swipe point embeddings (encoder input) are formed by combining two types of feat
 This concept of swipe point embeddings holds true for both: methods presented here and those found in the literature.
 
 > [!NOTE]  
-> "SP" in the sections below stands for Swipe Point.
+> "SPE" in the sections below stands for Swipe Point mbedding.
 
 
-#### SP Embedding that uses the nearest key embedding (My Nearest SP Embedding)
+#### SPE that uses the nearest key embedding (My Nearest SPE)
 
 This method is the same as indiswipe method but uses second derivatives alongside with other features.
 
@@ -212,11 +212,11 @@ The computational graph of a `swipe point embedding` is shown in the image below
 The $\frac{dx}{dt}$, $\frac{dy}{dt}$, $\frac{d^2x}{dt^2}$, $\frac{d^2y}{dt^2}$ derivatives are calculated using the finite difference method.
 
 
-#### SP Embedding that uses a weighted sum of all key embedding (My Weighted SP Embedding)
+#### SPE that uses a weighted sum of all key embedding (My Weighted SPE)
 
 This is a new method invented in this research that is not found in the literature: all the papers use only the nearest keyboard key embedding when constructing a swipe point embedding.
 
-It is similar to `My nearest SP embedding` described above, but instead of `the nearest keyboard key embedding` a `weighted sum of all keyboard key embeddings` is used.
+It is similar to `My nearest SPE` described above, but instead of `the nearest keyboard key embedding` a `weighted sum of all keyboard key embeddings` is used.
 
 $$ embedding = \sum_{key}f(d_{key}) \cdot embedding_{key}$$
 
@@ -225,7 +225,7 @@ Where $d_{key}$ is the distance between between the swipe point and the $key$ ce
 
 The hyperparameter of the method is the choice of the weighting function $f$. It is assumed that the argument of the function $f$ is the distance from the point to the center of the key, expressed in half-diagonals of the keys. The range of acceptable values is the interval from 0 to 1.
 
-It should be noted that this method is almost the same as `My nearest SP embedding` if $f$ is a threshold function that returns 1 if $d_{key}$ is less than half the diagonal of the key, and 0 otherwise.
+It should be noted that this method is almost the same as `My nearest SPE` if $f$ is a threshold function that returns 1 if $d_{key}$ is less than half the diagonal of the key, and 0 otherwise.
 
 
 Since the swipes are noisy by their nature and their trajectory often doesn't cross the target keys but always passes near them, the idea arises to take into account all the keys (or in other words, to replace the threshold function with a smooth one).
@@ -252,15 +252,63 @@ Some extra info can be found [solution_description.md](solution_description.md) 
 
 **TODO: add link to the thesis**
 
+## Swipe MMR Metric
+
+$
+𝑆𝑤𝑖𝑝𝑒 𝑀𝑀𝑅 = 𝐼[cand_1==target]+ 𝐼[cand_2== target]⋅0.1 + 𝐼[cand_3== target]⋅0.09 + 𝐼[cand_4== target]⋅0.08  
+$
+
+
+* 𝑰 is an indicator functoin (returns 1 if the condition in square brackets is met, otherwise returns 0)
+* cand_i is the 𝑖-th word candidate list element
+
+All word candidates must be unique. The duplicates are excluded when the metric is calculated
+
 
 ## Results
 
 
-> [!NOTE]  
-> The sudden metrics improvement for `my_nearest_features` and `indiswipe_features` is due to a decrease in learning rate. The losses on the validation set of these models did not change over 2000 validations, which led to the ReduceLROnPlateau scheduler cutting the learning rate in half. For other models, ReduceLROnPlateau hasn't taken any actions yet.
+During inference models are used with a variation of beam search that masks logits corresponding to impossible tokens-continuations given a generated prefix.
+
+Thus the most important metric of the model performance is Swipe MMR when the model is used with "beamsearch with masking". 
+
+
+The graph below shows that the method proposed in this work demonstrates higher values for both Accuracy and Swipe MMR.
+
+
+
+**TODO: Add color descriptions {color -> (used features, paper links)}**
+
+
 
 
 ![beamsearch_metrics](https://github.com/user-attachments/assets/cddb1290-8886-4eb4-9366-f072e191e3fc)
+
+
+The table below demonstrates the best metric values from the graph above for each method. It shows that the developed SPE delivers higher quality than the best SPE used in articles. Specifically, the increase in Swipe MMR is 0.59%, and the increase in accuracy is 0.61%.
+
+
+Features Type | Swipe MMR | Accuracy | Swipe MMR Epoch | Accuracy Epoch | Max considered epoch  
+-------------- | -------- | --------- | -------------- | -------------- | ----
+My_features_weighted (НАШ) | 0.8922 | 0.8865 | 90 | 90 | 95
+my_features_nearest (НАШ) | 0.8886 | 0.8826 | 73 | 73 | 74
+Indiswipe_features | 0.8863 | 0.8801 | 31 | 31 | 67
+Google_2015_features | 0.8804 | 0.8737 | 53 | 53 | 57
+Phrase_swipe_features | 0.8712 | 0.8645 | 55 | 55 | 64
+
+
+
+Features Type | Swipe MMR | Accuracy 
+--------------|-----------|------------
+My_features_weighted (НАШ) | 0.8915 | 0.8855
+Indiswipe_features | 0.8863 | 0.8801
+**Δ** | **0.59%** | **0.61%**
+
+
+
+
+
+
 
 Greedy decoding word level accuracy (train set) | CE loss (train set)
 :-------------------------:|:-------------------------:
@@ -274,6 +322,9 @@ token level accuracy (validation set) | token level f1-score (validation set)
 :-------------------------:|:-------------------------:
 ![acc_token_val](https://github.com/user-attachments/assets/4ff2a463-1ac8-475c-8ec9-187e821ed229) | ![f1_token_val](https://github.com/user-attachments/assets/5925c80f-4d46-4758-9a56-828f2f7cfe3e)
 
+
+> [!NOTE]  
+> The sudden metrics improvement for `my_nearest_features` and `indiswipe_features` is due to a decrease in learning rate. The losses on the validation set of these models did not change over 20 validations, which led to the ReduceLROnPlateau scheduler cutting the learning rate in half. For other models, ReduceLROnPlateau hasn't taken any actions yet.
 
 
 ## Prerequisites
