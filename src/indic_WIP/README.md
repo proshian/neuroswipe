@@ -4,6 +4,11 @@
 1) указать на ошибки и спросить как правильно. Тогда можно будет любые фичи использовать
 2) Использовать их датсет без преобразования, но тогда можно использовать только их фичи
 
+# Dataset structure
+
+IndicSwipe датасеты содержат (tgt_word), x, y, x', y', keyboard_key_id
+
+
 # Task 1
 Convert the indic datasets so that 
 * has an element of a dataset is a tuple: (x, y, t, `dataset_name`, tgt_word)
