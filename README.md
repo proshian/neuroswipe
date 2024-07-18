@@ -252,28 +252,30 @@ Some extra info can be found [solution_description.md](solution_description.md) 
 
 **TODO: add link to the thesis**
 
-## Swipe MMR Metric
+## Swipe MRR Metric
 
-$
-𝑆𝑤𝑖𝑝𝑒 𝑀𝑀𝑅 = 𝐼[cand_1==target]+ 𝐼[cand_2== target]⋅0.1 + 𝐼[cand_3== target]⋅0.09 + 𝐼[cand_4== target]⋅0.08  
-$
+$$
+Swipe MRR = I[cand_1==target] + I[cand_2== target] \cdot 0.1 + I[cand_3== target] \cdot 0.09 + I[cand_4== target] \cdot 0.08
+$$
 
 
-* 𝑰 is an indicator functoin (returns 1 if the condition in square brackets is met, otherwise returns 0)
-* cand_i is the 𝑖-th word candidate list element
+* $I$ is an indicator functoin (returns 1 if the condition in square brackets is met, otherwise returns 0)
+* $cand_i$ is the $𝑖$-th word candidate list element
 
 All word candidates must be unique. The duplicates are excluded when the metric is calculated
 
+
+The use of the Swipe MRR metric is justified by the fact that the first candidate will be automatically inserted into the typed message, while the other three will be suggested on the panel above so that a user can use one of them instead. This approach allows assessing the quality of the model, taking into account all the words it suggests on inference.
 
 ## Results
 
 
 During inference models are used with a variation of beam search that masks logits corresponding to impossible tokens-continuations given a generated prefix.
 
-Thus the most important metric of the model performance is Swipe MMR when the model is used with "beamsearch with masking". 
+Thus the most important metric of the model performance is Swipe MRR when the model is used with "beamsearch with masking". 
 
 
-The graph below shows that the method proposed in this work demonstrates higher values for both Accuracy and Swipe MMR.
+The graph below shows that the method proposed in this work demonstrates higher values for both Accuracy and Swipe MRR.
 
 
 
@@ -285,10 +287,10 @@ The graph below shows that the method proposed in this work demonstrates higher 
 ![beamsearch_metrics](https://github.com/user-attachments/assets/cddb1290-8886-4eb4-9366-f072e191e3fc)
 
 
-The table below demonstrates the best metric values from the graph above for each method. It shows that the developed SPE delivers higher quality than the best SPE used in articles. Specifically, the increase in Swipe MMR is 0.59%, and the increase in accuracy is 0.61%.
+The table below demonstrates the best metric values from the graph above for each method. It shows that the developed SPE delivers higher quality than the best SPE used in articles. Specifically, the increase in Swipe MRR is 0.59%, and the increase in accuracy is 0.61%.
 
 
-Features Type | Swipe MMR | Accuracy | Swipe MMR Epoch | Accuracy Epoch | Max considered epoch  
+Features Type | Swipe MRR | Accuracy | Swipe MRR Epoch | Accuracy Epoch | Max considered epoch  
 -------------- | -------- | --------- | -------------- | -------------- | ----
 Weighted features (OURS)  | **0.8915**  | **0.8855** | 58 | 58 | 67
 Nearest features (OURS)  | 0.8884  | 0.8822 | 33 | 33 | 67
@@ -298,7 +300,7 @@ Phrase_swipe_features  | 0.8712  | 0.8645 | 55 | 55 | 64
 
 
 
-Features Type | Swipe MMR | Accuracy 
+Features Type | Swipe MRR | Accuracy 
 --------------|-----------|------------
 Weighted features (OURS) | 0.8915 | 0.8855
 Indiswipe_features | 0.8863 | 0.8801
@@ -308,15 +310,25 @@ Indiswipe_features | 0.8863 | 0.8801
 
 
 
+The metrics below present word-level accuracy using greedy decoding and cross-entropy loss on the training set. These metrics are essential for understanding the variance and bias of the models when compared to the validation metrics discussed subsequently. 
 
 
 Greedy decoding word level accuracy (train set) | CE loss (train set)
 :-------------------------:|:-------------------------:
 ![acc_greedy_TRAIN](https://github.com/user-attachments/assets/b7eda630-b007-442b-b34d-825bb0cd80c4)  |  ![celoss_TRAIN](https://github.com/user-attachments/assets/d801022d-a454-4916-8102-84ec0e228446)
 
+
+
+On the grahs below on the left, there is a graph showing word-level accuracy with greedy decoding. It can be observed that our method of SPE also leads here, and the results are similar to those obtained with beam search, just lower, which is expected for greedy decoding.
+
+The greedy decoding word-level accuracy is used as a very cheap proxy metric. It's cheapness comes from the fact that it is equal to a word-level accuracy during transformer training without any decoding algorithm applied at all. 
+
 Greedy decoding word level accuracy (validation set) | CE loss (validation set)
 :-------------------------:|:-------------------------:
 ![acc_greedy_val](https://github.com/user-attachments/assets/30dee9b6-a55e-4760-a9fb-9c3ecab4fa79) | ![celoss_val](https://github.com/user-attachments/assets/0f161cdd-8dd9-44bc-b93f-ca6504ea7956)
+
+
+The metrics below demonstrate the token-level F-score and accuracy on the validation set. The ranking of models by quality level here matches the previous graphs. It is also worth noting that the increase in token-level accuracy suggests that with further training, we may achieve an even greater improvement in word-level accuracy.
 
 token level accuracy (validation set) | token level f1-score (validation set)
 :-------------------------:|:-------------------------:
@@ -324,7 +336,11 @@ token level accuracy (validation set) | token level f1-score (validation set)
 
 
 > [!NOTE]  
-> The sudden metrics improvement for `my_nearest_features` and `indiswipe_features` is due to a decrease in learning rate. The losses on the validation set of these models did not change over 20 validations, which led to the ReduceLROnPlateau scheduler cutting the learning rate in half. For other models, ReduceLROnPlateau hasn't taken any actions yet.
+> The sudden metrics improvement for `my_nearest_features` and `indiswipe_features` is due to a decrease in learning rate. The losses on the validation set of these models did not change over 20 epoches, which led to the ReduceLROnPlateau scheduler cutting the learning rate in half. For other models, ReduceLROnPlateau hasn't taken any actions yet.
+
+### Conclusion
+
+As a result of the research, a four-layer transformer with a new swipe point representation method was developed and trained. The developed method for constructing swipe point embeddings (SPE) uses a weighted sum of embeddings of all keys, as well as the swipe trajectory coordinates and their derivatives up to the second order. The designed type of embedding helps to mitigate noise in the data and more accurately reflects user interactions with the keyboard. The main outcome was an increase in Swipe MMR by 0.59% and Accuracy by 0.61% on the validation set using beam search, compared to existing approaches for constructing SPE. To test the method, a keyboard prototype was created in the form of a web application.
 
 
 ## Prerequisites
@@ -338,6 +354,32 @@ pip install -r requirements.txt
 * The inference was tested with python 3.10
 * The training was done in kaggle on Tesla P100
 
+
+## Yandex cup dataset
+
+
+**TODO: Fill the instructions to obtain the dataset**
+
+<!-- 
+
+```sh
+python ./src/downloaders/download_dataset_separated_grid.py
+``` 
+
+-->
+
+## Your Custom Dataset
+
+To train on a custom dataset you should provide a pytorch `Dataset` class child. Each element of the dataset should be a tuple: `(x, y, t, grid_name, tgt_word)`. These raw features won't be used but there are transforms defined in `feature_extractors.py` corresponding to every type of `swipe point embedding layer` that extract the needed features. You can apply these transforms in your dataset's `__init__` method or in `__get_item__` / `__iter__`.
+
+All the features end up in this format: `(encoder_input, decoder_input), decoder_output`.
+
+* `decoder_input` and `decoder_output` are `tokenized_target_word[1:]` and `tokenized_target_word[:-1]` correspondingly.
+* `encoder_input` are features for swipe_point_embedding layer and depend on which SPE layer you use
+
+You also need to add your keyboard layout to `grid_name_to_grid.json`
+
+**TODO: Add info on how exactly the dataset should be integrated** 
 
 ## Training
 
@@ -356,7 +398,7 @@ The training is done in [train.ipynb](src/train.ipynb)
 [predict_v2.py](src/predict_v2.py) is used to obtain word candidates for a whole dataset and pickle them
 
 > [!WARNING]  
-> If the decoding algorithm in `predict_v2.py` script utilizes a vocabulary for masking (`use_vocab_for_generation: true` in the config), it is necessary to disable multiprocessing by passing the command-line argument `--num-workers 0` to the script. Otherwise, the prediction will take a long time.
+> If the decoding algorithm in `predict_v2.py` script utilizes a vocabulary for masking (if `use_vocab_for_generation: true` in the config), it is necessary to disable multiprocessing by passing the command-line argument `--num-workers 0` to the script. Otherwise, the prediction will take a long time. It's a bug that will be fixed
 
 
 
