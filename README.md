@@ -279,7 +279,53 @@ The graph below shows that the method proposed in this work demonstrates higher 
 
 
 
-**TODO: Add color descriptions {color -> (used features, paper links)}**
+Table demonstrating the correspondence of colors on graphs and features used to create a SPE:
+
+<table border="1">
+   <thead>
+      <tr>
+            <th>Color</th>
+            <th>Paper-Link</th>
+            <th>Trajectory features used</th>
+            <th>Keyboard-keys-related features used</th>
+      </tr>
+   </thead>
+   <tbody>
+      <tr>
+            <td><img src="./REAME_materials/colors/FFB60A.png" alt="#FFB60A" /></td>
+            <td>None (OURS) but there is a <a href="https://drive.google.com/file/d/1ad9zlfgfy6kOA-41GxjUQIzr8cWuaqxL/view?usp=sharing">master's thesis</a> (in Russian)</td>
+            <td>x, y, x', y', x'', y''</td>
+            <td>weighted sum as described above</td>
+      </tr>
+      <tr>
+            <td><img src="./REAME_materials/colors/008EE0.png" alt="#008EE0" /></td>
+            <td>None (OURS) but there is a <a href="https://drive.google.com/file/d/1ad9zlfgfy6kOA-41GxjUQIzr8cWuaqxL/view?usp=sharing">master's thesis</a> (in Russian)</td>
+            <td>x, y, x', y', x'', y''</td>
+            <td>nearest key</td>
+      </tr>
+      <tr>
+            <td><img src="./REAME_materials/colors/CE123E.png" alt="#CE123E" /></td>
+            <td>(3) In "Existing work section"</td>
+            <td>x, y, x', y'</td>
+            <td>nearest key</td>
+      </tr>
+      <tr>
+            <td><img src="./REAME_materials/colors/000000.png" alt="#000000" /></td>
+            <td>(1) In "Existing work section"</td>
+            <td>x, y, t</td>
+            <td>nearest key</td>
+      </tr>
+      <tr>
+            <td><img src="./REAME_materials/colors/05B384.png" alt="#05B384" /></td>
+            <td>(2) In "Existing work section"</td>
+            <td>None</td>
+            <td>nearest key</td>
+      </tr>
+   </tbody>
+</table>
+
+
+
 
 
 
