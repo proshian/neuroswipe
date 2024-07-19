@@ -900,7 +900,6 @@ def _get_transformer_bigger__v3(input_embedding: nn.Module,
                                 device = None,
                                 n_coord_feats = 6):
     CHAR_VOCAB_SIZE = 37  # = len(word_char_tokenizer.char_to_idx)
-    MAX_CURVES_SEQ_LEN = 299
     MAX_OUT_SEQ_LEN = 35  # word_char_tokenizer.max_word_len - 1
 
     n_word_chars = CHAR_VOCAB_SIZE

@@ -116,7 +116,7 @@ Methods comparison
 </pre>
 </td>
 <td width="113">
-<p><b>TODO: FILL THIS FIELD</b></p>
+<p>not stated <!--<b>TODO: COMPUTE THE VALUE</b>--> </p>
 </td>
 </tr>
 
@@ -183,7 +183,8 @@ The positional encoding is the same as in "Attention is all you need": it's a fi
 ### Other Models
 
 * There were experiments where the first transformer encoder layer can input a sequence with elements of a dimension different from other encoder layers. I used this kind of custom transformer in Yandex Cup 23, but I don't see the difference in performance or parameter economy as substantial.
-* There was an experiment with a larger model: it seems like there is great potential, but it's too expensive to train for me.
+* There was an experiment with a larger model: it seems like there is great potential (higher word_level_accuracy with less optimizer steps), but it's too computationalyy expensive to train for me.
+   * The larger model params: Encoder layers number: 8; Decoder layers number: 8; Model Dimension: 512; Feedforward layer dimension: 2048; Encoder heads number: 8; Decoder heads number: 8; Activation function: ReLU; Dropout: 0.1
 
 
 ### Swipe Point Embeddings
@@ -198,7 +199,7 @@ Swipe point embeddings (encoder input) are formed by combining two types of feat
 This concept of swipe point embeddings holds true for both: methods presented here and those found in the literature.
 
 > [!NOTE]  
-> "SPE" in the sections below stands for Swipe Point mbedding.
+> "SPE" in the sections below stands for Swipe Point Embedding.
 
 
 #### SPE that uses the nearest key embedding (My Nearest SPE)
@@ -248,9 +249,8 @@ In the graph below, the z-axis shows the weight of key `p` (highlighted in yello
 
 ## Extra Info
 
-Some extra info can be found [solution_description.md](solution_description.md) file (in Russian and may be outdated) and in my [master's thesis]() (in Russian)
+Some extra info can be found [solution_description.md](solution_description.md) file (in Russian and may be outdated) and in my [master's thesis](https://drive.google.com/file/d/1ad9zlfgfy6kOA-41GxjUQIzr8cWuaqxL/view?usp=sharing) (in Russian)
 
-**TODO: add link to the thesis**
 
 ## Swipe MRR Metric
 
@@ -336,7 +336,7 @@ token level accuracy (validation set) | token level f1-score (validation set)
 
 
 > [!NOTE]  
-> The sudden metrics improvement for `my_nearest_features` and `indiswipe_features` is due to a decrease in learning rate. The losses on the validation set of these models did not change over 20 epoches, which led to the ReduceLROnPlateau scheduler cutting the learning rate in half. For other models, ReduceLROnPlateau hasn't taken any actions yet.
+> The abrupt changes in metrics are due to decreases in learning rate. ReduceLROnPlateau scheduler cuts the learning rate in half if a losses on the validation set does not change for over 20 epoches.
 
 ### Conclusion
 
@@ -355,10 +355,15 @@ pip install -r requirements.txt
 * The training was done in kaggle on Tesla P100
 
 
+<!--
+
 ## Yandex cup dataset
 
 
 **TODO: Fill the instructions to obtain the dataset**
+
+-->
+
 
 <!-- 
 
@@ -379,7 +384,11 @@ All the features end up in this format: `(encoder_input, decoder_input), decoder
 
 You also need to add your keyboard layout to `grid_name_to_grid.json`
 
+<!--
+
 **TODO: Add info on how exactly the dataset should be integrated** 
+
+-->
 
 ## Training
 
