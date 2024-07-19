@@ -204,7 +204,7 @@ This concept of swipe point embeddings holds true for both: methods presented he
 
 #### SPE that uses the nearest key embedding (My Nearest SPE)
 
-This method is the same as indiswipe method but uses second derivatives alongside with other features.
+This method is the same as IndicSwipe method but uses second derivatives alongside with other features.
 
 The computational graph of a `swipe point embedding` is shown in the image below.
 
@@ -285,6 +285,7 @@ Table demonstrating the correspondence of colors on graphs and features used to 
    <thead>
       <tr>
             <th>Color</th>
+            <th>Feats Type Name</th>
             <th>Paper-Link</th>
             <th>Trajectory features used</th>
             <th>Keyboard-keys-related features used</th>
@@ -293,30 +294,35 @@ Table demonstrating the correspondence of colors on graphs and features used to 
    <tbody>
       <tr>
             <td><img src="./REAME_materials/colors/FFB60A.png" alt="#FFB60A" /></td>
-            <td>None (OURS) but there is a <a href="https://drive.google.com/file/d/1ad9zlfgfy6kOA-41GxjUQIzr8cWuaqxL/view?usp=sharing">master's thesis</a> (in Russian)</td>
+            <td>Weighted features (OURS)</td>
+            <td><a href="https://drive.google.com/file/d/1ad9zlfgfy6kOA-41GxjUQIzr8cWuaqxL/view?usp=sharing">master's thesis</a> (in Russian)</td>
             <td>x, y, x', y', x'', y''</td>
             <td>weighted sum as described above</td>
       </tr>
       <tr>
             <td><img src="./REAME_materials/colors/008EE0.png" alt="#008EE0" /></td>
-            <td>None (OURS) but there is a <a href="https://drive.google.com/file/d/1ad9zlfgfy6kOA-41GxjUQIzr8cWuaqxL/view?usp=sharing">master's thesis</a> (in Russian)</td>
+            <td>Nearest features (OURS)</td>
+            <td><a href="https://drive.google.com/file/d/1ad9zlfgfy6kOA-41GxjUQIzr8cWuaqxL/view?usp=sharing">master's thesis</a> (in Russian)</td>
             <td>x, y, x', y', x'', y''</td>
             <td>nearest key</td>
       </tr>
       <tr>
             <td><img src="./REAME_materials/colors/CE123E.png" alt="#CE123E" /></td>
+            <td>IndicSwipe_features</td>
             <td>(3) In "Existing work section"</td>
             <td>x, y, x', y'</td>
             <td>nearest key</td>
       </tr>
       <tr>
             <td><img src="./REAME_materials/colors/000000.png" alt="#000000" /></td>
+            <td>Google_2015_features</td>
             <td>(1) In "Existing work section"</td>
             <td>x, y, t</td>
             <td>nearest key</td>
       </tr>
       <tr>
             <td><img src="./REAME_materials/colors/05B384.png" alt="#05B384" /></td>
+            <td>PhraseSwipe_features</td>
             <td>(2) In "Existing work section"</td>
             <td>None</td>
             <td>nearest key</td>
@@ -340,16 +346,16 @@ Features Type | Swipe MRR | Accuracy | Swipe MRR Epoch | Accuracy Epoch | Max co
 -------------- | -------- | --------- | -------------- | -------------- | ----
 Weighted features (OURS)  | **0.8915**  | **0.8855** | 58 | 58 | 67
 Nearest features (OURS)  | 0.8884  | 0.8822 | 33 | 33 | 67
-Indiswipe_features  | 0.8863  | 0.8801 | 31 | 31 | 67
+IndicSwipe_features  | 0.8863  | 0.8801 | 31 | 31 | 67
 Google_2015_features  | 0.8804  | 0.8737 | 53 | 53 | 57
-Phrase_swipe_features  | 0.8712  | 0.8645 | 55 | 55 | 64
+PhraseSwipe_features  | 0.8712  | 0.8645 | 55 | 55 | 64
 
 
 
 Features Type | Swipe MRR | Accuracy 
 --------------|-----------|------------
 Weighted features (OURS) | 0.8915 | 0.8855
-Indiswipe_features | 0.8863 | 0.8801
+IndicSwipe_features | 0.8863 | 0.8801
 **Δ** | **0.59%** | **0.61%**
 
 
