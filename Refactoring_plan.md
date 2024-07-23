@@ -28,7 +28,15 @@
 
 
 
+1. Обновить README - ожидаю 40 минут
+      * In this task decreasing learning rate when learning stagnates does not have any benefit: it can be seen that all models started overfitting rapidly once the learning rate decreased with their  CELoss going up on validation set. Interestingly token-level accuracy and f1-score reach higher values on the validation set after learning rate decrease. However it doesn't hold true for word-level accuracies on validation that decrease. 
+      * Разобраться, почему tokem-level метрики растут, хоть word-level точность падает, а loss растет на валидации
+      * Обновить графики, проценты в результатах, таблицы
+      * Заменить последнюю гифку на просто “спасибо”
+2. Сохранить все изображения и gif из README в папке в репозитории
+3. Сделать pull request как ниде:
 
+```
 Conduct 5 experiments: 2 my feats + 3  feats from papers
 * Created a new swipe point representation that uses a weighted sum of all keyboard key embeddings
 * Moved training to pytorch lightning
@@ -39,34 +47,7 @@ Conduct 5 experiments: 2 my feats + 3  feats from papers
 * Change collate_fn output format to `(encoder_in, decoder_in), decoder_out`
 * Update data analysis
 * And many more  subtle changes :)
-
-
-
-
-Примечания:
-It can be noted that the SPE that utilizes a weighted sum of all keyboard key embeddings not only achieves higher accuracy and swipe mrr, but also enhances for a longer time (к 30 эпохе большинство сходится, а наша модель продолжает выдавать хорошие значения)
-
-
-It seems that in case of this task reducing learning rate when learning stagnates does not have any benefit: it can be seen that all models started overfitting rapidly once the learning rate decreased
- 
-
-Заменить последнюю гифку на просто “спасибо”
-
-
-
-
-
-
-2. train.ipynb - ожидаю 40 минут
-      * Запустить обучение чего угодно с актуальной версией
-      * Убедиться, что запускается
-      * Убедиться, что работает сохранение гиперпараметров в pl модуле
-3. Обновить README - ожидаю 40 минут
-      * Добавить, что моя модель is less prone to overfitting
-      * Обновить графики, проценты в результатах, таблицы
-4. Сохранить все изображения и gif в папке в репозитории
-4. Определить множество изменений, относительно текущего main - ожидаю 20 минут
-5. Сделать pull request
+```
 
 
 
