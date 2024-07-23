@@ -249,7 +249,7 @@ In the graph below, the z-axis shows the weight of key `p` (highlighted in yello
 
 ## Extra Info
 
-Some extra info can be found [solution_description.md](solution_description.md) file (in Russian and may be outdated) and in my [master's thesis](https://drive.google.com/file/d/1ad9zlfgfy6kOA-41GxjUQIzr8cWuaqxL/view?usp=sharing) (in Russian)
+Some extra info can be found [solution_extra_info.md](solution_extra_info.md) file (in Russian and may be outdated) and in my [master's thesis](https://drive.google.com/file/d/1ad9zlfgfy6kOA-41GxjUQIzr8cWuaqxL/view?usp=sharing) (in Russian)
 
 
 ## Swipe MRR Metric
@@ -281,7 +281,7 @@ The graph below shows that the method proposed in this work demonstrates higher 
 
 Table demonstrating the correspondence of colors on graphs and features used to create a SPE:
 
-<table border="1">
+<table>
    <thead>
       <tr>
             <th>Color</th>
@@ -468,7 +468,8 @@ The training is done in [train.ipynb](src/train.ipynb)
 Yandex cup 2023 submission reprodction instructions are [here: submission_reproduciton_instrucitons.md](submission_reproduciton_instrucitons.md)
 
 
-
+## Thank you for your attention
+![thank_you_for_your_attention](https://github.com/user-attachments/assets/561c56c5-e22d-4a0e-aa39-076ee96c2141)
 
 ## For future me
 See [refactoring plan](./Refactoring_plan.md)

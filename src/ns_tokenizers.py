@@ -12,8 +12,6 @@ class CharLevelTokenizerv2:
     """
     Tokenizes a word into a list of integers.
 
-    Toknized word is padded to the max_word_len.
-
     Guarantees that <sos> and <pad> are tokens with `vocab_len - 1` and
     `vocab_len - 2` indices respectively. The model never needs to 
     predict <sos> and <pad> tokens. Since theese tokens have the biggest ids

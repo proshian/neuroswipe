@@ -3,11 +3,8 @@
 
 У меня метрика назыавется swipe_mmr, а должно быть swipe_mrr
 
-# Note
-
-Кажется, у меня до сих пор все слова падятся до длины самого большого слова в словаре)))))))
-
-Думаю, пора паддинг перенести в collate_fn
+# GBoard bolg - machine-intelligence-behind-gboard
+[The Machine Intelligence Behind Gboard](https://research.google/blog/the-machine-intelligence-behind-gboard/)
 
 # Scheduler problem
 
@@ -29,19 +26,44 @@
 
 # Текущая ситация по рефакторингу
 
-Было проверено, что веса my_weighted_transformer подходят модели v3_weighted_and_traj_transformer_bigger и что все предсказания после переноса совпали с теми, что были у исходного класса
 
-Было обнаружено резкое улучшение в качестве у `my_nearest_features` и `indiswipe_features`. Было выяснено, что дело в том, что сработал learning rate scheduler и lr упал вдвое.
 
-1. Продолжать обучение my_weighted, google-2015, my_nearest (см google doc) пока не будут выполнены все пункты ниже
-2. Рефакторинг train.ipynb и predict_v2.py - ожидаю 40 минут
+
+Conduct 5 experiments: 2 my feats + 3  feats from papers
+* Created a new swipe point representation that uses a weighted sum of all keyboard key embeddings
+* Moved training to pytorch lightning
+* Added distance getter
+* Added feature_extractors for 5 experiments (3 papers + 2 mine(
+* Decoding algorithms now utilize masking
+* Readme update
+* Change collate_fn output format to `(encoder_in, decoder_in), decoder_out`
+* Update data analysis
+* And many more  subtle changes :)
+
+
+
+
+Примечания:
+It can be noted that the SPE that utilizes a weighted sum of all keyboard key embeddings not only achieves higher accuracy and swipe mrr, but also enhances for a longer time (к 30 эпохе большинство сходится, а наша модель продолжает выдавать хорошие значения)
+
+
+It seems that in case of this task reducing learning rate when learning stagnates does not have any benefit: it can be seen that all models started overfitting rapidly once the learning rate decreased
+ 
+
+Заменить последнюю гифку на просто “спасибо”
+
+
+
+
+
+
+2. train.ipynb - ожидаю 40 минут
       * Запустить обучение чего угодно с актуальной версией
       * Убедиться, что запускается
       * Убедиться, что работает сохранение гиперпараметров в pl модуле
 3. Обновить README - ожидаю 40 минут
       * Добавить, что моя модель is less prone to overfitting
       * Обновить графики, проценты в результатах, таблицы
-5. Добавить в конце gif спасибо за внимание
 4. Сохранить все изображения и gif в папке в репозитории
 4. Определить множество изменений, относительно текущего main - ожидаю 20 минут
 5. Сделать pull request
