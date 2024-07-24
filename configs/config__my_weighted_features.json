@@ -1,0 +1,34 @@
+{
+    "prediction_config":
+    {
+        "model_params": 
+        [
+            
+        ],
+        "out_path": "./results/predictions/val/my_weighted_features",
+        "csv_path": "",
+        "data_split": "val",
+        "grid_name_to_grid__path": "./data/data_separated_grid/gridname_to_grid.json",
+        "models_root": "./results/models_for_debug/my_weighted_features",
+        "voc_path": "./data/data_separated_grid/voc.txt",
+        "transform_name": "traj_feats_and_distance_weights",
+        "include_coords": true,
+        "include_time": false,
+        "include_velocities": true,
+        "include_accelerations": true,
+        "generator": "beam",
+        "generator_call_kwargs":
+        {
+            "max_steps_n": 35,
+            "return_hypotheses_n": null,
+            "beamsize": 6,
+            "normalization_factor": 0.5
+        },
+        "data_split__to__path": {
+            "test": "./data/data_separated_grid/test.jsonl",
+            "val": "./data/data_separated_grid/valid__in_train_format.jsonl"
+        },
+        "use_vocab_for_generation": true,
+        "n_classes": 35
+    }
+} 

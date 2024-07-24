@@ -1,7 +1,7 @@
 import gdown
 
 if __name__ == "__main__":
-    WEIGHTS_DIR = "data/trained_models_for_final_submit"
+    WEIGHTS_DIR = "results/final_submission_models"
     
     url = "https://drive.google.com/drive/folders/1-iFPYCcRYy-tEu14Ry6xU6SMMf3eCjn6"
     

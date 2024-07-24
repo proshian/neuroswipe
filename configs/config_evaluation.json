@@ -1,0 +1,12 @@
+{
+    "out_csv_path": "./results/evaluation_results_v3.csv",
+
+    "data_split__to__path": {
+        "test": "./data/data_separated_grid/test.jsonl",
+        "val": "./data/data_separated_grid/valid__in_train_format.jsonl"
+    },
+
+    "prediction_paths": [
+        "./results/predictions/val"
+    ]
+}

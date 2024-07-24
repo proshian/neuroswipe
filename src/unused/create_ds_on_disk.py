@@ -32,8 +32,8 @@ from tqdm import tqdm
 
 from dataset import CurveDatasetWithMultiProcInit
 from nearest_key_lookup import NearestKeyLookup
-from tokenizers import KeyboardTokenizerv1, CharLevelTokenizerv2
-from tokenizers import ALL_CYRILLIC_LETTERS_ALPHABET_ORD
+from ns_tokenizers import KeyboardTokenizerv1, CharLevelTokenizerv2
+from ns_tokenizers import ALL_CYRILLIC_LETTERS_ALPHABET_ORD
 from predict import get_grid_name_to_grid
 from transforms import FullTransform, TrajFeatsKbTokensTgtWord_InitTransform
 from dataset import _get_data_from_json_line

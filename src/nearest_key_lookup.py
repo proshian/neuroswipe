@@ -3,6 +3,8 @@ from typing import Dict, Tuple, Iterable
 
 import numpy as np
 
+from grid_processing_utils import get_kb_label
+
 
 class NearestKeyLookup:
     """
@@ -26,18 +28,14 @@ class NearestKeyLookup:
         return label in self._nearest_key_candidates
 
     def _get_kb_label(self, key: dict) -> str:
-        if 'label' in key:
-            return key['label']
-        if 'action' in key:
-            return key['action']
-        raise ValueError("Key has no label or action property")
+        return get_kb_label(key)
 
     def _get_key_center(self, hitbox: Dict[str, int]) -> Tuple[float, float]:
         x = hitbox['x'] + hitbox['w'] / 2
         y = hitbox['y'] + hitbox['h'] / 2
         return x, y
     
-    def _get_kb_label_without_map(self, x, y) -> str:
+    def _get_kb_label_without_map(self, x: int, y: int) -> str:
         """
         Returns label of the nearest key on the keyboard without using a map.
          
@@ -60,6 +58,8 @@ class NearestKeyLookup:
         return nearest_kb_label
     
     def _create_coord_to_kb_label(self, grid: dict) -> np.ndarray: # dtype = object
+        # It may be confusing that coord_to_kb_label's height = grid['width']
+        # and width = grid['height'], but it's correct.
         coord_to_kb_label = np.zeros(
             (grid['width'], grid['height']), dtype=object)  # 1080 x 640 in our case
         coord_to_kb_label.fill('')
@@ -85,7 +85,7 @@ class NearestKeyLookup:
 
         return coord_to_kb_label
     
-    def get_nearest_kb_label(self, x, y):
+    def get_nearest_kb_label(self, x: int, y: int):
         """
         Returns the nearest key label for a given (x, y) coordinate.
         
@@ -143,7 +143,7 @@ class ExtendedNearestKeyLookup(NearestKeyLookup):
             (x,y): self._get_kb_label_without_map(x, y) 
             for x, y in extended_coords}
 
-    def get_nearest_kb_label(self, x, y):
+    def get_nearest_kb_label(self, x: int, y: int):
         if (x, y) in self.extended_coord_to_kb_label:
             return self.extended_coord_to_kb_label[(x, y)]
         return super().get_nearest_kb_label(x, y)

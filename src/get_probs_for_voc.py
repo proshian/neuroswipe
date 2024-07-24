@@ -12,7 +12,7 @@ import torch.nn.functional as F
 from torch import Tensor
 from tqdm import tqdm
 
-from tokenizers import CharLevelTokenizerv2
+from ns_tokenizers import CharLevelTokenizerv2
 from word_generators import _prepare_encoder_input
 from model import MODEL_GETTERS_DICT
 from dataset import CurveDataset

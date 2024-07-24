@@ -12,8 +12,6 @@ class CharLevelTokenizerv2:
     """
     Tokenizes a word into a list of integers.
 
-    Toknized word is padded to the max_word_len.
-
     Guarantees that <sos> and <pad> are tokens with `vocab_len - 1` and
     `vocab_len - 2` indices respectively. The model never needs to 
     predict <sos> and <pad> tokens. Since theese tokens have the biggest ids
@@ -66,6 +64,8 @@ class CharLevelTokenizerv2:
 
 class KeyboardTokenizerv1:
     
+    # '-' and '<unk>' symbol are in case of new keyboard layouts.
+    # <pad> is used for padding.
     i2t = ALL_CYRILLIC_LETTERS_ALPHABET_ORD + ['-', '<unk>', '<pad>']
     
     t2i = {t: i for i, t in enumerate(i2t)}

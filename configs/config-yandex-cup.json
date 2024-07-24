@@ -18,26 +18,26 @@
             ["extra", "m1", "m1_v2/m1_v2__2023_11_09__17_47_40__0.14301_extra_l2_1e-05_switch_0.pt"],
             ["extra", "m1_bigger", "m1_bigger/m1_bigger_v2__2023_11_12__02_27_14__0.13413_extra_l2_0_ls0_switch_1.pt"]
         ],
-        "out_path": "./data/saved_beamsearch_results",
-        "csv_path": "./data/saved_beamsearch_results/results.csv",
+        "out_path": "./results/final_submission_predictions/test",
+        "csv_path": null,
         "data_split": "test",
         "grid_name_to_grid__path": "./data/data_separated_grid/gridname_to_grid.json",
-        "models_root": "./data/trained_models_for_final_submit",
+        "models_root": "./results/final_submission_models",
         "voc_path": "./data/data_separated_grid/voc.txt",
+        "transform_name": "traj_feats_and_nearest_key",
         "generator": "beam",
-        "generator_kwargs":
+        "generator_call_kwargs":
         {
-            "max_steps_n": 35,
+            "max_steps_n": 23,
             "return_hypotheses_n": 7,
             "beamsize": 6,
-            "normalization_factor": 0.5,
-            "verbose": false
+            "normalization_factor": 0.5
         },
-
-        
         "data_split__to__path": {
             "test": "./data/data_separated_grid/test.jsonl",
-            "val": "./data/data_separated_grid/valid.jsonl"
-        }
+            "val": "./data/data_separated_grid/valid__in_train_format.jsonl"
+        },
+        "use_vocab_for_generation": false,
+        "n_classes": null
     }
 } 

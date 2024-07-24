@@ -5,7 +5,7 @@ import os
 import json
 
 from dataset import NeuroSwipeDatasetv2
-from tokenizers import KeyboardTokenizerv1, CharLevelTokenizerv2
+from ns_tokenizers import KeyboardTokenizerv1, CharLevelTokenizerv2
 
 # проверить, что если "раздеть" decoder_input и target имеют корректную структуру:
 # то есть decoder_input[0] = <sos>, дальше пока элементы являются кирилическими
