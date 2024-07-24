@@ -27,25 +27,6 @@
 # Текущая ситация по рефакторингу
 
 
-
-3. Сделать коммит, перечитать весь readme 
-4. Сделать pull request как ниже:
-
-```
-Conduct 5 experiments: 2 my feats + 3  feats from papers
-* Created a new swipe point representation that uses a weighted sum of all keyboard key embeddings
-* Moved training to pytorch lightning
-* Added distance getter
-* Added feature_extractors for 5 experiments (3 papers + 2 mine(
-* Decoding algorithms now utilize masking
-* Readme update
-* Change collate_fn output format to `(encoder_in, decoder_in), decoder_out`
-* Update data analysis
-* And many more  subtle changes :)
-```
-
-
-
 1. Рефакторинг train.ipynb и predict_v2.py - минимум 40 минут
       * Рефакторинг pl модуля
       * Перенести pl module из jupyter блокнота в python модуль
