@@ -28,9 +28,8 @@
 
 
 
-1. Обновить README - ожидаю 40 минут
-      * In this task decreasing learning rate when learning stagnates does not have any benefit: it can be seen that all models started overfitting rapidly once the learning rate decreased with their  CELoss going up on validation set. Interestingly token-level accuracy and f1-score reach higher values on the validation set after learning rate decrease. However it doesn't hold true for word-level accuracies on validation that decrease. 
-      * Разобраться, почему tokem-level метрики растут, хоть word-level точность падает, а loss растет на валидации
+1. Обновить README - ожидаю 20 минут
+      * In this task decreasing learning rate when learning stagnates does not have any benefit: it can be seen that all models started overfitting rapidly once the learning rate decreased with their  CELoss going up on validation set. Interestingly token-level accuracy and f1-score reach higher values on the validation set after learning rate decrease. However it doesn't hold true for word-level accuracies on validation that decrease. Thus it seems like the model makes correct predictions more often on token-level (token-level increase), however when the model seems to be highly confident in the incorrect predictions which leads to celoss increase. 
       * Обновить графики, проценты в результатах, таблицы
       * Заменить последнюю гифку на просто “спасибо”
 2. Сохранить все изображения и gif из README в папке в репозитории
@@ -127,11 +126,11 @@ Conduct 5 experiments: 2 my feats + 3  feats from papers
       * Имплементирвал Distance lookup и nerasek_key_lookup с хеш-таблицей
 * Произвести нормализацию как в статье 2015 года
 * Добавить (если возможно) релиз на гитхаб со всеми моделями
-* Добавить модуль weights_lookup аналогичный distances_lookup 
+* Добавить модуль key_weights_lookup аналогичный distances_lookup 
 
 
 # План медиум:
-* Обучиться с маскированием (ветка masking-impossible-logits-during-training)
+* Реализовать маскирование логитов, соответствующих невозможным токенам при обучении (аргумент командной строки "USE_IMPOSSIBLE_LOGITS_MASKING) (ветка masking-impossible-logits-during-training)
 * Починить многопоточку при использовании word generator'а, использующего словарь
 * С помощью карт внимания визуализировать влияние точек свайпа на предсказание буквы
       * желательно предоставить графики, где сверху написано слово и подсвечена буква, а снизу свайп на клавиатуре и чем больше внимания было к точке свайпа, тем более насыщенный у нее цвет
