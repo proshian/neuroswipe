@@ -28,12 +28,8 @@
 
 
 
-1. Обновить README - ожидаю 20 минут
-      * In this task decreasing learning rate when learning stagnates does not have any benefit: it can be seen that all models started overfitting rapidly once the learning rate decreased with their  CELoss going up on validation set. Interestingly token-level accuracy and f1-score reach higher values on the validation set after learning rate decrease. However it doesn't hold true for word-level accuracies on validation that decrease. Thus it seems like the model makes correct predictions more often on token-level (token-level increase), however when the model seems to be highly confident in the incorrect predictions which leads to celoss increase. 
-      * Обновить графики, проценты в результатах, таблицы
-      * Заменить последнюю гифку на просто “спасибо”
-2. Сохранить все изображения и gif из README в папке в репозитории
-3. Сделать pull request как ниде:
+3. Сделать коммит, перечитать весь readme 
+4. Сделать pull request как ниже:
 
 ```
 Conduct 5 experiments: 2 my feats + 3  feats from papers

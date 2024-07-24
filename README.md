@@ -9,7 +9,7 @@ This repository used to contain my Yandex Cup 2023 solution (7th place), but aft
 You can try out one of the models trained during the competition in a [web app](https://proshian.pythonanywhere.com/)
 
 
-![demo](https://github.com/proshian/neuroswipe/assets/98213116/79b3506d-2817-45b5-9459-92490edcd5dc)
+![demo](./REAME_materials/swipe_demos/demo.gif)
 
 If the website is not available, you can run the demo yourself by following the instructions in [the web app's GitHub repository](https://github.com/proshian/neuroswipe_inference_web).
 
@@ -208,7 +208,9 @@ This method is the same as IndicSwipe method but uses second derivatives alongsi
 
 The computational graph of a `swipe point embedding` is shown in the image below.
 
-![Here should be an image of encoder_input_sequence_element](./REAME_materials/encoder_input_sequence_element.png)
+| ![Here should be an image of encoder_input_sequence_element](./REAME_materials/encoder_input_sequence_element.png) |
+|:--:|
+|*Figure 1: Swipe Point Embedding Computation Graph*|
 
 The $\frac{dx}{dt}$, $\frac{dy}{dt}$, $\frac{d^2x}{dt^2}$, $\frac{d^2y}{dt^2}$ derivatives are calculated using the finite difference method.
 
@@ -237,15 +239,19 @@ The weighting function used in this work, along with its graph, is presented bel
 $$f(x) = \frac{1}{1+e^{1.8 \cdot (x - 2.2)}}$$
 
 
-![weights_function](https://github.com/user-attachments/assets/ee43a8bf-cbb1-4885-8a2f-78c2ea034d4f)
+| ![weights_function](./REAME_materials/weights_function.png) |
+|:--:|
+| *Figure 2: Weights function.* |
 
 
 In the graph below, the z-axis shows the weight of key `p` (highlighted in yellow) for each point on the keyboard. For other keys, this surface will be the same, just centered at a different point. For a clear view of the keyboard there is a separate image without the surface.
 
 
 
-![weights_viz](https://github.com/user-attachments/assets/d2c2505e-91c8-4c33-8bcc-85c386441628)
-![3d_keyboard_cut](https://github.com/user-attachments/assets/1ca86f05-b707-41d8-8815-f47fda1f911a)
+| ![weights_viz](./REAME_materials/weights_visualization.png) |
+|:--:|
+| ![3d_keyboard](./REAME_materials/3d_keyboard.png) |
+| *Figure 3: 'р' key weight for each point on the keyboard.* |
 
 ## Extra Info
 
@@ -268,16 +274,6 @@ All word candidates must be unique. The duplicates are excluded when the metric 
 The use of the Swipe MRR metric is justified by the fact that the first candidate will be automatically inserted into the typed message, while the other three will be suggested on the panel above so that a user can use one of them instead. This approach allows assessing the quality of the model, taking into account all the words it suggests on inference.
 
 ## Results
-
-
-During inference models are used with a variation of beam search that masks logits corresponding to impossible tokens-continuations given a generated prefix.
-
-Thus the most important metric of the model performance is Swipe MRR when the model is used with "beamsearch with masking". 
-
-
-The graph below shows that the method proposed in this work demonstrates higher values for both Accuracy and Swipe MRR.
-
-
 
 Table demonstrating the correspondence of colors on graphs and features used to create a SPE:
 
@@ -334,29 +330,36 @@ Table demonstrating the correspondence of colors on graphs and features used to 
 
 
 
+During inference, models utilize a variant of beam search that masks logits corresponding to impossible token continuations given a generated prefix. Consequently, the most important metric of the model performance is Swipe MRR when the model is used with "beamsearch with masking". 
 
 
-![beamsearch_metrics](https://github.com/user-attachments/assets/cddb1290-8886-4eb4-9366-f072e191e3fc)
-
-
-The table below demonstrates the best metric values from the graph above for each method. It shows that the developed SPE delivers higher quality than the best SPE used in articles. Specifically, the increase in Swipe MRR is 0.59%, and the increase in accuracy is 0.61%.
-
-
-Features Type | Swipe MRR | Accuracy | Swipe MRR Epoch | Accuracy Epoch | Max considered epoch  
--------------- | -------- | --------- | -------------- | -------------- | ----
-Weighted features (OURS)  | **0.8915**  | **0.8855** | 58 | 58 | 67
-Nearest features (OURS)  | 0.8884  | 0.8822 | 33 | 33 | 67
-IndicSwipe_features  | 0.8863  | 0.8801 | 31 | 31 | 67
-Google_2015_features  | 0.8804  | 0.8737 | 53 | 53 | 57
-PhraseSwipe_features  | 0.8712  | 0.8645 | 55 | 55 | 64
+The graph below shows that the method proposed in this work demonstrates higher values for both Accuracy and Swipe MRR.
 
 
 
-Features Type | Swipe MRR | Accuracy 
---------------|-----------|------------
-Weighted features (OURS) | 0.8915 | 0.8855
-IndicSwipe_features | 0.8863 | 0.8801
-**Δ** | **0.59%** | **0.61%**
+| ![beamsearch_metrics](./REAME_materials/metrics/beam_search_metrics_val.png) |
+|:--:|
+| *Figure 4: Comparison of model performance using beam search with masking* |
+
+
+The table below demonstrates the best metric values from the graph above for each method. It shows that the developed SPE delivers higher quality than the best SPE used in articles. Specifically, the increase in Swipe MRR is 0.67%, and the increase in accuracy is 0.73%.
+
+
+| report_feat_names        |    mmr |   accuracy |   accuracy_epoch |   accuracy_epoch |   Max considered epoch |
+|--------------------------|--------|------------|------------------|------------------|------------------------|
+| Weighted features (OURS) | 0.8922 |     0.8865 |               90 |               90 |                    128 |
+| Nearest features (OURS)  | 0.8886 |     0.8826 |               73 |               73 |                     86 |
+| Indiswipe_features       | 0.8863 |     0.8801 |               31 |               31 |                     90 |
+| Google_2015_features     | 0.8815 |     0.875  |              104 |              104 |                    111 |
+| Phrase_swipe_features    | 0.8712 |     0.8645 |               55 |               55 |                     87 |
+
+
+
+| Features Type            | Swipe MRR   | Accuracy   |
+|--------------------------|-------------|------------|
+| Weighted features (OURS) | 0.8922      | 0.8865     |
+| Indiswipe_features       | 0.8863      | 0.8801     |
+| **Δ**                    | **0.67%**   | **0.73%**  |
 
 
 
@@ -365,9 +368,26 @@ IndicSwipe_features | 0.8863 | 0.8801
 The metrics below present word-level accuracy using greedy decoding and cross-entropy loss on the training set. These metrics are essential for understanding the variance and bias of the models when compared to the validation metrics discussed subsequently. 
 
 
+<!-- 
 Greedy decoding word level accuracy (train set) | CE loss (train set)
 :-------------------------:|:-------------------------:
-![acc_greedy_TRAIN](https://github.com/user-attachments/assets/b7eda630-b007-442b-b34d-825bb0cd80c4)  |  ![celoss_TRAIN](https://github.com/user-attachments/assets/d801022d-a454-4916-8102-84ec0e228446)
+![acc_greedy_TRAIN](./REAME_materials/metrics/greedy_accuracy_epoch_train.png)  |  ![celoss_TRAIN](./REAME_materials/metrics/celoss_epoch_train.png)
+-->
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="./REAME_materials/metrics/greedy_accuracy_epoch_train.png" alt="Greedy Decoding Word-Level Accuracy (Train Set)" />
+    </td>
+    <td align="center">
+      <img src="./REAME_materials/metrics/celoss_epoch_train.png" alt="CE Loss (Train Set)" />
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><em>Figure 5: Greedy Decoding Word-Level Accuracy and Cross-Entropy Loss on the Training Set</em></td>
+  </tr>
+</table>
+
 
 
 
@@ -375,24 +395,59 @@ On the grahs below on the left, there is a graph showing word-level accuracy wit
 
 The greedy decoding word-level accuracy is used as a very cheap proxy metric. It's cheapness comes from the fact that it is equal to a word-level accuracy during transformer training without any decoding algorithm applied at all. 
 
+<!--
 Greedy decoding word level accuracy (validation set) | CE loss (validation set)
 :-------------------------:|:-------------------------:
-![acc_greedy_val](https://github.com/user-attachments/assets/30dee9b6-a55e-4760-a9fb-9c3ecab4fa79) | ![celoss_val](https://github.com/user-attachments/assets/0f161cdd-8dd9-44bc-b93f-ca6504ea7956)
+![acc_greedy_val](./REAME_materials/metrics/greedy_accuracy_val.png) | ![celoss_val](./REAME_materials/metrics/celoss_val.png)
+-->
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="./REAME_materials/metrics/greedy_accuracy_val.png" alt="Greedy Decoding Word-Level Accuracy (Validation Set)" />
+    </td>
+    <td align="center">
+      <img src="./REAME_materials/metrics/celoss_val.png" alt="CE Loss (Validation Set)" />
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><em>Figure 6: Greedy Decoding Word-Level Accuracy and Cross-Entropy Loss on the Validation Set</em></td>
+  </tr>
+</table>
 
 
 The metrics below demonstrate the token-level F-score and accuracy on the validation set. The ranking of models by quality level here matches the previous graphs. It is also worth noting that the increase in token-level accuracy suggests that with further training, we may achieve an even greater improvement in word-level accuracy.
 
+<!--
 token level accuracy (validation set) | token level f1-score (validation set)
 :-------------------------:|:-------------------------:
-![acc_token_val](https://github.com/user-attachments/assets/4ff2a463-1ac8-475c-8ec9-187e821ed229) | ![f1_token_val](https://github.com/user-attachments/assets/5925c80f-4d46-4758-9a56-828f2f7cfe3e)
+![acc_token_val](./REAME_materials/metrics/token_level_accuracy_val.png) | ![f1_token_val](./REAME_materials/metrics/token_level_f1_val.png)
+-->
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="./REAME_materials/metrics/token_level_accuracy_val.png" alt="Token Level Accuracy (Validation Set)" />
+    </td>
+    <td align="center">
+      <img src="./REAME_materials/metrics/token_level_f1_val.png" alt="Token Level F1-Score (Validation Set)" />
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><em>Figure 7: Token-Level Accuracy and F1-Score on the Validation Set</em></td>
+  </tr>
+</table>
 
 
 > [!NOTE]  
-> The abrupt changes in metrics are due to decreases in learning rate. ReduceLROnPlateau scheduler cuts the learning rate in half if a losses on the validation set does not change for over 20 epoches.
+> The abrupt changes in metrics are due to decreases in the learning rate. The ReduceLROnPlateau scheduler reduces the learning rate by half if validation loss does not improve for over 20 epochs.
+
+In this task, decreasing the learning rate when learning stagnates does not yield benefits: all models began overfitting rapidly after the learning rate decreased, as indicated by the increased CE loss on the validation set (Figure 6, right). Interestingly, token-level accuracy and F1-score improved on the validation set after the learning rate decrease (Figure 7), whereas word-level metrics on the validation set declined or didn't change (Figure 6, left; Figure 4). This suggests that while the model's token-level accuracy (correct-predictions-frequency) improved, it became overly confident in incorrect predictions, leading to higher CE loss.
+
 
 ### Conclusion
 
-As a result of the research, a four-layer transformer with a new swipe point representation method was developed and trained. The developed method for constructing swipe point embeddings (SPE) uses a weighted sum of embeddings of all keys, as well as the swipe trajectory coordinates and their derivatives up to the second order. The designed type of embedding helps to mitigate noise in the data and more accurately reflects user interactions with the keyboard. The main outcome was an increase in Swipe MMR by 0.59% and Accuracy by 0.61% on the validation set using beam search, compared to existing approaches for constructing SPE. To test the method, a keyboard prototype was created in the form of a web application.
+As a result of the research, a four-layer transformer with a new swipe point representation method was developed and trained. The developed method for constructing swipe point embeddings (SPE) uses a weighted sum of embeddings of all keys, as well as the swipe trajectory coordinates and their derivatives up to the second order. The designed type of embedding helps to mitigate noise in the data and more accurately reflects user interactions with the keyboard. The main outcome was an increase in Swipe MMR by 0.67% and Accuracy by 0.73% on the validation set using beam search, compared to existing approaches for constructing SPE. To test the method, a keyboard prototype was created in the form of a web application.
 
 
 ## Prerequisites
@@ -469,7 +524,7 @@ Yandex cup 2023 submission reprodction instructions are [here: submission_reprod
 
 
 ## Thank you for your attention
-![thank_you_for_your_attention](https://github.com/user-attachments/assets/561c56c5-e22d-4a0e-aa39-076ee96c2141)
+![thank_you](./REAME_materials/swipe_demos/thank_you.gif)
 
 ## For future me
 See [refactoring plan](./Refactoring_plan.md)
