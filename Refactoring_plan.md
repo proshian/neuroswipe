@@ -1,10 +1,24 @@
 
+# How we swipe dataset
+
+[How we swipe dataset](https://osf.io/sj67f/)
+
+# Word gesture gan web
+http://wordgesturegan.com/
+
 # Note
 
 У меня метрика назыавется swipe_mmr, а должно быть swipe_mrr
 
 # GBoard bolg - machine-intelligence-behind-gboard
 [The Machine Intelligence Behind Gboard](https://research.google/blog/the-machine-intelligence-behind-gboard/)
+
+# Grammalry blog - Deep learning swipe typing
+[Deep learning swipe typing](https://www.grammarly.com/blog/engineering/deep-learning-swipe-typing/)
+
+Архитектура из решения Кирилла Бродта. Фичи другие. Посмотреть фичи!!
+
+> Swipe decoding should be performed entirely locally, on the user’s device, to ensure data privacy. The amount of memory available to a third-party keyboard on the iOS platform is ~60 MiB (while this number isn’t published anywhere, we’ve determined it based on our experiments). This means that whatever experience we want to build needs to fit within the 60 MiB memory budget.
 
 # Scheduler problem
 
