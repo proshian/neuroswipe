@@ -1,10 +1,24 @@
 
+# How we swipe dataset
+
+[How we swipe dataset](https://osf.io/sj67f/)
+
+# Word gesture gan web
+http://wordgesturegan.com/
+
 # Note
 
 У меня метрика назыавется swipe_mmr, а должно быть swipe_mrr
 
 # GBoard bolg - machine-intelligence-behind-gboard
 [The Machine Intelligence Behind Gboard](https://research.google/blog/the-machine-intelligence-behind-gboard/)
+
+# Grammalry blog - Deep learning swipe typing
+[Deep learning swipe typing](https://www.grammarly.com/blog/engineering/deep-learning-swipe-typing/)
+
+Архитектура из решения Кирилла Бродта. Фичи другие. Посмотреть фичи!!
+
+> Swipe decoding should be performed entirely locally, on the user’s device, to ensure data privacy. The amount of memory available to a third-party keyboard on the iOS platform is ~60 MiB (while this number isn’t published anywhere, we’ve determined it based on our experiments). This means that whatever experience we want to build needs to fit within the 60 MiB memory budget.
 
 # Scheduler problem
 
@@ -25,34 +39,39 @@
 Не стоит ли сделать фиксированные момент смены  lr для всех экспериментов?
 
 # Текущая ситация по рефакторингу
-
-
 1. Рефакторинг train.ipynb и predict_v2.py - минимум 40 минут
       * Рефакторинг pl модуля
       * Перенести pl module из jupyter блокнота в python модуль
 2. Разработать аугментацию шумом
 3. Опробовать аугментацию на "extra" датасете. Я ожидаю, что так как он маленький, переобучение бует происходить быстрее, и можно будет быстрее понять, какой шум работает лучше
-4. Обновить README (2)
+4. Изучить этот шаблон: https://github.com/ashleve/lightning-hydra-template, принять решение о переходе на него или подобный способ.
+      * Так как обучение на каггле, нужно уметь запускаться с последнего чекпойнта
+5. Добавить логирование lr в train.ipynb
+6. Сделать возмодный обучение trainblae_gaussian. Возможные способы:
+      * Воспользоваться готовым отдельным jupyter-notebook'ом
+      * Смерджить train.ipynb и train__gaussian.ipynb
+      * Написать совершенно новый пайплайн (см пункт выше)
+7. Сделать возможным предсказание trainblae_gaussian. Возможные способы:
+      * Воспользоваться готовым отдельным скриптом predict_trainable_gaussian
+      * Смерджить predict_v2 и predict_trainable_gaussian
+      * Написать совершенно новый пайплайн (см пункт выше)
+8. Обучить trainable_gaussian
+9. Обновить README (2)
       * Добавить пояснение как обучаться (подготовка датасета)
             * Описать в README каким должен быть датасет и как обучить на своем языке (при условии, что есть датасет в нужном виде) + дать ссылку на статью про генерацию даасета
       * Добавить пример запуска predict и evaluate
       * Заполнить TODO
       * Заполнить число параметров в indiswipe
-5. Попробовать смерджить train.ipynb и train__gaussian.ipynb
-6. Попробовать смерджить predict_v2 и predict_t rainable_gaussian
-7. Добавить логирование lr в train.ipynb
-8. Обучить trainable_gaussian
-9. Добавить метрики для trainable gaussian (и других моделей)
+10. Добавить метрики для trainable gaussian (и других моделей)
       - [] скачать чекпоинты, получить из них веса и поставить предсказываться
       - [] произвести evaluation
       - [] Получить график с beamsearch метриками
       - [] Получить графики всех метрик из tensorboard
-10. Полный пайплайн для новых датасетов - 120 минут
+11. Полный пайплайн для новых датасетов - 120 минут
       * Допустим, пользователь создал класс, который возвращает x, y, t, grid_name, target_word,
             а также добавил свою раскладку в grid_name_to_grid.json
       * Необходимо пояснить, как это обучить (как предаставить датасет в train и в predict )
-11. Решить, что делать с legacy models... Сделать их v3 + перенос весов / удалить / просто поменять интерфейс (под актуальный датасет) и перенести в отдельный файл?
-
+12. Решить, что делать с legacy models... Сделать их v3 + перенос весов / удалить / просто поменять интерфейс (под актуальный датасет) и перенести в отдельный файл?
 
 
 
@@ -84,7 +103,6 @@
 # План минимум:
 * Рассмотреть поддержку EncoderFeaturesTupleGetter
 * Перенести pl module из jupyter блокнота в python модуль
-* Добавить в `__init__` pl module'я self.save_hyperparameters() (не забываем про аргумент ignore)
 * Провести эксперимент с фичами Антона
 * Провести повторно экспериментв trainable gaussian
 * Добавить в README графики
@@ -104,7 +122,10 @@
 * Произвести нормализацию как в статье 2015 года
 * Добавить (если возможно) релиз на гитхаб со всеми моделями
 * Добавить модуль key_weights_lookup аналогичный distances_lookup 
-
+* Добавить секцию с благодарностями
+      * Кириллу Бродту и Антону Митрофанову
+      * Организаторам Яндекс Капа
+      * Авторам предыдущих работ по теме 
 
 # План медиум:
 * Реализовать маскирование логитов, соответствующих невозможным токенам при обучении (аргумент командной строки "USE_IMPOSSIBLE_LOGITS_MASKING) (ветка masking-impossible-logits-during-training)
