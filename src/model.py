@@ -341,179 +341,6 @@ def get_m1_smaller_model(device = None, weights_path = None):
 
 
 
-
-
-#############################################
-
-
-
-class TransformerEncoderTransformerDecoderWithPos(nn.Module):
-
-    def _get_mask(self, max_seq_len: int):
-        """
-        Returns a mask for the decoder transformer.
-        """
-        mask = torch.triu(torch.ones(max_seq_len, max_seq_len), diagonal=1)
-        mask = mask.masked_fill(mask == 1, float('-inf'))
-        return mask
-    
-    def __init__(self, 
-                 n_coord_feats,  # 6
-                 key_emb_size,  # 122
-                 char_vocab_size: int, 
-                 num_encoder_layers,  # 6
-                 num_decoder_layers,  # 6
-                 dim_feedforward,  # 128 у меня. Но надо бы 2048 
-                 dropout:float,
-                 char_embedding_dropout: float,
-                 key_embedding_dropout: float,
-                 num_heads_encoder,  # 4 
-                 num_heads_decoder,  # 4
-                 max_out_seq_len: int,
-                 max_curves_seq_len: int,
-                 activation: Callable = F.relu,
-                 device = None,) -> None:
-        super().__init__()
-
-        self.device = torch.device(
-            device 
-            or 'cuda' if torch.cuda.is_available() else 'cpu')
-        
-        d_model = n_coord_feats + key_emb_size
-
-        self.char_embedding_dropout = nn.Dropout(char_embedding_dropout)
-        self.key_embedding_dropout = nn.Dropout(key_embedding_dropout)
-        
-        self.char_embedding = nn.Embedding(char_vocab_size, d_model)
-        self.key_embedding = nn.Embedding(char_vocab_size, key_emb_size)
-
-
-        # self.encoder = SwipeCurveTransformerEncoderv1(
-        #     input_feats_size, d_model, dim_feedforward,
-        #     num_encoder_layers, num_heads_encoder_1,
-        #     num_heads_encoder_2, dropout, device=device)
-
-        encoder_layer = nn.TransformerEncoderLayer(
-            d_model=d_model,
-            nhead=num_heads_encoder,
-            dim_feedforward=dim_feedforward,
-            dropout=dropout,
-            device=device)
-        
-        self.encoder = nn.TransformerEncoder(
-            encoder_layer,
-            num_layers=num_encoder_layers,
-        )
-        
-        self.char_pos_encoder = PositionalEncoding(
-            d_model, max_out_seq_len, device=device)
-        
-        self.key_pos_encoder = PositionalEncoding(
-            key_emb_size, max_curves_seq_len, device=device)
-        
-        n_classes = char_vocab_size - 2  # <sos> and <pad> are not predicted
-        self.decoder = SwipeCurveTransformerDecoderv1(
-            d_model, n_classes, num_heads_decoder,
-            num_decoder_layers, dim_feedforward, dropout, activation, device=device)
-
-        self.mask = self._get_mask(max_out_seq_len).to(device=device)
-
-
-    def encode(self, x, kb_tokens, x_pad_mask):
-        kb_k_emb = self.key_embedding(kb_tokens)  # keyboard key
-        kb_k_emb = self.key_embedding_dropout(kb_k_emb)
-        kb_k_emb = self.key_pos_encoder(kb_k_emb)
-        x = torch.cat((x, kb_k_emb), dim = -1)
-        x = self.encoder(x, src_key_padding_mask = x_pad_mask)
-        return x
-    
-    def decode(self, x_encoded, y, x_pad_mask, y_pad_mask):
-        y = self.char_embedding(y)
-        y = self.char_embedding_dropout(y)
-        y = self.char_pos_encoder(y)
-        mask = self._get_mask(len(y)).to(device=self.device)
-        y = self.decoder(y, x_encoded, mask, x_pad_mask, y_pad_mask)
-        return y
-
-    def forward(self, x, kb_tokens, y, x_pad_mask, y_pad_mask):
-        x_encoded = self.encode(x, kb_tokens, x_pad_mask)
-        return self.decode(x_encoded, y, x_pad_mask, y_pad_mask)
-
-
-
-
-
-def get_transformer_bigger_model(device = None, weights_path = None):
-    CHAR_VOCAB_SIZE = 37  # = len(word_char_tokenizer.char_to_idx)
-    MAX_CURVES_SEQ_LEN = 299
-    MAX_OUT_SEQ_LEN = 35  # word_char_tokenizer.max_word_len - 1
-
-    model = TransformerEncoderTransformerDecoderWithPos(
-        n_coord_feats=6,
-        key_emb_size=122,
-        char_vocab_size=CHAR_VOCAB_SIZE,
-        num_encoder_layers=4,
-        num_decoder_layers=4,
-        dim_feedforward=128,
-        num_heads_encoder=4,
-        num_heads_decoder=4,
-        dropout=0.1,
-        char_embedding_dropout=0.1,
-        key_embedding_dropout=0.1,
-        max_out_seq_len=MAX_OUT_SEQ_LEN,
-        max_curves_seq_len=MAX_CURVES_SEQ_LEN,
-        device = device)
-
-    if weights_path:
-        model.load_state_dict(
-            torch.load(weights_path,
-                    map_location = device))
-    
-    model = model.to(device)
-        
-    model = model.eval()
-
-    return model
-
-
-
-
-def get_transformer_bb_model(device = None, weights_path = None):
-    CHAR_VOCAB_SIZE = 37  # = len(word_char_tokenizer.char_to_idx)
-    MAX_CURVES_SEQ_LEN = 299
-    MAX_OUT_SEQ_LEN = 35  # word_char_tokenizer.max_word_len - 1
-
-    model = TransformerEncoderTransformerDecoderWithPos(
-    n_coord_feats=6,
-    key_emb_size=506,
-    char_vocab_size=CHAR_VOCAB_SIZE,
-    num_encoder_layers=8,
-    num_decoder_layers=8,
-    dim_feedforward=2048,
-    num_heads_encoder=8,
-    num_heads_decoder=8,
-    dropout=0.1,
-    char_embedding_dropout=0.1,
-    key_embedding_dropout=0.1,
-    max_out_seq_len=MAX_OUT_SEQ_LEN,
-    max_curves_seq_len=MAX_CURVES_SEQ_LEN,
-    device = device)
-
-    if weights_path:
-        model.load_state_dict(
-            torch.load(weights_path,
-                    map_location = device))
-    
-    model = model.to(device)
-        
-    model = model.eval()
-
-    return model
-
-
-
-
-
 ###############################################################################
 ###############################################################################
 
@@ -1048,19 +875,16 @@ def get_transformer_bigger_trainable_gaussian_weights_and_traj__v3(
 
 
 MODEL_GETTERS_DICT = {
-    ########## Legacy models. They have an old interface; they don't have layer norm.
-    "m1": get_m1_model,
-    "m1_bigger": get_m1_bigger_model,
-    "m1_smaller": get_m1_smaller_model,
-
-    "transformer_m1_bigger": get_transformer_bigger_model,  # ! Deleteme
-    "transformer_bb_model": get_transformer_bb_model,  # ! Deleteme
-
-
-    ########## Non-legacy models
     "v3_weighted_and_traj_transformer_bigger": get_transformer_bigger_weighted_and_traj__v3,  # has layer norm
     "v3_nearest_and_traj_transformer_bigger": get_transformer_bigger_nearest_and_traj__v3,  # has layer norm
     "v3_nearest_only_transformer_bigger": get_transformer_bigger_nearest_only__v3,  # has layer norm
     
     "v3_trainable_gaussian_weights_and_traj_transformer_bigger": get_transformer_bigger_trainable_gaussian_weights_and_traj__v3,  # has layer norm
+
+
+
+    ########## Legacy models. They have an old interface; they don't have layer norm; They are transformer with a smalller dim of first layer
+    "m1": get_m1_model,
+    "m1_bigger": get_m1_bigger_model,
+    "m1_smaller": get_m1_smaller_model,
 }

@@ -14,6 +14,9 @@ You can try out one of the models trained during the competition in a [web app](
 If the website is not available, you can run the demo yourself by following the instructions in [the web app's GitHub repository](https://github.com/proshian/neuroswipe_inference_web).
 
 
+> [!NOTE]  
+> The model is an old and underfit legacy transformer variation (m1_bigger in models.py) that was used in the competition. A significant update is planned for both this project and the web app, but it will happen in late autumn of 2024 probably. Unfortunately, I am pausing the work on the project until November 
+
 ## Existing Work
 1)  Alsharif O. et al. Long short term memory neural network for keyboard gesture decoding //2015 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP). – IEEE, 2015. – P. 2076-2080.
 2) Xu Z. et al. Phrase-Gesture Typing on Smartphones //Proceedings of the 35th Annual ACM Symposium on User Interface Software and Technology. – 2022. – P. 1-11.
