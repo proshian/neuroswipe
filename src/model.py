@@ -1,3 +1,15 @@
+"""
+Currently all models (except for the legacy ones) are obhects of the class EncoderDecoderTransformerLike.
+This class has 4 components:
+* swipe point embedder
+* word token embedder
+* encoder (that must have interface of nn.TransformerEncoder)
+* decoder (that must have interface of nn.TransformerDecoder)
+
+The primary difference between models is in the swipe point embedder.
+"""
+
+
 from typing import Callable, Optional, Tuple
 import math
 
@@ -5,101 +17,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
-class SwipeCurveTransformerEncoderv1(nn.Module):
-    """
-    Transformer-based Curve encoder takes in a sequence of vectors and creates a representation
-    of a swipe gesture on a samrtphone keyboard.
-    Each vector contains information about finger trajectory at a time step.
-    It contains:
-    * x coordinate
-    * y coordinate
-    * Optionally: t
-    * Optionally: dx/dt
-    * Optionally: dy/dt
-    * Optionally: keyboard key that has x and y coordinates within its boundaries
-    """
-
-    def __init__(self,
-                 input_size: int,
-                 d_model: int,
-                 dim_feedforward: int,
-                 num_layers: int,
-                 num_heads_first: int,
-                 num_heads_other: int,
-                 dropout: float = 0.1,
-                 device = None):
-        """
-        Arguments:
-        ----------
-        input_size: int
-            Size of input vectors.
-        d_model: int
-            Size of the embeddings (output vectors).
-            Should be equal to char embedding size of the decoder.
-        dim_feedforward: int
-        num_layers: int
-            Number of encoder layers including the first layer.
-
-        """
-        super().__init__()
-
-        device = device or torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-        self.first_encoder_layer = nn.TransformerEncoderLayer(
-            input_size, num_heads_first, dim_feedforward, dropout, device=device)
-        self.liner = nn.Linear(input_size, d_model, device=device)  # to convert embedding to d_model size
-        num_layer_after_first = num_layers - 1
-        if num_layer_after_first > 0:
-            encoder_layer = nn.TransformerEncoderLayer(
-                d_model, num_heads_other, dim_feedforward, dropout, device=device)
-            self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layer_after_first)
-        else:
-            self.transformer_encoder = None
-    
-
-    def forward(self, x, pad_mask: torch.Tensor):
-        x = self.first_encoder_layer(x, src_key_padding_mask=pad_mask)
-        x = self.liner(x)
-        if self.transformer_encoder is not None:
-            x = self.transformer_encoder(x, src_key_padding_mask=pad_mask)
-        return x
-
-
-
-class SwipeCurveTransformerDecoderv1(nn.Module):
-    """
-    Decodes a swipe gesture representation into a sequence of characters.
-
-    Uses decoder transformer with masked attention to prevent the model from cheating.
-    """
-
-    def __init__(self,
-                 char_emb_size,
-                 n_classes,
-                 nhead,
-                 num_decoder_layers,
-                 dim_feedforward,
-                 dropout,
-                 activation = F.relu,
-                 device = None):
-        super().__init__()
-
-        device = device or torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-        self.decoder_layer = nn.TransformerDecoderLayer(
-            char_emb_size, nhead, dim_feedforward, dropout, activation, device = device)
-        self.transformer_decoder = nn.TransformerDecoder(self.decoder_layer, num_decoder_layers)
-        self.out = nn.Linear(char_emb_size, n_classes, device = device)
-    
-    def forward(self, x, memory, tgt_mask, memory_key_padding_mask, tgt_key_padding_mask):
-        x = self.transformer_decoder(x,
-                                     memory,
-                                     tgt_mask=tgt_mask,
-                                     memory_key_padding_mask=memory_key_padding_mask,
-                                     tgt_key_padding_mask=tgt_key_padding_mask)
-        x = self.out(x)
-        return x
 
 
 class PositionalEncoding(nn.Module):
@@ -127,231 +44,7 @@ class PositionalEncoding(nn.Module):
         """
         x = x + self.pe[:x.size(0)]
         return self.dropout(x)
-
-
-class SwipeCurveTransformer(nn.Module):
-    """
-    Seq2seq model. Encodes a sequence of points of a
-    swipe-keyboard-typing gesture into a sequence of characters.
-
-    n_output_classes = char_vocab_size - 2 because <pad> and <sos>
-    tokens are never predicted.
-    """
-
-    def _get_mask(self, max_seq_len: int):
-        """
-        Returns a mask for the decoder transformer.
-        """
-        mask = torch.triu(torch.ones(max_seq_len, max_seq_len), diagonal=1)
-        mask = mask.masked_fill(mask == 1, float('-inf'))
-        return mask
-
-    def __init__(self,
-                 n_coord_feats: int,
-                 char_emb_size: int,
-                 char_vocab_size: int,
-                 key_emb_size: int,
-                 num_encoder_layers: int,
-                 num_decoder_layers: int,
-                 dim_feedforward: int,
-                 num_heads_encoder_1: int,
-                 num_heads_encoder_2: int,
-                 num_heads_decoder: int,
-                 dropout:float,
-                 char_embedding_dropout: float,
-                 key_embedding_dropout: float,
-                 max_out_seq_len: int,
-                 max_curves_seq_len: int,
-                 activation: Callable = F.relu,
-                 device: Optional[str] = None):
-        super().__init__()
-
-        self.device = torch.device(
-            device 
-            or 'cuda' if torch.cuda.is_available() else 'cpu')
-
-        input_feats_size = n_coord_feats + key_emb_size
-
-        d_model = char_emb_size
-
-        self.char_embedding_dropout = nn.Dropout(char_embedding_dropout)
-        self.key_embedding_dropout = nn.Dropout(key_embedding_dropout)
-        
-        self.char_embedding = nn.Embedding(char_vocab_size, char_emb_size, device=device)
-        self.key_embedding = nn.Embedding(char_vocab_size, key_emb_size, device=device)
-
-        self.encoder = SwipeCurveTransformerEncoderv1(
-            input_feats_size, d_model, dim_feedforward,
-            num_encoder_layers, num_heads_encoder_1,
-            num_heads_encoder_2, dropout, device=device)
-        
-        self.char_pos_encoder = PositionalEncoding(
-            char_emb_size, max_out_seq_len, device=device)
-        
-        self.key_pos_encoder = PositionalEncoding(
-            key_emb_size, max_curves_seq_len, device=device)
-        
-        n_classes = char_vocab_size - 2  # <sos> and <pad> are not predicted
-        self.decoder = SwipeCurveTransformerDecoderv1(
-            char_emb_size, n_classes, num_heads_decoder,
-            num_decoder_layers, dim_feedforward, dropout, activation, device=device)
-
-        self.mask = self._get_mask(max_out_seq_len).to(device=device)
-
-    # def forward_old(self, x, kb_tokens, y, x_pad_mask, y_pad_mask):
-    #     # Differs from forward(): uses self.mask instead of generating it.
-    #     kb_k_emb = self.key_embedding(kb_tokens)  # keyboard key
-    #     kb_k_emb = self.key_embedding_dropout(kb_k_emb)
-    #     kb_k_emb = self.key_pos_encoder(kb_k_emb)
-    #     x = torch.cat((x, kb_k_emb), dim = -1)
-    #     x = self.encoder(x, x_pad_mask)
-    #     y = self.char_embedding(y)
-    #     y = self.char_embedding_dropout(y)
-    #     y = self.char_pos_encoder(y)
-    #     y = self.decoder(y, x, self.mask, x_pad_mask, y_pad_mask)
-    #     return y
     
-    def encode(self, x, kb_tokens, x_pad_mask):
-        kb_k_emb = self.key_embedding(kb_tokens)  # keyboard key
-        kb_k_emb = self.key_embedding_dropout(kb_k_emb)
-        kb_k_emb = self.key_pos_encoder(kb_k_emb)
-        x = torch.cat((x, kb_k_emb), dim = -1)
-        x = self.encoder(x, x_pad_mask)
-        return x
-    
-    def decode(self, x_encoded, y, x_pad_mask, y_pad_mask):
-        y = self.char_embedding(y)
-        y = self.char_embedding_dropout(y)
-        y = self.char_pos_encoder(y)
-        mask = self._get_mask(len(y)).to(device=self.device)
-        y = self.decoder(y, x_encoded, mask, x_pad_mask, y_pad_mask)
-        return y
-
-    def forward(self, x, kb_tokens, y, x_pad_mask, y_pad_mask):
-        x_encoded = self.encode(x, kb_tokens, x_pad_mask)
-        return self.decode(x_encoded, y, x_pad_mask, y_pad_mask)
-
-
-
-
-def get_m1_model(device = None, weights_path = None):
-    CHAR_VOCAB_SIZE = 37  # = len(word_char_tokenizer.char_to_idx)
-    MAX_CURVES_SEQ_LEN = 299
-    MAX_OUT_SEQ_LEN = 35  # word_char_tokenizer.max_word_len - 1
-
-    model = SwipeCurveTransformer(
-        n_coord_feats=6,
-        char_emb_size=128,
-        char_vocab_size=CHAR_VOCAB_SIZE,
-        key_emb_size=54,
-        num_encoder_layers=4,
-        num_decoder_layers=3,
-        dim_feedforward=128,
-        num_heads_encoder_1=4,
-        num_heads_encoder_2=4,
-        num_heads_decoder=4,
-        dropout=0.1,
-        char_embedding_dropout=0.1,
-        key_embedding_dropout=0.1,
-        max_out_seq_len=MAX_OUT_SEQ_LEN,
-        max_curves_seq_len=MAX_CURVES_SEQ_LEN,
-    device = device)
-
-    if weights_path:
-        model.load_state_dict(
-            torch.load(weights_path,
-                    map_location = device))
-    
-    model = model.to(device)
-        
-    model = model.eval()
-
-    return model
-
-
-def get_m1_bigger_model(device = None, weights_path = None):
-    CHAR_VOCAB_SIZE = 37  # = len(word_char_tokenizer.char_to_idx)
-    MAX_CURVES_SEQ_LEN = 299
-    MAX_OUT_SEQ_LEN = 35  # word_char_tokenizer.max_word_len - 1
-
-    model = SwipeCurveTransformer(
-        n_coord_feats=6,
-        char_emb_size=128,
-        char_vocab_size=CHAR_VOCAB_SIZE,
-        key_emb_size=66,
-        num_encoder_layers=4,
-        num_decoder_layers=4,
-        dim_feedforward=128,
-        num_heads_encoder_1=4,
-        num_heads_encoder_2=4,
-        num_heads_decoder=4,
-        dropout=0.1,
-        char_embedding_dropout=0.1,
-        key_embedding_dropout=0.1,
-        max_out_seq_len=MAX_OUT_SEQ_LEN,
-        max_curves_seq_len=MAX_CURVES_SEQ_LEN,
-        device = device)
-
-    if weights_path:
-        model.load_state_dict(
-            torch.load(weights_path,
-                    map_location = device))
-    
-    model = model.to(device)
-        
-    model = model.eval()
-
-    return model
-
-
-def get_m1_smaller_model(device = None, weights_path = None):
-    CHAR_VOCAB_SIZE = 37  # = len(word_char_tokenizer.char_to_idx)
-    MAX_CURVES_SEQ_LEN = 299
-    MAX_OUT_SEQ_LEN = 35  # word_char_tokenizer.max_word_len - 1
-
-    model = SwipeCurveTransformer(
-        n_coord_feats=6,
-        char_emb_size=128,
-        char_vocab_size=CHAR_VOCAB_SIZE,
-        key_emb_size=54,
-        num_encoder_layers=3,
-        num_decoder_layers=3,
-        dim_feedforward=128,
-        num_heads_encoder_1=4,
-        num_heads_encoder_2=4,
-        num_heads_decoder=4,
-        dropout=0.1,
-        char_embedding_dropout=0.1,
-        key_embedding_dropout=0.1,
-        max_out_seq_len=MAX_OUT_SEQ_LEN,
-        max_curves_seq_len=MAX_CURVES_SEQ_LEN,
-        device = device)
-
-    if weights_path:
-        model.load_state_dict(
-            torch.load(weights_path,
-                    map_location = device))
-    
-    model = model.to(device)
-        
-    model = model.eval()
-
-    return model
-
-
-
-
-###############################################################################
-###############################################################################
-
-
-
-
-# Новые модели будут представлены так:
-# Функция - model_getter (значение в словаре MODEL_GETTERS_DICT_V2)
-# будет иметь среди прочих аргументы encoder_input_dim и embedding_model_ctor: Callable. 
-# Все наследники класса EmbeddingModel будут в __init__ иметь аргумент out_dim.
-# В __init__ model_getter'а будет создаваться embedding_model_ctor c аргументом...
 
 
 ##############################################################################
@@ -375,22 +68,34 @@ class WeightedSumEmbedding(nn.Module):
     Is used as a swipe dot embedding: the embedding is
     a weighted sum of embeddings of all key on keyboard
     """
-    def __init__(self, n_elements, dim) -> None:
+    def __init__(self, n_elements: int, dim: int) -> None:
         """
         Arguments:
         ----------
-        
+        n_elements: int
+            Number of categorical elements to embed. The elements are
+            supposed to be indices of keys on a keyboard.
+        dim: int
+            Dimension of the embedding
         """
         super().__init__()
-        # Using linear is same as using Linear(Embedding.get_matrix * weights)
-        # Embedding is same as Linear(one_hot)
-        # weights is generalization of one-hot
-        # Linear(weights) = Linear(Linear(one_hot) * weights) 
-
-        # n_keys = n_elements
+        # Storing ebeddings and computing weighted sum of them is same as
+        # performing a linear transformation:
+        # `weights @ embedding_matrix = result_embedding` 
+        # where `embedding_matrix` is of shape (n_keys, dim)
+        # `weights` is of shape (seq_len, batch_size, n_keys)
+        # result_embedding is of shape (seq_len, batch_size, dim)
+        # We can think embedding_matrix as a concatenation of `n_keys` embeddings of shape (1, dim),
+        # and i-th element of result_embedding is a weighted sum of i-th elements of these embeddings
         self.embeddings = nn.Linear(n_elements, dim)
 
-    def forward(self, weights):
+    def forward(self, weights: torch.Tensor) -> torch.Tensor:
+        """
+        Arguments:
+        ----------
+        weights: torch.Tensor, shape (seq_len, batch_size, n_elements) or (batch_size, seq_len, n_elements)
+            weights[:, :, i] is weight of i-th embedding (embedding of i-th key)
+        """
         return self.embeddings(weights)
 
 
@@ -428,7 +133,7 @@ class NearestEmbeddingWithPos(nn.Module):
 
 
 class SeparateTrajAndWEightedEmbeddingWithPos(nn.Module):
-    # Separate in a sence that we don't apply a linear layer to mix the layers
+    # Separate in a sense that we don't apply a linear layer to mix the layers
     def __init__(self, n_keys, key_emb_size, max_len, device, dropout = 0.1) -> None:
         super().__init__()
         self.weighted_sum_emb = WeightsSumEmbeddingWithPos(n_keys, key_emb_size, max_len, device)
@@ -443,7 +148,7 @@ class SeparateTrajAndWEightedEmbeddingWithPos(nn.Module):
     
 
 class SeparateTrajAndNearestEmbeddingWithPos(nn.Module):
-    # Separate in a sence that we don't apply a linear layer to mix the layers
+    # Separate in a sense that we don't apply a linear layer to mix the layers
     def __init__(self, n_keys, key_emb_size, max_len, device, dropout = 0.1) -> None:
         super().__init__()
         self.key_emb = NearestEmbeddingWithPos(
@@ -520,6 +225,7 @@ class TrainableMultivariateNormal2d(nn.Module):
         # x is of shape (seq_len, batch_size, 2)
         return torch.distributions.MultivariateNormal(self.mean, self.covariance).log_prob(x)
 
+
 class KeyboardKeyNormalDistributions(nn.Module):
     def __init__(self, n_keys, key_centers: Optional[torch.Tensor] = None) -> None:
         """
@@ -555,8 +261,9 @@ class KeyboardKeyNormalDistributions(nn.Module):
         ]
         return torch.stack(weights_lst, dim = -1)
 
+
 class SeparateTrajAndTrainableWeightedEmbeddingWithPos(nn.Module):
-    # Separate in a sence that we don't apply a linear layer to mix the layers
+    # Separate in a sense that we don't apply a linear layer to mix the layers
     def __init__(self, n_keys, key_emb_size, max_len, device, dropout = 0.1,
                  key_centers: Optional[torch.Tensor] = None) -> None:
         super().__init__()
@@ -574,19 +281,9 @@ class SeparateTrajAndTrainableWeightedEmbeddingWithPos(nn.Module):
     
 
 
-
-###############################################################################
-###############################################################################
-
-
-
-
-
-
 ################################################################################
-##################                 V3 models                  ##################
+##################            Transformer Interface           ##################
 ################################################################################
-
 
 def _get_mask(max_seq_len: int):
     """
@@ -646,7 +343,9 @@ class EncoderDecoderTransformerLike(nn.Module):
 
 
 
-
+################################################################################
+#################                Model Getters                 #################
+################################################################################
 
 
 def get_transformer_encoder_backbone_bigger__v3() -> nn.TransformerEncoder:
@@ -869,6 +568,331 @@ def get_transformer_bigger_trainable_gaussian_weights_and_traj__v3(
     model = _set_state(model, weights_path, device)
 
     return model
+
+
+
+
+
+################################################################################
+#################       Legacy model classes and getters       #################
+################################################################################
+
+# Legacy models are kept to ensure Yandex Cup submission is reproducible.
+# The models defined above are superior.
+# This section would have been deleted if new submission creation was not broken.
+
+class SwipeCurveTransformerEncoderv1(nn.Module):
+    """
+    Transformer-based Curve encoder takes in a sequence of vectors and creates a representation
+    of a swipe gesture on a samrtphone keyboard.
+    Each vector contains information about finger trajectory at a time step.
+    It contains:
+    * x coordinate
+    * y coordinate
+    * Optionally: t
+    * Optionally: dx/dt
+    * Optionally: dy/dt
+    * Optionally: keyboard key that has x and y coordinates within its boundaries
+    """
+
+    def __init__(self,
+                 input_size: int,
+                 d_model: int,
+                 dim_feedforward: int,
+                 num_layers: int,
+                 num_heads_first: int,
+                 num_heads_other: int,
+                 dropout: float = 0.1,
+                 device = None):
+        """
+        Arguments:
+        ----------
+        input_size: int
+            Size of input vectors.
+        d_model: int
+            Size of the embeddings (output vectors).
+            Should be equal to char embedding size of the decoder.
+        dim_feedforward: int
+        num_layers: int
+            Number of encoder layers including the first layer.
+
+        """
+        super().__init__()
+
+        device = device or torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+        self.first_encoder_layer = nn.TransformerEncoderLayer(
+            input_size, num_heads_first, dim_feedforward, dropout, device=device)
+        self.liner = nn.Linear(input_size, d_model, device=device)  # to convert embedding to d_model size
+        num_layer_after_first = num_layers - 1
+        if num_layer_after_first > 0:
+            encoder_layer = nn.TransformerEncoderLayer(
+                d_model, num_heads_other, dim_feedforward, dropout, device=device)
+            self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layer_after_first)
+        else:
+            self.transformer_encoder = None
+    
+
+    def forward(self, x, pad_mask: torch.Tensor):
+        x = self.first_encoder_layer(x, src_key_padding_mask=pad_mask)
+        x = self.liner(x)
+        if self.transformer_encoder is not None:
+            x = self.transformer_encoder(x, src_key_padding_mask=pad_mask)
+        return x
+
+
+
+class SwipeCurveTransformerDecoderv1(nn.Module):
+    """
+    Decodes a swipe gesture representation into a sequence of characters.
+
+    Uses decoder transformer with masked attention to prevent the model from cheating.
+    """
+
+    def __init__(self,
+                 char_emb_size,
+                 n_classes,
+                 nhead,
+                 num_decoder_layers,
+                 dim_feedforward,
+                 dropout,
+                 activation = F.relu,
+                 device = None):
+        super().__init__()
+
+        device = device or torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+        self.decoder_layer = nn.TransformerDecoderLayer(
+            char_emb_size, nhead, dim_feedforward, dropout, activation, device = device)
+        self.transformer_decoder = nn.TransformerDecoder(self.decoder_layer, num_decoder_layers)
+        self.out = nn.Linear(char_emb_size, n_classes, device = device)
+    
+    def forward(self, x, memory, tgt_mask, memory_key_padding_mask, tgt_key_padding_mask):
+        x = self.transformer_decoder(x,
+                                     memory,
+                                     tgt_mask=tgt_mask,
+                                     memory_key_padding_mask=memory_key_padding_mask,
+                                     tgt_key_padding_mask=tgt_key_padding_mask)
+        x = self.out(x)
+        return x
+
+
+
+
+class SwipeCurveTransformer(nn.Module):
+    """
+    Seq2seq model. Encodes a sequence of points of a
+    swipe-keyboard-typing gesture into a sequence of characters.
+
+    n_output_classes = char_vocab_size - 2 because <pad> and <sos>
+    tokens are never predicted.
+    """
+
+    def _get_mask(self, max_seq_len: int):
+        """
+        Returns a mask for the decoder transformer.
+        """
+        mask = torch.triu(torch.ones(max_seq_len, max_seq_len), diagonal=1)
+        mask = mask.masked_fill(mask == 1, float('-inf'))
+        return mask
+
+    def __init__(self,
+                 n_coord_feats: int,
+                 char_emb_size: int,
+                 char_vocab_size: int,
+                 key_emb_size: int,
+                 num_encoder_layers: int,
+                 num_decoder_layers: int,
+                 dim_feedforward: int,
+                 num_heads_encoder_1: int,
+                 num_heads_encoder_2: int,
+                 num_heads_decoder: int,
+                 dropout:float,
+                 char_embedding_dropout: float,
+                 key_embedding_dropout: float,
+                 max_out_seq_len: int,
+                 max_curves_seq_len: int,
+                 activation: Callable = F.relu,
+                 device: Optional[str] = None):
+        super().__init__()
+
+        self.device = torch.device(
+            device 
+            or 'cuda' if torch.cuda.is_available() else 'cpu')
+
+        input_feats_size = n_coord_feats + key_emb_size
+
+        d_model = char_emb_size
+
+        self.char_embedding_dropout = nn.Dropout(char_embedding_dropout)
+        self.key_embedding_dropout = nn.Dropout(key_embedding_dropout)
+        
+        self.char_embedding = nn.Embedding(char_vocab_size, char_emb_size, device=device)
+        self.key_embedding = nn.Embedding(char_vocab_size, key_emb_size, device=device)
+
+        self.encoder = SwipeCurveTransformerEncoderv1(
+            input_feats_size, d_model, dim_feedforward,
+            num_encoder_layers, num_heads_encoder_1,
+            num_heads_encoder_2, dropout, device=device)
+        
+        self.char_pos_encoder = PositionalEncoding(
+            char_emb_size, max_out_seq_len, device=device)
+        
+        self.key_pos_encoder = PositionalEncoding(
+            key_emb_size, max_curves_seq_len, device=device)
+        
+        n_classes = char_vocab_size - 2  # <sos> and <pad> are not predicted
+        self.decoder = SwipeCurveTransformerDecoderv1(
+            char_emb_size, n_classes, num_heads_decoder,
+            num_decoder_layers, dim_feedforward, dropout, activation, device=device)
+
+        self.mask = self._get_mask(max_out_seq_len).to(device=device)
+
+    # def forward_old(self, x, kb_tokens, y, x_pad_mask, y_pad_mask):
+    #     # Differs from forward(): uses self.mask instead of generating it.
+    #     kb_k_emb = self.key_embedding(kb_tokens)  # keyboard key
+    #     kb_k_emb = self.key_embedding_dropout(kb_k_emb)
+    #     kb_k_emb = self.key_pos_encoder(kb_k_emb)
+    #     x = torch.cat((x, kb_k_emb), dim = -1)
+    #     x = self.encoder(x, x_pad_mask)
+    #     y = self.char_embedding(y)
+    #     y = self.char_embedding_dropout(y)
+    #     y = self.char_pos_encoder(y)
+    #     y = self.decoder(y, x, self.mask, x_pad_mask, y_pad_mask)
+    #     return y
+    
+    def encode(self, x, kb_tokens, x_pad_mask):
+        kb_k_emb = self.key_embedding(kb_tokens)  # keyboard key
+        kb_k_emb = self.key_embedding_dropout(kb_k_emb)
+        kb_k_emb = self.key_pos_encoder(kb_k_emb)
+        x = torch.cat((x, kb_k_emb), dim = -1)
+        x = self.encoder(x, x_pad_mask)
+        return x
+    
+    def decode(self, x_encoded, y, x_pad_mask, y_pad_mask):
+        y = self.char_embedding(y)
+        y = self.char_embedding_dropout(y)
+        y = self.char_pos_encoder(y)
+        mask = self._get_mask(len(y)).to(device=self.device)
+        y = self.decoder(y, x_encoded, mask, x_pad_mask, y_pad_mask)
+        return y
+
+    def forward(self, x, kb_tokens, y, x_pad_mask, y_pad_mask):
+        x_encoded = self.encode(x, kb_tokens, x_pad_mask)
+        return self.decode(x_encoded, y, x_pad_mask, y_pad_mask)
+
+
+
+
+def get_m1_model(device = None, weights_path = None):
+    CHAR_VOCAB_SIZE = 37  # = len(word_char_tokenizer.char_to_idx)
+    MAX_CURVES_SEQ_LEN = 299
+    MAX_OUT_SEQ_LEN = 35  # word_char_tokenizer.max_word_len - 1
+
+    model = SwipeCurveTransformer(
+        n_coord_feats=6,
+        char_emb_size=128,
+        char_vocab_size=CHAR_VOCAB_SIZE,
+        key_emb_size=54,
+        num_encoder_layers=4,
+        num_decoder_layers=3,
+        dim_feedforward=128,
+        num_heads_encoder_1=4,
+        num_heads_encoder_2=4,
+        num_heads_decoder=4,
+        dropout=0.1,
+        char_embedding_dropout=0.1,
+        key_embedding_dropout=0.1,
+        max_out_seq_len=MAX_OUT_SEQ_LEN,
+        max_curves_seq_len=MAX_CURVES_SEQ_LEN,
+    device = device)
+
+    if weights_path:
+        model.load_state_dict(
+            torch.load(weights_path,
+                    map_location = device))
+    
+    model = model.to(device)
+        
+    model = model.eval()
+
+    return model
+
+
+def get_m1_bigger_model(device = None, weights_path = None):
+    CHAR_VOCAB_SIZE = 37  # = len(word_char_tokenizer.char_to_idx)
+    MAX_CURVES_SEQ_LEN = 299
+    MAX_OUT_SEQ_LEN = 35  # word_char_tokenizer.max_word_len - 1
+
+    model = SwipeCurveTransformer(
+        n_coord_feats=6,
+        char_emb_size=128,
+        char_vocab_size=CHAR_VOCAB_SIZE,
+        key_emb_size=66,
+        num_encoder_layers=4,
+        num_decoder_layers=4,
+        dim_feedforward=128,
+        num_heads_encoder_1=4,
+        num_heads_encoder_2=4,
+        num_heads_decoder=4,
+        dropout=0.1,
+        char_embedding_dropout=0.1,
+        key_embedding_dropout=0.1,
+        max_out_seq_len=MAX_OUT_SEQ_LEN,
+        max_curves_seq_len=MAX_CURVES_SEQ_LEN,
+        device = device)
+
+    if weights_path:
+        model.load_state_dict(
+            torch.load(weights_path,
+                    map_location = device))
+    
+    model = model.to(device)
+        
+    model = model.eval()
+
+    return model
+
+
+def get_m1_smaller_model(device = None, weights_path = None):
+    CHAR_VOCAB_SIZE = 37  # = len(word_char_tokenizer.char_to_idx)
+    MAX_CURVES_SEQ_LEN = 299
+    MAX_OUT_SEQ_LEN = 35  # word_char_tokenizer.max_word_len - 1
+
+    model = SwipeCurveTransformer(
+        n_coord_feats=6,
+        char_emb_size=128,
+        char_vocab_size=CHAR_VOCAB_SIZE,
+        key_emb_size=54,
+        num_encoder_layers=3,
+        num_decoder_layers=3,
+        dim_feedforward=128,
+        num_heads_encoder_1=4,
+        num_heads_encoder_2=4,
+        num_heads_decoder=4,
+        dropout=0.1,
+        char_embedding_dropout=0.1,
+        key_embedding_dropout=0.1,
+        max_out_seq_len=MAX_OUT_SEQ_LEN,
+        max_curves_seq_len=MAX_CURVES_SEQ_LEN,
+        device = device)
+
+    if weights_path:
+        model.load_state_dict(
+            torch.load(weights_path,
+                    map_location = device))
+    
+    model = model.to(device)
+        
+    model = model.eval()
+
+    return model
+
+
+
+
+###############################################################################
+###############################################################################
 
 
 

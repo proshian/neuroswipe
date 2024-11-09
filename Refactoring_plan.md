@@ -446,7 +446,7 @@ predictions_dict будет поучаться с помощью функции 
 # won't be an error, further more a default parameter will be used
 # which would lead to an error.
 # Upd. I think the problem lies in a situation when self.encoder model
-# has a **kwargs too. Otherwise the abovemntioned situation would 
+# has a **kwargs too. Otherwise the above-mentioned situation would 
 # raise an error about an unexpected argument.
 
 class EncoderDecoderAbstract(nn.Module):
