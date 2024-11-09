@@ -101,9 +101,12 @@ The training is done in [train.ipynb](src/train.ipynb)
 
 
 
+## Yandex cup 2023 results
 
-## Yandex cup 2023 submission reproduction instructions
-Yandex cup 2023 submission reprodction instructions are [here: submission_reproduciton_instrucitons.md](submission_reproduciton_instrucitons.md)
+* [task](./docs_and_assets/yandex_cup/task/task.md)
+* [submission reproduction](./docs_and_assets/yandex_cup/submission_reproduciton_instrucitons.md). 
+* [leaderboard](./docs_and_assets/yandex_cup/leaderboard.md)
+
 
 
 ## Thank you for your attention
