@@ -47,7 +47,7 @@ pip install -r requirements.txt
 ```
 
 * The inference was tested with python 3.10
-* The training was done in kaggle on Tesla P100
+* The training was conducted in kaggle using Tesla P100
 
 
 <!--
@@ -67,6 +67,35 @@ python ./src/downloaders/download_dataset_separated_grid.py
 ``` 
 
 -->
+
+
+
+## Workflow Overview
+
+A trained model is defined not only by its class and weights but also by the dataset transformation used during training.
+
+
+All current models are instances of `model.EncoderDecoderTransformerLike` objects and consist of the following components:
+* Swipe point embedder
+* Word component token embedder (currently char-level)
+* Encoder
+* Decoder 
+
+Transforms extract features from the raw dataset, converting each dataset item from the format `(x, y, t, grid_name, tgt_word)` to `(encoder_input, decoder_input), decoder_output`.
+
+After collating the dataset, the format becomes `(packed_model_in, dec_out)`, where `packed_model_in` is `(enc_in, dec_in, swipe_pad_mask, word_pad_mask)`. `packed_model_in` is passed to the model via unpacking (`model(*packed_model_in)`).
+
+* `enc_in` is passed as the only argument to swipe_point_embedder’s forward. It can be a single object or a tuple of objects
+* `dec_in` are tokenized target words
+
+
+A trained swipe decoding method is defined by
+* model class
+* model weights
+* dataset transformation
+* decoding algorithm
+
+
 
 ## Your Custom Dataset
 
