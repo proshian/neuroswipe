@@ -2,35 +2,40 @@
 
 A transformer neural network for a gesture keyboard that transduces curves swiped across a keyboard into word candidates
 
-Highlights:
-* The main contribution is a new method for constructing swipe point embeddings (SPE) that uses a weighted sum of all keyboard key embeddings. **It enhances the quality of the model by 0.67% in Swipe MRR and 0.73% in accuracy** compared to existing SPE construction methods
-* A variation of beam search is implemented for inference that masks logits corresponding to impossible (according to dictionary) token continuations given an already generated prefix. It is faster and more accurate than a standard beam search
+Contribution:
+* **A new method for constructing swipe point embeddings (SPE) that outperforms existing ones.** It leverages a weighted sum of all keyboard key embeddings, resulting in a notable perfomance boost: **0.67% increase in Swipe MRR and 0.73% in accuracy** compared to SPE construction methods described in literature
+
+Other highlights:
+* **Enhanced Inference with Custom Beam Search**: a modified beam search is implemented that masks out logits corresponding to impossible (according to dictionary) token continuations given an already generated prefix. It is faster and more accurate than a standard beam search
 
 *This repository used to contain my Yandex Cup 2023 solution (7th place), but after many improvements, it has become a standalone project*
 
 ## Demo
 
-You can try out one of the models trained during the competition in a [web app](https://proshian.pythonanywhere.com/)
+Try out a live demo with a trained model from the competition through this [web app](https://proshian.pythonanywhere.com/)
 
 
 ![demo](./docs_and_assets/swipe_demos/demo.gif)
 
-If the website is not available, you can run the demo yourself by following the instructions in [the web app's GitHub repository](https://github.com/proshian/neuroswipe_inference_web).
+> [!Note]
+> If the website is not available, you can run the demo yourself by following the instructions in [the web app's GitHub repository](https://github.com/proshian/neuroswipe_inference_web).
 
+> [!Note]
+> The website may take a minute to load, as it is not yet fully optimized. If you encounter a "Something went wrong" page, try refreshing the page. This usually resolves the issue.
 
 > [!NOTE]  
-> The model is an old and underfit legacy transformer variation (m1_bigger in models.py) that was used in the competition. A significant update is planned for both this project and the web app, but it will happen in late autumn of 2024 probably. Unfortunately, I am pausing the work on the project until November 
+> The model is an old and underfit legacy transformer variation (m1_bigger in models.py) that was used in the competition. A significant update is planned for both this project and the web app, but it will happen in winter 2024 
 
 ## Report
 
-A short report on the project is available [here](docs_and_assets/report/report.md)
+Access a brief research report [here](docs_and_assets/report/report.md), which includes:
 
 It contains:
-* Overview of existing work
+* Overview of existing research
 * Description of the developed method for constructing swipe point embeddings
-* Results and comparison with existing work
+* Comparative analysis and results
 
-For more detailed information, you can refer to my [master's thesis](https://drive.google.com/file/d/1ad9zlfgfy6kOA-41GxjUQIzr8cWuaqxL/view?usp=sharing) (in Russian)
+For in-depth insights, you can refer to my [master's thesis](https://drive.google.com/file/d/1ad9zlfgfy6kOA-41GxjUQIzr8cWuaqxL/view?usp=sharing) (in Russian)
 
 
 ## Prerequisites
